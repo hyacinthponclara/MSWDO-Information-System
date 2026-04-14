@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MSWDO Admin Dashboard – San Enrique</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+        rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                        serif: ['DM Serif Display', 'serif'],
+                    },
+                    colors: {
+                        navy: {
+                            DEFAULT: '#0B2545',
+                            50: '#E8EDF5',
+                            100: '#C5D1E6',
+                            200: '#9AAECE',
+                            300: '#6F8BB5',
+                            400: '#3A5F93',
+                            500: '#163566',
+                            600: '#0B2545',
+                            700: '#091D38',
+                            800: '#06142A',
+                            900: '#030A15',
+                        },
+                        gold: {
+                            DEFAULT: '#C49A2A',
+                            50: '#FBF5E6',
+                            100: '#F5E4B3',
+                            200: '#EDD07A',
+                            300: '#E4BC3F',
+                            400: '#C49A2A',
+                            500: '#9E7A1F',
+                            600: '#795C16',
+                        },
+                        slate2: '#F4F7FC',
+                    },
+                    keyframes: {
+                        fadeUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        pulse2: { '0%,100%': { opacity: '1' }, '50%': { opacity: '.5' } },
+                    },
+                    animation: {
+                        'fade-up': 'fadeUp 0.4s ease both',
+                        'fade-up-1': 'fadeUp 0.4s ease 0.05s both',
+                        'fade-up-2': 'fadeUp 0.4s ease 0.1s both',
+                        'fade-up-3': 'fadeUp 0.4s ease 0.15s both',
+                        'fade-up-4': 'fadeUp 0.4s ease 0.2s both',
+                        'fade-up-5': 'fadeUp 0.4s ease 0.25s both',
+                        'pulse2': 'pulse2 2s ease-in-out infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .sidebar-item {
+            transition: all .15s ease;
+        }
+
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, .07);
+            color: rgba(255, 255, 255, .95);
+        }
+
+        .sidebar-item.active {
+            background: rgba(29, 111, 164, .28);
+            border-left-color: #C49A2A;
+            color: #fff;
+        }
+
+        .stat-card {
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(11, 37, 69, .1);
+        }
+
+        .prog-bar-fill {
+            transition: width 1s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .btn-action {
+            transition: all .15s ease;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-1px);
+        }
+
+        .activity-row {
+            transition: background .12s;
+        }
+
+        .activity-row:hover {
+            background: #F8FAFC;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .15);
+            border-radius: 2px;
+        }
+
+        .badge-pulse::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 9999px;
+            background: #EF4444;
+            animation: pulse2 2s ease-in-out infinite;
+            opacity: .5;
+        }
+    </style>
+</head>
+
+<body class="bg-slate2 min-h-screen flex">
+
+    <!-- ═══════════════════════════════════════ SIDEBAR ═══════════ -->
+    <aside class="w-56 min-h-screen bg-navy-600 flex flex-col flex-shrink-0 fixed top-0 left-0 h-full z-30">
+
+        <!-- Logo -->
+        <div class="px-5 pt-5 pb-4 border-b border-white/10">
+            <div
+                class="w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center text-navy-600 text-lg font-serif font-bold mb-3">
+                M</div>
+            <p class="font-serif text-white text-sm leading-snug">MSWDO San Enrique</p>
+            <p class="text-white/40 text-[10px] mt-0.5 tracking-wide">Information System</p>
+        </div>
+
+        <!-- Nav -->
+        <nav class="flex-1 overflow-y-auto py-3 space-y-0.5 px-2">
+            <p class="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Main</p>
+            <a href="#"
+                class="sidebar-item active flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white border-l-[3px] border-l-gold-400">
+                <span class="text-sm">📊</span> Dashboard
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">👥</span> Clients
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">📋</span> Availments
+            </a>
+
+            <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Confidential</p>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">🔒</span> Confidential Cases
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">🔍</span> Case Search
+            </a>
+
+            <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">💊</span> AICS
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">🏠</span> 4Ps
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">💼</span> SLP
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">🍽️</span> SFP
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">🏫</span> Day Care
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">👴</span> Senior Citizen
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">♿</span> PWD
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">👤</span> Solo Parent
+            </a>
+
+            <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Reports</p>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">📄</span> Reports
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">🗺️</span> Geographic
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center justify-between px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="flex items-center gap-2.5"><span class="text-sm">💰</span> Budget</span>
+                <span
+                    class="relative bg-red-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none badge-pulse">2</span>
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <span class="text-sm">📄</span> Case Study
+            </a>
+        </nav>
+
+        <!-- User footer -->
+        <div class="px-4 py-3 border-t border-white/10 flex items-center gap-3">
+            <div
+                class="w-8 h-8 rounded-full bg-gold-400 flex items-center justify-center text-navy-600 text-xs font-bold flex-shrink-0">
+                TP</div>
+            <div class="min-w-0">
+                <p class="text-white text-xs font-medium truncate">Ma. Teresa C. Ponclara</p>
+                <p class="text-white/40 text-[10px]">MSWDO Head</p>
+            </div>
+            <button class="ml-auto text-white/30 hover:text-white/70 text-sm transition-colors"
+                title="Logout">⏻</button>
+        </div>
+    </aside>
+
+    <!-- ═══════════════════════════════════════ MAIN ═══════════════ -->
+    <div class="ml-56 flex-1 flex flex-col min-h-screen">
+
+        <!-- Top Bar -->
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 animate-fade-up">
+            <div class="flex items-center gap-3">
+                <h1 class="text-[15px] font-semibold text-navy-600">Dashboard</h1>
+                <span class="text-slate-400 text-xs hidden sm:block">Monday, April 14, 2026</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button
+                    class="btn-action text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 bg-white hover:border-navy-400 hover:text-navy-600">
+                    + Register Client
+                </button>
+                <button
+                    class="btn-action text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 bg-white hover:border-navy-400 hover:text-navy-600">
+                    + New Availment
+                </button>
+                <button
+                    class="btn-action text-[12px] font-semibold text-white bg-navy-600 rounded-lg px-3 py-1.5 hover:bg-navy-500">
+                    New Confidential Case
+                </button>
+                <!-- Notification bell -->
+                <button
+                    class="relative w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-navy-400 hover:text-navy-600 transition-all">
+                    🔔
+                    <span
+                        class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">3</span>
+                </button>
+                <!-- Admin avatar -->
+                <div
+                    class="w-9 h-9 rounded-lg bg-navy-600 flex items-center justify-center text-white text-xs font-bold ml-1">
+                    TP</div>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <main class="flex-1 p-6 space-y-5 overflow-y-auto">
+
+            <!-- Alert Banner -->
+            <div
+                class="animate-fade-up bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3 text-sm text-amber-800">
+                <span class="text-base flex-shrink-0">🔒</span>
+                <span><strong class="font-semibold">Confidential Access Enabled:</strong> You have access to VAWC, CICL, and Child Protection cases. Handle all information with strict confidentiality per RA 9262 and related laws</span>
+            </div>
+
+            <!-- ── STAT CARDS ── -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+
+                <!-- Total Clients -->
+                <div
+                    class="stat-card animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-2xl"></div>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Total Active Cases</p>
+                    <p class="text-3xl font-semibold text-navy-600 leading-none">412</p>
+                    <p class="text-[11px] mt-1.5 font-medium">Regular + confidential</p>
+                    <div class="absolute right-3 top-3 text-2xl opacity-10">👥</div>
+                </div>
+
+                <!-- Availments This Month -->
+                <div
+                    class="stat-card animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t-2xl"></div>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Availments /
+                        Month</p>
+                    <p class="text-3xl font-semibold text-navy-600 leading-none">347</p>
+                    <p class="text-[11px] text-emerald-600 mt-1.5 font-medium">↑ +28 from last month</p>
+                    <div class="absolute right-3 top-3 text-2xl opacity-10">📋</div>
+                </div>
+
+                <!-- Active Programs -->
+                <div
+                    class="stat-card animate-fade-up-3 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-gold-400 rounded-t-2xl"></div>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Active Programs
+                    </p>
+                    <p class="text-3xl font-semibold text-navy-600 leading-none">9</p>
+                    <p class="text-[11px] text-slate-400 mt-1.5">All programs running</p>
+                    <div class="absolute right-3 top-3 text-2xl opacity-10">📦</div>
+                </div>
+
+                <!-- Total Budget -->
+                <div
+                    class="stat-card animate-fade-up-4 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-navy-600 rounded-t-2xl"></div>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Total Budget</p>
+                    <p class="text-3xl font-semibold text-navy-600 leading-none">₱2.4M</p>
+                    <p class="text-[11px] text-slate-400 mt-1.5">₱1.1M remaining</p>
+                    <div class="absolute right-3 top-3 text-2xl opacity-10">💰</div>
+                </div>
+
+                <!-- Low Budget Alerts -->
+                <div
+                    class="stat-card animate-fade-up-5 bg-white rounded-2xl border border-red-100 p-4 relative overflow-hidden cursor-pointer">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-red-500 rounded-t-2xl"></div>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Budget Alerts</p>
+                    <p class="text-3xl font-semibold text-red-500 leading-none">2</p>
+                    <p class="text-[11px] text-red-500 mt-1.5 font-medium">View alerts →</p>
+                    <div class="absolute right-3 top-3 text-2xl opacity-10">🚨</div>
+                </div>
+            </div>
+
+            <!-- ── QUICK ACTIONS ── -->
+            <div class="animate-fade-up grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <button
+                    class="btn-action bg-white border border-slate-200 hover:border-navy-400 hover:bg-navy-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-base group-hover:bg-blue-100 transition-colors flex-shrink-0">
+                        👤</div>
+                    <span class="text-[12px] font-medium text-slate-700 group-hover:text-navy-600">Register
+                        Client</span>
+                </button>
+                <button
+                    class="btn-action bg-white border border-slate-200 hover:border-navy-400 hover:bg-navy-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-base group-hover:bg-emerald-100 transition-colors flex-shrink-0">
+                        📋</div>
+                    <span class="text-[12px] font-medium text-slate-700 group-hover:text-navy-600">New Availment</span>
+                </button>
+                <button
+                    class="btn-action bg-white border border-slate-200 hover:border-navy-400 hover:bg-navy-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-base group-hover:bg-amber-100 transition-colors flex-shrink-0">
+                        📄</div>
+                    <span class="text-[12px] font-medium text-slate-700 group-hover:text-navy-600">Generate
+                        Report</span>
+                </button>
+                <button
+                    class="btn-action bg-white border border-slate-200 hover:border-navy-400 hover:bg-navy-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center text-base group-hover:bg-red-100 transition-colors flex-shrink-0">
+                        💰</div>
+                    <span class="text-[12px] font-medium text-slate-700 group-hover:text-navy-600">Budget Status</span>
+                </button>
+            </div>
+
+            <!-- ── MAIN GRID: Budget Chart + Alerts + Activity ── -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+                <!-- Budget Utilization Chart -->
+                <div class="animate-fade-up lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
+                    <div class="flex items-center justify-between mb-5">
+                        <div>
+                            <h2 class="text-[13px] font-semibold text-navy-600">Budget Utilization by Program</h2>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Fiscal Year 2026</p>
+                        </div>
+                        <a href="#" class="text-[11px] text-blue-500 hover:text-blue-700 font-medium">View all →</a>
+                    </div>
+
+                    <div class="space-y-3.5" id="budgetBars">
+                        <!-- Bars injected by JS -->
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="flex items-center gap-4 mt-4 pt-4 border-t border-slate-100 text-[11px] text-slate-500">
+                        <span class="flex items-center gap-1.5"><span
+                                class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>OK (≥30%)</span>
+                        <span class="flex items-center gap-1.5"><span
+                                class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>Low (15–30%)</span>
+                        <span class="flex items-center gap-1.5"><span
+                                class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>Critical (&lt;15%)</span>
+                    </div>
+                </div>
+
+                <!-- Right column: Alerts + Quick Stats -->
+                <div class="flex flex-col gap-4">
+
+                    <!-- Budget Alerts card -->
+                    <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-[13px] font-semibold text-navy-600">Budget Alerts</h2>
+                            <a href="#" class="text-[11px] text-blue-500 font-medium hover:text-blue-700">Manage</a>
+                        </div>
+                        <div class="space-y-2">
+                            <div
+                                class="flex items-center justify-between bg-red-50 border border-red-100 rounded-lg px-3 py-2.5">
+                                <div>
+                                    <p class="text-[12px] font-semibold text-red-600">AICS</p>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">₱28,400 remaining</p>
+                                </div>
+                                <span
+                                    class="text-[11px] font-bold text-red-500 bg-red-100 px-2 py-0.5 rounded-full">12%</span>
+                            </div>
+                            <div
+                                class="flex items-center justify-between bg-red-50 border border-red-100 rounded-lg px-3 py-2.5">
+                                <div>
+                                    <p class="text-[12px] font-semibold text-red-600">SLP</p>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">₱12,000 remaining</p>
+                                </div>
+                                <span
+                                    class="text-[11px] font-bold text-red-500 bg-red-100 px-2 py-0.5 rounded-full">8%</span>
+                            </div>
+                            <div
+                                class="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5">
+                                <div>
+                                    <p class="text-[12px] font-semibold text-amber-600">Senior Citizen</p>
+                                    <p class="text-[10px] text-slate-500 mt-0.5">₱87,000 remaining</p>
+                                </div>
+                                <span
+                                    class="text-[11px] font-bold text-amber-500 bg-amber-100 px-2 py-0.5 rounded-full">29%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Spending Mini Chart -->
+                    <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5 flex-1">
+                        <h2 class="text-[13px] font-semibold text-navy-600 mb-1">Monthly Spending</h2>
+                        <p class="text-[11px] text-slate-400 mb-4">Jan – Apr 2026</p>
+                        <div class="flex items-end gap-2 h-20">
+                            <!-- Bar chart -->
+                            <div class="flex flex-col items-center gap-1 flex-1">
+                                <div class="w-full rounded-t bg-blue-200" style="height:52%"></div>
+                                <span class="text-[9px] text-slate-400">Jan</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1 flex-1">
+                                <div class="w-full rounded-t bg-blue-300" style="height:38%"></div>
+                                <span class="text-[9px] text-slate-400">Feb</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1 flex-1">
+                                <div class="w-full rounded-t bg-blue-400" style="height:65%"></div>
+                                <span class="text-[9px] text-slate-400">Mar</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1 flex-1">
+                                <div class="w-full rounded-t bg-navy-600" style="height:78%"></div>
+                                <span class="text-[9px] text-slate-400 font-semibold">Apr</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1 flex-1">
+                                <div class="w-full rounded-t bg-slate-100 border border-dashed border-slate-200"
+                                    style="height:30%"></div>
+                                <span class="text-[9px] text-slate-300">May</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-1 flex-1">
+                                <div class="w-full rounded-t bg-slate-100 border border-dashed border-slate-200"
+                                    style="height:25%"></div>
+                                <span class="text-[9px] text-slate-300">Jun</span>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-3">Projected full-year spend: <strong
+                                class="text-navy-600">₱2.1M</strong></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── RECENT ACTIVITY + PENDING TASKS ── -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+                <!-- Recent Activity Feed -->
+                <div class="animate-fade-up lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                        <h2 class="text-[13px] font-semibold text-navy-600">Recent Activity</h2>
+                        <a href="#" class="text-[11px] text-blue-500 font-medium hover:text-blue-700">View all logs
+                            →</a>
+                    </div>
+                    <div class="divide-y divide-slate-100">
+
+                        <div class="activity-row flex items-start gap-3 px-5 py-3.5">
+                            <div
+                                class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                                👤</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[12px] text-slate-700">New client registered — <strong
+                                        class="font-semibold text-navy-600">Maria Santos</strong>, Brgy. Poblacion</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">2 mins ago · Staff: Ana Reyes</p>
+                            </div>
+                            <span
+                                class="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex-shrink-0">Create</span>
+                        </div>
+
+                        <div class="activity-row flex items-start gap-3 px-5 py-3.5">
+                            <div
+                                class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                                💊</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[12px] text-slate-700">AICS Medical availment approved — <strong
+                                        class="font-semibold text-navy-600">Pedro Cruz</strong> · ₱3,500</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">15 mins ago · Staff: Ana Reyes</p>
+                            </div>
+                            <span
+                                class="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex-shrink-0">Approved</span>
+                        </div>
+
+                        <div class="activity-row flex items-start gap-3 px-5 py-3.5">
+                            <div
+                                class="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                                ♿</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[12px] text-slate-700">PWD ID issued — <strong
+                                        class="font-semibold text-navy-600">Rodrigo Lim</strong>, Brgy. San Jose</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">1 hour ago · Staff: Ben Torres</p>
+                            </div>
+                            <span
+                                class="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex-shrink-0">Released</span>
+                        </div>
+
+                        <div class="activity-row flex items-start gap-3 px-5 py-3.5">
+                            <div
+                                class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                                👤</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[12px] text-slate-700">Solo Parent ID renewed — <strong
+                                        class="font-semibold text-navy-600">Luz Bautista</strong></p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">2 hours ago · Staff: Ben Torres</p>
+                            </div>
+                            <span
+                                class="text-[10px] font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full flex-shrink-0">Updated</span>
+                        </div>
+
+                        <div class="activity-row flex items-start gap-3 px-5 py-3.5">
+                            <div
+                                class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                                🎓</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[12px] text-slate-700">AICS Educational availment encoded — <strong
+                                        class="font-semibold text-navy-600">Carlo Reyes</strong> · ₱5,000</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">3 hours ago · Staff: Ana Reyes</p>
+                            </div>
+                            <span
+                                class="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full flex-shrink-0">Pending</span>
+                        </div>
+
+                        <div class="activity-row flex items-start gap-3 px-5 py-3.5">
+                            <div
+                                class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                                ⚙️</div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[12px] text-slate-700">Budget reallocated — <strong
+                                        class="font-semibold text-navy-600">AICS</strong> ₱200,000 → ₱240,000</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Yesterday · Admin: Juan Dela Cruz</p>
+                            </div>
+                            <span
+                                class="text-[10px] font-medium text-navy-600 bg-navy-50 px-2 py-0.5 rounded-full flex-shrink-0">Admin</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Tasks -->
+                <div class="flex flex-col gap-4">
+                    <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
+                        <h2 class="text-[13px] font-semibold text-navy-600 mb-4">Pending Tasks</h2>
+                        <div class="space-y-2.5">
+
+                            <div class="flex items-start gap-2.5 p-3 bg-red-50 border border-red-100 rounded-xl">
+                                <span class="mt-0.5 text-sm flex-shrink-0">🔴</span>
+                                <div>
+                                    <p class="text-[12px] font-semibold text-red-700">AICS Budget Critical</p>
+                                    <p class="text-[10px] text-red-500 mt-0.5">Estimated depletion in 18 days</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start gap-2.5 p-3 bg-red-50 border border-red-100 rounded-xl">
+                                <span class="mt-0.5 text-sm flex-shrink-0">🔴</span>
+                                <div>
+                                    <p class="text-[12px] font-semibold text-red-700">SLP Budget Critical</p>
+                                    <p class="text-[10px] text-red-500 mt-0.5">₱12,000 left — act now</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                                <span class="mt-0.5 text-sm flex-shrink-0">🟡</span>
+                                <div>
+                                    <p class="text-[12px] font-semibold text-amber-700">5 Pending Approvals</p>
+                                    <p class="text-[10px] text-amber-600 mt-0.5">AICS availments awaiting Mayor</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start gap-2.5 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                                <span class="mt-0.5 text-sm flex-shrink-0">🔵</span>
+                                <div>
+                                    <p class="text-[12px] font-semibold text-blue-700">Q1 Report Due</p>
+                                    <p class="text-[10px] text-blue-500 mt-0.5">Submit to DILG by Apr 30</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Program Summary -->
+                    <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
+                        <h2 class="text-[13px] font-semibold text-navy-600 mb-3">Top Programs This Month</h2>
+                        <div class="space-y-2.5">
+                            <div class="flex items-center justify-between text-[12px]">
+                                <span class="flex items-center gap-2"><span>💊</span><span
+                                        class="font-medium text-slate-700">AICS</span></span>
+                                <span class="text-navy-600 font-semibold">128 availments</span>
+                            </div>
+                            <div class="flex items-center justify-between text-[12px]">
+                                <span class="flex items-center gap-2"><span>👴</span><span
+                                        class="font-medium text-slate-700">Senior Citizen</span></span>
+                                <span class="text-navy-600 font-semibold">74 availments</span>
+                            </div>
+                            <div class="flex items-center justify-between text-[12px]">
+                                <span class="flex items-center gap-2"><span>♿</span><span
+                                        class="font-medium text-slate-700">PWD</span></span>
+                                <span class="text-navy-600 font-semibold">58 availments</span>
+                            </div>
+                            <div class="flex items-center justify-between text-[12px]">
+                                <span class="flex items-center gap-2"><span>🏠</span><span
+                                        class="font-medium text-slate-700">4Ps</span></span>
+                                <span class="text-navy-600 font-semibold">47 availments</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+            <span>MSWDO San Enrique Information System &mdash; Version 1.0.0</span>
+            <span>Support: mswdo@sanenrique.gov.ph</span>
+        </footer>
+    </div>
+
+    <script>
+        // ── Budget utilization bars ──
+        const programs = [
+            { name: 'AICS', pct: 88, spent: '₱211,600', remaining: '₱28,400', color: 'bg-red-500' },
+            { name: '4Ps', pct: 42, spent: '₱252,000', remaining: '₱348,000', color: 'bg-emerald-500' },
+            { name: 'SLP', pct: 92, spent: '₱138,000', remaining: '₱12,000', color: 'bg-red-500' },
+            { name: 'SFP', pct: 35, spent: '₱70,000', remaining: '₱130,000', color: 'bg-emerald-500' },
+            { name: 'Senior', pct: 71, spent: '₱213,000', remaining: '₱87,000', color: 'bg-amber-400' },
+            { name: 'PWD', pct: 28, spent: '₱56,000', remaining: '₱144,000', color: 'bg-emerald-500' },
+            { name: 'Solo Parent', pct: 68, spent: '₱102,000', remaining: '₱48,000', color: 'bg-amber-400' },
+        ];
+
+        const pctColor = p => p >= 80 ? 'text-red-500' : p >= 60 ? 'text-amber-500' : 'text-emerald-600';
+
+        const container = document.getElementById('budgetBars');
+        programs.forEach((p, i) => {
+            container.innerHTML += `
+        <div class="flex items-center gap-3 text-[12px]" style="animation-delay:${i * 60}ms">
+          <span class="w-24 text-slate-500 flex-shrink-0 truncate">${p.name}</span>
+          <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+            <div class="prog-bar-fill h-2 rounded-full ${p.color}" style="width:0%" data-target="${p.pct}%"></div>
+          </div>
+          <span class="w-10 text-right font-semibold ${pctColor(p.pct)}">${p.pct}%</span>
+          <span class="w-20 text-right text-slate-400 hidden sm:block">${p.remaining}</span>
+        </div>`;
+        });
+
+        // Animate bars on load
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                document.querySelectorAll('.prog-bar-fill').forEach(el => {
+                    el.style.width = el.dataset.target;
+                });
+            }, 300);
+        });
+    </script>
+</body>
+
+</html>
