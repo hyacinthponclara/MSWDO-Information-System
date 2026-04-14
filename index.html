@@ -43,7 +43,7 @@
         }
 
         .stat-card {
-            @apply bg-white border border-gray-100 rounded-xl p-4 shadow-sm;
+            @apply bg-white border border-gray-00 rounded-xl p-4 shadow-sm;
         }
 
         .badge {
@@ -209,16 +209,21 @@
             <!-- Stat Cards -->
             <div class="grid grid-cols-3 gap-4">
                 <div class="stat-card">
+                    <div style="display:inline-block;border:2px solid rgb(189,200,8);border-radius:12px;padding:24px;text-align:center;background:white;box-shadow:0 4px 12px rgba(0,0,0,.1);height:800;width:280px;margin:20px auto;">
                     <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Clients Served Today</p>
                     <p class="text-3xl font-semibold text-gray-900 mt-1">14</p>
                     <p class="text-xs text-gray-400 mt-1">6 new registrations</p>
                 </div>
+                </div>
                 <div class="stat-card">
+                    <div style="display:inline-block;border:2px solid rgb(211, 18, 60);border-radius:12px;padding:24px;text-align:center;background:rgb(255, 255, 255);box-shadow:0 4px 12px rgba(0,0,0,.1);height:1000;width:280px;margin:20px auto;">
                     <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Availments This Week</p>
                     <p class="text-3xl font-semibold text-gray-900 mt-1">58</p>
                     <p class="text-xs text-gray-400 mt-1">AICS: 32 · PWD: 12 · Other: 14</p>
                 </div>
-                <div class="stat-card border-l-2 border-l-amber-400">
+                </div>
+                <div class="stat-card">
+                    <div style="display:inline-block;border:2px solid rgb(32, 35, 204);border-radius:12px;padding:24px;text-align:center;background:rgb(255, 255, 255);box-shadow:0 4px 12px rgba(0,0,0,.1);height:800;width:280px;margin:20px auto;">
                     <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Pending Applications</p>
                     <p class="text-3xl font-semibold text-gray-900 mt-1">7</p>
                     <p class="text-xs text-amber-600 mt-1 font-medium">Needs follow up</p>
