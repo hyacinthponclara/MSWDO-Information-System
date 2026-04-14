@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,97 +35,105 @@
 
 <body class="bg-gray-100">
 
-<div class="min-h-screen flex">
+    <div class="min-h-screen flex">
 
-    <!-- LEFT SIDE -->
-    <div class="w-1/2 bg-[#0f2a44] text-white flex flex-col justify-between p-10 relative overflow-hidden">
+        <!-- LEFT SIDE -->
+        <div class="w-1/2 bg-[#0f2a44] text-white flex flex-col justify-between p-10 relative overflow-hidden">
 
-        <!-- Background circles -->
-        <div class="absolute top-0 right-0 w-72 h-72 bg-blue-400/10 rounded-full"></div>
-        <div class="absolute bottom-0 left-0 w-72 h-72 bg-blue-400/10 rounded-full"></div>
+            <!-- Background circles -->
+            <div class="absolute top-0 right-0 w-72 h-72 bg-blue-400/10 rounded-full"></div>
+            <div class="absolute bottom-0 left-0 w-72 h-72 bg-blue-400/10 rounded-full"></div>
 
-        <!-- Content -->
-        <div>
-            <div class="flex items-center gap-3 mb-6">
-                <div class="bg-yellow-400 text-black rounded-full w-10 h-10 flex items-center justify-center">
-                    🏛️
+            <!-- Content -->
+            <div>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="bg-yellow-400 text-black rounded-full w-10 h-10 flex items-center justify-center">
+                        🏛️
+                    </div>
                 </div>
+
+                <h1 class="text-2xl font-semibold leading-snug">
+                    MSWDO San Enrique<br>
+                    Information System
+                </h1>
+
+                <p class="text-sm text-gray-300 mt-4">
+                    Municipal Social Welfare and Development Office<br>
+                    San Enrique, Negros Occidental
+                </p>
             </div>
 
-            <h1 class="text-2xl font-semibold leading-snug">
-                MSWDO San Enrique<br>
-                Information System
-            </h1>
-
-            <p class="text-sm text-gray-300 mt-4">
-                Municipal Social Welfare and Development Office<br>
-                San Enrique, Negros Occidental
-            </p>
+            <!-- Status -->
+            <div class="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full w-fit">
+                <span class="w-2 h-2 bg-green-400 rounded-full"></span>
+                <span class="text-sm">System Online</span>
+            </div>
         </div>
 
-        <!-- Status -->
-        <div class="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full w-fit">
-            <span class="w-2 h-2 bg-green-400 rounded-full"></span>
-            <span class="text-sm">System Online</span>
+        <!-- RIGHT SIDE -->
+        <div class="w-1/2 flex items-center justify-center bg-gray-100">
+
+            <div class="w-full max-w-md">
+
+                <h2 class="text-2xl font-semibold text-gray-800 mb-2">
+                    Welcome back
+                </h2>
+
+                <p class="text-sm text-gray-500 mb-6">
+                    Sign in to access the MSWDO portal
+                </p>
+
+                <!-- Form -->
+                <form class="space-y-4">
+
+                    <div>
+                        <label class="text-xs text-gray-500">USERNAME</label>
+                        <input type="text" placeholder="Enter your username"
+                            class="w-full mt-1 px-4 py-3 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-gray-500">PASSWORD</label>
+                        <input type="password" placeholder="Enter your password"
+                            class="w-full mt-1 px-4 py-3 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none">
+                    </div>
+
+                    <button type="submit" class="w-full py-3 rounded-md bg-gray-300 text-gray-500 cursor-not-allowed">
+                        Sign in
+                    </button>
+
+                </form>
+
+                <!-- Footer -->
+                <div class="flex justify-between items-center mt-4 text-xs text-gray-400">
+                    <a href="admindashboard.html" class="hover:underline">
+                        Admin Dashboard (Test)
+                    </a>
+                </div>
+
+                <div class="flex justify-between items-center mt-4 text-xs text-gray-400">
+                    <a href="mswdohead.html" class="hover:underline">
+                        MSWDO Head Dashboard (Test)
+                    </a>
+                </div>
+
+                <div class="flex justify-between items-center mt-4 text-xs text-gray-400">
+                    <a href="staffdashboard.html" class="hover:underline">
+                        Staff Dashboard (Test)
+                    </a>
+
+
+                    <a href="#" class="text-blue-500 hover:underline">
+                        Forgot password?
+                    </a>
+                </div>
+
+            </div>
+
         </div>
+
     </div>
-
-    <!-- RIGHT SIDE -->
-    <div class="w-1/2 flex items-center justify-center bg-gray-100">
-
-        <div class="w-full max-w-md">
-
-            <h2 class="text-2xl font-semibold text-gray-800 mb-2">
-                Welcome back
-            </h2>
-
-            <p class="text-sm text-gray-500 mb-6">
-                Sign in to access the MSWDO portal
-            </p>
-
-            <!-- Form -->
-            <form class="space-y-4">
-
-                <div>
-                    <label class="text-xs text-gray-500">USERNAME</label>
-                    <input type="text" placeholder="Enter your username"
-                        class="w-full mt-1 px-4 py-3 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="text-xs text-gray-500">PASSWORD</label>
-                    <input type="password" placeholder="Enter your password"
-                        class="w-full mt-1 px-4 py-3 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none">
-                </div>
-
-                <button type="submit"
-                    class="w-full py-3 rounded-md bg-gray-300 text-gray-500 cursor-not-allowed">
-                    Sign in
-                </button>
-
-            </form>
-
-            <!-- Footer -->
-            <div class="flex justify-between items-center mt-4 text-xs text-gray-400">
-                <span>Admin Dashboard(Test)</span>
-                <a href="admindashboard.html" class="text-blue-500 hover:underline">Forgot password?</a>
-            </div>
-
-            <div class="flex justify-between items-center mt-4 text-xs text-gray-400">
-                <span>MSWDO Head Dashboard(Test)</span>
-                <a href="mswdoheaddashboard.html" class="text-blue-500 hover:underline">Forgot password?</a>
-            </div>
-
-            <div class="flex justify-between items-center mt-4 text-xs text-gray-400">
-                <span>Staff Dashboard(Test)</span>
-                <a href="staffdashboard.html" class="text-blue-500 hover:underline">Forgot password?</a>
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
 
 </body>
+
 </html>
