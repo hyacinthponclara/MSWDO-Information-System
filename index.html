@@ -38,37 +38,37 @@
     <div class="min-h-screen flex">
 
         <!-- LEFT SIDE -->
-        <div class="w-1/2 bg-[#0f2a44] text-white flex flex-col justify-between p-10 relative overflow-hidden">
+        <!-- LEFT SIDE -->
+<div class="w-1/2 relative flex flex-col justify-between p-10 overflow-hidden text-white">
 
-            <!-- Background circles -->
-            <div class="absolute top-0 right-0 w-72 h-72 bg-blue-400/10 rounded-full"></div>
-            <div class="absolute bottom-0 left-0 w-72 h-72 bg-blue-400/10 rounded-full"></div>
+    <!-- Background Image -->
+    <div class="absolute inset-0">
+        <img src="https://scontent.fcgy2-2.fna.fbcdn.net/v/t39.30808-6/483063781_651631304475227_7348786853002486040_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=13d280&_nc_ohc=ZSEUFixIUdEQ7kNvwFFldY1&_nc_oc=AdqRVWCZGOOklyGK3DKALeCwFyxXPN7VvSsBA8uQeDTwXReYlr2UPDESwJOLA_oBVGw&_nc_zt=23&_nc_ht=scontent.fcgy2-2.fna&_nc_gid=QHmQWHsgz7YpeXPy93RV4A&_nc_ss=7a3a8&oh=00_Af215sqS1HYT9igvbWe6BaK2jnJuiCH4KtDEfpQ3_CuRdA&oe=69E431D6"
+             class="w-full h-full object-cover object-[center_30%] scale-150">
+    </div>
 
-            <!-- Content -->
-            <div>
-                <div class="flex items-center gap-3 mb-6">
-                    <div class="bg-yellow-400 text-black rounded-full w-10 h-10 flex items-center justify-center">
-                        🏛️
-                    </div>
-                </div>
+    <!-- Blue Overlay -->
+    <div class="absolute inset-0 bg-[#0f2a44]/80"></div>
 
-                <h1 class="text-2xl font-semibold leading-snug">
-                    MSWDO San Enrique<br>
-                    Information System
-                </h1>
+    <!-- Optional Soft Gradient Glow -->
+    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-transparent to-transparent"></div>
 
-                <p class="text-sm text-gray-300 mt-4">
-                    Municipal Social Welfare and Development Office<br>
-                    San Enrique, Negros Occidental
-                </p>
-            </div>
+    <!-- Content -->
+    <div class="relative z-10">
+        <br><br><br><br>
 
-            <!-- Status -->
-            <div class="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full w-fit">
-                <span class="w-2 h-2 bg-green-400 rounded-full"></span>
-                <span class="text-sm">System Online</span>
-            </div>
-        </div>
+        <h1 class="text-5xl font-semibold leading-snug">
+            MSWDO San Enrique<br>
+            Information System
+        </h1>
+
+        <p class="text-lg text-gray-200 mt-4">
+            Municipal Social Welfare and Development Office<br>
+            San Enrique, Negros Occidental
+        </p>
+    </div>
+
+</div>
 
         <!-- RIGHT SIDE -->
         <div class="w-1/2 flex items-center justify-center bg-gray-100">
@@ -105,6 +105,12 @@
                 </form>
 
                 <!-- Footer -->
+                <div class="flex justify-end mt-4 text-xs">
+                    <a href="#" class="text-blue-500 hover:underline">
+                        Forgot password?
+                    </a>
+                </div>
+
                 <div class="flex justify-between items-center mt-4 text-xs text-gray-400">
                     <a href="admindashboard.html" class="hover:underline">
                         Admin Dashboard (Test)
@@ -122,10 +128,6 @@
                         Staff Dashboard (Test)
                     </a>
 
-
-                    <a href="#" class="text-blue-500 hover:underline">
-                        Forgot password?
-                    </a>
                 </div>
 
             </div>
