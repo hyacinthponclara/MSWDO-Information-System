@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MSWDO Admin Dashboard – San Enrique</title>
+    <title>MSWDO Head Dashboard – San Enrique</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
@@ -285,7 +285,7 @@
 
             <!-- Alert Banner -->
             <div
-                class="animate-fade-up bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 flex items-center gap-3 text-sm text-amber-800">
+                class="animate-fade-up bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3 text-sm text-amber-800">
                 <span class="text-base flex-shrink-0">🔒</span>
                 <span><strong class="font-semibold">Confidential Access Enabled:</strong> You have access to VAWC, CICL, and Child Protection cases. Handle all information with strict confidentiality per RA 9262 and related laws</span>
             </div>
@@ -293,7 +293,7 @@
             <!-- ── STAT CARDS ── -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
 
-                <!-- Total Clients -->
+                <!-- Total Active Cases -->
                 <div
                     class="stat-card animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-2xl"></div>
@@ -303,46 +303,34 @@
                     <div class="absolute right-3 top-3 text-2xl opacity-10">👥</div>
                 </div>
 
-                <!-- Availments This Month -->
+                <!-- Pending Confidential -->
                 <div
                     class="stat-card animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t-2xl"></div>
-                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Availments /
-                        Month</p>
-                    <p class="text-3xl font-semibold text-navy-600 leading-none">347</p>
-                    <p class="text-[11px] text-emerald-600 mt-1.5 font-medium">↑ +28 from last month</p>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Pending Confidential</p>
+                    <p class="text-3xl font-semibold text-navy-600 leading-none">3</p>
+                    <p class="text-[11px] text-amber-600 mt-1.5 font-medium">needs follow-up</p>
                     <div class="absolute right-3 top-3 text-2xl opacity-10">📋</div>
                 </div>
 
-                <!-- Active Programs -->
+                <!-- Clients Served This Month -->
                 <div
                     class="stat-card animate-fade-up-3 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-gold-400 rounded-t-2xl"></div>
-                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Active Programs
-                    </p>
-                    <p class="text-3xl font-semibold text-navy-600 leading-none">9</p>
-                    <p class="text-[11px] text-slate-400 mt-1.5">All programs running</p>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Clients Served This Month</p>
+                    <p class="text-3xl font-semibold text-navy-600 leading-none">89</p>
+                    <p class="text-[11px] text-slate-400 mt-1.5">+7 from last month</p>
                     <div class="absolute right-3 top-3 text-2xl opacity-10">📦</div>
                 </div>
 
-                <!-- Total Budget -->
+                <!-- Pending Availments -->
                 <div
                     class="stat-card animate-fade-up-4 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-navy-600 rounded-t-2xl"></div>
-                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Total Budget</p>
-                    <p class="text-3xl font-semibold text-navy-600 leading-none">₱2.4M</p>
-                    <p class="text-[11px] text-slate-400 mt-1.5">₱1.1M remaining</p>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Pending Availments</p>
+                    <p class="text-3xl font-semibold text-navy-600 leading-none">7</p>
+                    <p class="text-[11px] text-slate-400 mt-1.5">awaiting approval</p>
                     <div class="absolute right-3 top-3 text-2xl opacity-10">💰</div>
-                </div>
-
-                <!-- Low Budget Alerts -->
-                <div
-                    class="stat-card animate-fade-up-5 bg-white rounded-2xl border border-red-100 p-4 relative overflow-hidden cursor-pointer">
-                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-red-500 rounded-t-2xl"></div>
-                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Budget Alerts</p>
-                    <p class="text-3xl font-semibold text-red-500 leading-none">2</p>
-                    <p class="text-[11px] text-red-500 mt-1.5 font-medium">View alerts →</p>
-                    <div class="absolute right-3 top-3 text-2xl opacity-10">🚨</div>
                 </div>
             </div>
 
