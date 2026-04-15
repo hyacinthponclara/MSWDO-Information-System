@@ -1,471 +1,692 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MSWDO Head Dashboard – San Enrique</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['DM Sans', 'sans-serif'],
-            serif: ['DM Serif Display', 'serif'],
-          },
-          colors: {
-            navy: {
-              DEFAULT: '#0B2545',
-              50:  '#E8EDF5',
-              100: '#C5D1E6',
-              200: '#9AAECE',
-              400: '#3A5F93',
-              500: '#163566',
-              600: '#0B2545',
-              700: '#091D38',
-            },
-            gold: {
-              DEFAULT: '#C49A2A',
-              50:  '#FBF5E6',
-              100: '#F5E4B3',
-              300: '#E4BC3F',
-              400: '#C49A2A',
-              500: '#9E7A1F',
-            },
-            violet: {
-              50:  '#F5F3FF',
-              100: '#EDE9FE',
-              200: '#DDD6FE',
-              300: '#C4B5FD',
-              400: '#A78BFA',
-              500: '#8B5CF6',
-              600: '#7C3AED',
-              700: '#6D28D9',
-              800: '#5B21B6',
-              900: '#4C1D95',
-            },
-            slate2: '#F4F7FC',
-          },
-          keyframes: {
-            fadeUp:  { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-            pulse2:  { '0%,100%': { opacity: '1' }, '50%': { opacity: '.45' } },
-            shimmer: { '0%': { backgroundPosition: '-400px 0' }, '100%': { backgroundPosition: '400px 0' } },
-          },
-          animation: {
-            'fade-up':   'fadeUp 0.4s ease both',
-            'fade-up-1': 'fadeUp 0.4s ease 0.05s both',
-            'fade-up-2': 'fadeUp 0.4s ease 0.1s  both',
-            'fade-up-3': 'fadeUp 0.4s ease 0.15s both',
-            'fade-up-4': 'fadeUp 0.4s ease 0.2s  both',
-            'fade-up-5': 'fadeUp 0.4s ease 0.25s both',
-            'pulse2':    'pulse2 2s ease-in-out infinite',
-          }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MSWDO Head Dashboard – San Enrique</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                        serif: ['DM Serif Display', 'serif'],
+                    },
+                    colors: {
+                        navy: {
+                            DEFAULT: '#0B2545',
+                            50: '#E8EDF5',
+                            100: '#C5D1E6',
+                            200: '#9AAECE',
+                            400: '#3A5F93',
+                            500: '#163566',
+                            600: '#0B2545',
+                            700: '#091D38',
+                        },
+                        gold: {
+                            DEFAULT: '#C49A2A',
+                            50: '#FBF5E6',
+                            100: '#F5E4B3',
+                            300: '#E4BC3F',
+                            400: '#C49A2A',
+                            500: '#9E7A1F',
+                        },
+                        violet: {
+                            50: '#F5F3FF',
+                            100: '#EDE9FE',
+                            200: '#DDD6FE',
+                            300: '#C4B5FD',
+                            400: '#A78BFA',
+                            500: '#8B5CF6',
+                            600: '#7C3AED',
+                            700: '#6D28D9',
+                            800: '#5B21B6',
+                            900: '#4C1D95',
+                        },
+                        slate2: '#F4F7FC',
+                    },
+                    keyframes: {
+                        fadeUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        pulse2: { '0%,100%': { opacity: '1' }, '50%': { opacity: '.45' } },
+                        shimmer: { '0%': { backgroundPosition: '-400px 0' }, '100%': { backgroundPosition: '400px 0' } },
+                    },
+                    animation: {
+                        'fade-up': 'fadeUp 0.4s ease both',
+                        'fade-up-1': 'fadeUp 0.4s ease 0.05s both',
+                        'fade-up-2': 'fadeUp 0.4s ease 0.1s  both',
+                        'fade-up-3': 'fadeUp 0.4s ease 0.15s both',
+                        'fade-up-4': 'fadeUp 0.4s ease 0.2s  both',
+                        'fade-up-5': 'fadeUp 0.4s ease 0.25s both',
+                        'pulse2': 'pulse2 2s ease-in-out infinite',
+                    }
+                }
+            }
         }
-      }
-    }
-  </script>
-  <style>
-    body { font-family: 'DM Sans', sans-serif; }
+    </script>
+    <style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+        }
 
-    /* Sidebar */
-    .sidebar-item { transition: all .15s ease; }
-    .sidebar-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.95); }
-    .sidebar-item.active { background: rgba(124,58,237,.25); border-left-color: #C49A2A; color: #fff; }
-    .sidebar-conf { border-left: 3px solid transparent; }
-    .sidebar-conf:hover { background: rgba(167,139,250,.12); color: rgba(221,214,254,.9); }
-    .sidebar-conf.active-conf { background: rgba(124,58,237,.22); border-left-color: #A78BFA; color: #EDE9FE; }
+        /* Sidebar */
+        .sidebar-item {
+            transition: all .15s ease;
+        }
 
-    /* Cards */
-    .stat-card { transition: transform .2s ease, box-shadow .2s ease; }
-    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(11,37,69,.1); }
-    .btn-action { transition: all .15s ease; }
-    .btn-action:hover { transform: translateY(-1px); }
-    .case-row { transition: background .12s; }
-    .case-row:hover { background: #F8F7FF; cursor: pointer; }
-    .prog-bar-fill { transition: width 1s cubic-bezier(.4,0,.2,1); }
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, .07);
+            color: rgba(255, 255, 255, .95);
+        }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
+        .sidebar-item.active {
+            background: rgba(124, 58, 237, .25);
+            border-left-color: #C49A2A;
+            color: #fff;
+        }
 
-    /* Badge pulse ring */
-    .badge-ring { position: relative; }
-    .badge-ring::before { content: ''; position: absolute; inset: 0; border-radius: 9999px; background: #EF4444; animation: pulse2 2s ease-in-out infinite; opacity: .45; }
+        .sidebar-conf {
+            border-left: 3px solid transparent;
+        }
 
-    /* Confidential glow strip */
-    .conf-strip { background: linear-gradient(90deg, #7C3AED 0%, #A78BFA 50%, #7C3AED 100%); background-size: 400px 100%; animation: shimmer 3s linear infinite; }
-  </style>
+        .sidebar-conf:hover {
+            background: rgba(167, 139, 250, .12);
+            color: rgba(221, 214, 254, .9);
+        }
+
+        .sidebar-conf.active-conf {
+            background: rgba(124, 58, 237, .22);
+            border-left-color: #A78BFA;
+            color: #EDE9FE;
+        }
+
+        /* Cards */
+        .stat-card {
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(11, 37, 69, .1);
+        }
+
+        .btn-action {
+            transition: all .15s ease;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-1px);
+        }
+
+        .case-row {
+            transition: background .12s;
+        }
+
+        .case-row:hover {
+            background: #F8F7FF;
+            cursor: pointer;
+        }
+
+        .prog-bar-fill {
+            transition: width 1s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .15);
+            border-radius: 2px;
+        }
+
+        /* Badge pulse ring */
+        .badge-ring {
+            position: relative;
+        }
+
+        .badge-ring::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 9999px;
+            background: #EF4444;
+            animation: pulse2 2s ease-in-out infinite;
+            opacity: .45;
+        }
+
+        /* Confidential glow strip */
+        .conf-strip {
+            background: linear-gradient(90deg, #7C3AED 0%, #A78BFA 50%, #7C3AED 100%);
+            background-size: 400px 100%;
+            animation: shimmer 3s linear infinite;
+        }
+    </style>
 </head>
+
 <body class="bg-slate2 min-h-screen flex">
 
-  <!-- ══════════════════════════ SIDEBAR ══════════════════════════ -->
-  <aside class="w-56 min-h-screen bg-navy-600 flex flex-col flex-shrink-0 fixed top-0 left-0 h-full z-30">
+    <!-- ══════════════════════════ SIDEBAR ══════════════════════════ -->
+    <aside class="w-56 min-h-screen bg-navy-600 flex flex-col flex-shrink-0 fixed top-0 left-0 h-full z-30">
 
-    <!-- Logo -->
-    <div class="px-5 pt-5 pb-4 border-b border-white/10">
-      <div class="w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center text-navy-600 text-lg font-serif font-bold mb-3">M</div>
-      <p class="font-serif text-white text-sm leading-snug">MSWDO San Enrique</p>
-      <p class="text-white/40 text-[10px] mt-0.5 tracking-wide">Information System</p>
-    </div>
-
-    <!-- Nav -->
-    <nav class="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-
-      <p class="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Main</p>
-      <a href="#" class="sidebar-item active flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white border-l-[3px]">
-        <span class="text-sm">📊</span> Dashboard
-      </a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-        <span class="text-sm">👥</span> Clients
-      </a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-        <span class="text-sm">📋</span> Availments
-      </a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-        <span class="text-sm">📋</span> Case Study
-      </a>
-
-      <!-- Confidential section — violet tinted -->
-      <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-violet-300/60 font-medium">Confidential</p>
-      <a href="#" class="sidebar-conf active-conf flex items-center justify-between px-3 py-2 rounded text-[13px]">
-        <span class="flex items-center gap-2.5"><span class="text-sm">🔒</span> Confidential Cases</span>
-        <span class="badge-ring relative bg-red-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">3</span>
-      </a>
-      <a href="#" class="sidebar-conf flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-violet-200/50">
-        <span class="text-sm">🔍</span> Case Search
-      </a>
-
-      <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">💊</span> AICS</a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">🏠</span> 4Ps</a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">💼</span> SLP</a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">🍽️</span> SFP</a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">🏫</span> Day Care</a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">👴</span> Senior Citizen</a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">♿</span> PWD</a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">👤</span> Solo Parent</a>
-
-      <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Reports</p>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">📄</span> Reports</a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">🗺️</span> Geographic</a>
-      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">💰</span> Budget Monitor</a>
-    </nav>
-
-    <!-- User footer -->
-    <div class="px-4 py-3 border-t border-white/10 flex items-center gap-3">
-      <div class="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">MP</div>
-      <div class="min-w-0">
-        <p class="text-white text-xs font-medium truncate">Ma. Teresa C. Ponclara </p>
-        <p class="text-violet-300/60 text-[10px]">MSWDO Head</p>
-      </div>
-      <button class="ml-auto text-white/30 hover:text-white/70 text-sm transition-colors" title="Logout">⏻</button>
-    </div>
-  </aside>
-
-  <!-- ══════════════════════════ MAIN ══════════════════════════════ -->
-  <div class="ml-56 flex-1 flex flex-col min-h-screen">
-
-    <!-- Top bar -->
-    <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 animate-fade-up">
-      <div class="flex items-center gap-3">
-        <h1 class="text-[15px] font-semibold text-navy-600">Dashboard</h1>
-        <span class="bg-violet-100 text-violet-700 text-[11px] font-semibold px-3 py-0.5 rounded-full">MSWDO Head</span>
-        <span class="text-slate-400 text-xs hidden sm:block">Monday, April 14, 2026</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <button class="btn-action text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 bg-white hover:border-navy-400 hover:text-navy-600">+ Register Client</button>
-        <button class="btn-action text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 bg-white hover:border-navy-400 hover:text-navy-600">+ New Availment</button>
-        <button class="btn-action text-[12px] font-semibold text-white bg-violet-600 rounded-lg px-3 py-1.5 hover:bg-violet-700">🔒 New Confidential Case</button>
-        <button class="relative w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-violet-400 hover:text-violet-600 transition-all">
-          🔔
-          <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">5</span>
-        </button>
-        <div class="w-9 h-9 rounded-lg bg-violet-600 flex items-center justify-center text-white text-xs font-bold ml-1">TP</div>
-      </div>
-    </header>
-
-    <main class="flex-1 p-6 space-y-5 overflow-y-auto">
-
-      <!-- Confidential Access Banner -->
-      <div class="animate-fade-up relative overflow-hidden rounded-xl border border-violet-200 bg-violet-50">
-        <div class="conf-strip absolute top-0 left-0 right-0 h-0.5 opacity-80"></div>
-        <div class="px-4 py-3 flex items-start gap-3">
-          <span class="text-violet-600 text-lg flex-shrink-0 mt-0.5">🔒</span>
-          <div>
-            <p class="text-[13px] font-semibold text-violet-900">Confidential Access Enabled</p>
-            <p class="text-[12px] text-violet-700 mt-0.5">You have access to VAWC, CICL, and Child Protection cases. Handle all information with strict confidentiality per <strong>RA 9262</strong>, <strong>RA 7610</strong>, and related laws. All access is logged.</p>
-          </div>
-          <button class="ml-auto text-[11px] text-violet-500 hover:text-violet-700 underline flex-shrink-0 font-medium">View Cases →</button>
-        </div>
-      </div>
-
-      <!-- Stat Cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="stat-card animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
-          <div class="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-2xl"></div>
-          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Total Active Cases</p>
-          <p class="text-3xl font-semibold text-navy-600 leading-none">412</p>
-          <p class="text-[11px] text-slate-400 mt-1.5">Regular + confidential</p>
-          <div class="absolute right-3 top-3 text-2xl opacity-10">📋</div>
+        <!-- Logo -->
+        <div class="px-5 pt-5 pb-4 border-b border-white/10">
+            <div
+                class="w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center text-navy-600 text-lg font-serif font-bold mb-3">
+                M</div>
+            <p class="font-serif text-white text-sm leading-snug">MSWDO San Enrique</p>
+            <p class="text-white/40 text-[10px] mt-0.5 tracking-wide">Information System</p>
         </div>
 
-        <div class="stat-card animate-fade-up-2 bg-white rounded-2xl border border-violet-100 p-4 relative overflow-hidden">
-          <div class="absolute top-0 left-0 right-0 h-0.5 bg-violet-500 rounded-t-2xl"></div>
-          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Pending Confidential</p>
-          <p class="text-3xl font-semibold text-violet-700 leading-none">3</p>
-          <p class="text-[11px] text-red-500 font-medium mt-1.5">Needs follow-up</p>
-          <div class="absolute right-3 top-3 text-2xl opacity-10">🔒</div>
+        <!-- Nav -->
+        <nav class="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+
+            <p class="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Main</p>
+            <a href="#"
+                class="sidebar-item active flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white border-l-[3px]">
+                <i class="fas fa-chart-pie text-sm"></i> Dashboard
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-users text-sm"></i> Clients
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-list text-sm"></i> Availments
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-book text-sm"></i> Case Study
+            </a>
+
+            <!-- Confidential section — violet tinted -->
+            <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-violet-300/60 font-medium">Confidential
+            </p>
+            <a href="#"
+                class="sidebar-conf active-conf flex items-center justify-between px-3 py-2 rounded text-[13px]">
+                <span class="flex items-center gap-2.5"><i class="fas fa-lock text-sm"></i> Confidential Cases</span>
+                <span
+                    class="badge-ring relative bg-red-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">3</span>
+            </a>
+            <a href="#" class="sidebar-conf flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-violet-200/50">
+                <i class="fas fa-search text-sm"></i> Case Search
+            </a>
+
+            <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-capsules text-sm"></i> AICS</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-home text-sm"></i> 4Ps</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-briefcase text-sm"></i> SLP</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-utensils text-sm"></i> SFP</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-school text-sm"></i> Day Care</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-user-friends text-sm"></i> Senior Citizen</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-wheelchair text-sm"></i> PWD</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-user text-sm"></i> Solo Parent</a>
+
+            <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Reports</p>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-file-alt text-sm"></i> Reports</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-map-marked-alt text-sm"></i> Geographic</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-money-bill text-sm"></i> Budget Monitor</a>
+        </nav>
+
+        <!-- User footer -->
+        <div class="px-4 py-3 border-t border-white/10 flex items-center gap-3">
+            <div
+                class="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                MP</div>
+            <div class="min-w-0">
+                <p class="text-white text-xs font-medium truncate">Ma. Teresa C. Ponclara </p>
+                <p class="text-violet-300/60 text-[10px]">MSWDO Head</p>
+            </div>
+            <button class="ml-auto text-white/30 hover:text-white/70 text-sm transition-colors" title="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
         </div>
+    </aside>
 
-        <div class="stat-card animate-fade-up-3 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
-          <div class="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t-2xl"></div>
-          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Clients This Month</p>
-          <p class="text-3xl font-semibold text-navy-600 leading-none">89</p>
-          <p class="text-[11px] text-emerald-600 font-medium mt-1.5">↑ +7 from last month</p>
-          <div class="absolute right-3 top-3 text-2xl opacity-10">👤</div>
-        </div>
+    <!-- ══════════════════════════ MAIN ══════════════════════════════ -->
+    <div class="ml-56 flex-1 flex flex-col min-h-screen">
 
-        <div class="stat-card animate-fade-up-4 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
-          <div class="absolute top-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-2xl"></div>
-          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Pending Availments</p>
-          <p class="text-3xl font-semibold text-navy-600 leading-none">7</p>
-          <p class="text-[11px] text-amber-500 font-medium mt-1.5">Awaiting approval</p>
-          <div class="absolute right-3 top-3 text-2xl opacity-10">⏳</div>
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="animate-fade-up grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <button class="btn-action bg-white border border-slate-200 hover:border-navy-400 hover:bg-navy-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
-          <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-base group-hover:bg-blue-100 transition-colors flex-shrink-0">👤</div>
-          <span class="text-[12px] font-medium text-slate-700 group-hover:text-navy-600">Register Client</span>
-        </button>
-        <button class="btn-action bg-white border border-slate-200 hover:border-navy-400 hover:bg-navy-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
-          <div class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-base group-hover:bg-emerald-100 transition-colors flex-shrink-0">📋</div>
-          <span class="text-[12px] font-medium text-slate-700 group-hover:text-navy-600">New Availment</span>
-        </button>
-        <button class="btn-action bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
-          <div class="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center text-base group-hover:bg-violet-200 transition-colors flex-shrink-0">🔒</div>
-          <span class="text-[12px] font-medium text-violet-700 group-hover:text-violet-900">New Confidential Case</span>
-        </button>
-      </div>
-
-      <!-- Main Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-        <!-- Confidential Case Updates -->
-        <div class="animate-fade-up lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <!-- Top bar -->
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 animate-fade-up">
+            <div class="flex items-center gap-3">
+                <h1 class="text-[15px] font-semibold text-navy-600">Dashboard</h1>
+                <span class="bg-violet-100 text-violet-700 text-[11px] font-semibold px-3 py-0.5 rounded-full">MSWDO
+                    Head</span>
+                <span class="text-slate-400 text-xs hidden sm:block" id="currentDate"></span>
+            </div>
             <div class="flex items-center gap-2">
-              <h2 class="text-[13px] font-semibold text-navy-600">Confidential Case Updates</h2>
-              <span class="bg-violet-100 text-violet-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Restricted</span>
+                <button
+                    class="btn-action text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 bg-white hover:border-navy-400 hover:text-navy-600">+
+                    Register Client</button>
+                <button
+                    class="btn-action text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 bg-white hover:border-navy-400 hover:text-navy-600">+
+                    New Availment</button>
+                <button
+                    class="btn-action text-[12px] font-semibold text-white bg-violet-600 rounded-lg px-3 py-1.5 hover:bg-violet-700"><i class="fas fa-lock"></i>
+                    New Confidential Case</button>
+                <button
+                    class="relative w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-navy-400 hover:text-navy-600 transition-all">
+                    <i class="far fa-bell"></i>
+                    <span
+                        class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">3</span>
+                </button>
+                <div
+                    class="w-9 h-9 rounded-lg bg-violet-600 flex items-center justify-center text-white text-xs font-bold ml-1">
+                    TP</div>
             </div>
-            <a href="#" class="text-[11px] text-violet-500 font-medium hover:text-violet-700">View all cases →</a>
-          </div>
+        </header>
 
-          <div class="divide-y divide-slate-100">
-            <!-- VAWC Active -->
-            <div class="case-row flex items-start gap-4 px-5 py-4">
-              <div class="flex-shrink-0 mt-0.5">
-                <div class="w-2.5 h-2.5 rounded-full bg-red-500 mt-1.5"></div>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-[12px] font-semibold text-slate-800">VAWC — Case #CV-2026-018</span>
-                  <span class="bg-red-100 text-red-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Active</span>
-                </div>
-                <p class="text-[12px] text-slate-600 mt-1">Follow-up scheduled for April 16. Client referred to legal assistance. Coordination with barangay ongoing.</p>
-                <p class="text-[10px] text-slate-400 mt-1.5">Updated 1 hour ago · Assigned: R. Villanueva · Brgy. Poblacion</p>
-              </div>
-              <button class="flex-shrink-0 text-[11px] text-violet-600 border border-violet-200 rounded-lg px-2.5 py-1 hover:bg-violet-50 transition-colors">View</button>
-            </div>
+        <main class="flex-1 p-6 space-y-5 overflow-y-auto">
 
-            <!-- CICL Monitoring -->
-            <div class="case-row flex items-start gap-4 px-5 py-4">
-              <div class="flex-shrink-0 mt-0.5">
-                <div class="w-2.5 h-2.5 rounded-full bg-amber-400 mt-1.5"></div>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-[12px] font-semibold text-slate-800">CICL — Case #CC-2026-007</span>
-                  <span class="bg-amber-100 text-amber-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Monitoring</span>
+            <!-- Confidential Access Banner -->
+            <div class="animate-fade-up relative overflow-hidden rounded-xl border border-violet-200 bg-violet-50">
+                <div class="conf-strip absolute top-0 left-0 right-0 h-0.5 opacity-80"></div>
+                <div class="px-4 py-3 flex items-start gap-3">
+                    <span class="text-violet-600 text-lg flex-shrink-0 mt-0.5"><i class="fas fa-lock"></i></span>
+                    <div>
+                        <p class="text-[13px] font-semibold text-violet-900">Confidential Access Enabled</p>
+                        <p class="text-[12px] text-violet-700 mt-0.5">You have access to VAWC, CICL, and Child
+                            Protection cases. Handle all information with strict confidentiality per <strong>RA
+                                9262</strong>, <strong>RA 7610</strong>, and related laws. All access is logged.</p>
+                    </div>
+                    <button
+                        class="ml-auto text-[11px] text-violet-500 hover:text-violet-700 underline flex-shrink-0 font-medium">View
+                        Cases →</button>
                 </div>
-                <p class="text-[12px] text-slate-600 mt-1">Diversion program enrollment completed. Monthly monitoring ongoing. Next check-in: April 22.</p>
-                <p class="text-[10px] text-slate-400 mt-1.5">Updated yesterday · Assigned: R. Villanueva · Brgy. San Jose</p>
-              </div>
-              <button class="flex-shrink-0 text-[11px] text-violet-600 border border-violet-200 rounded-lg px-2.5 py-1 hover:bg-violet-50 transition-colors">View</button>
-            </div>
-
-            <!-- Child Abuse Active -->
-            <div class="case-row flex items-start gap-4 px-5 py-4">
-              <div class="flex-shrink-0 mt-0.5">
-                <div class="w-2.5 h-2.5 rounded-full bg-red-500 mt-1.5"></div>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-[12px] font-semibold text-slate-800">Child Abuse — Case #CA-2026-003</span>
-                  <span class="bg-red-100 text-red-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Active</span>
-                </div>
-                <p class="text-[12px] text-slate-600 mt-1">Temporary shelter secured. Coordination with DSWD Provincial in progress. Awaiting inter-agency response.</p>
-                <p class="text-[10px] text-slate-400 mt-1.5">Updated 2 days ago · Assigned: R. Villanueva · Brgy. Beguiligan</p>
-              </div>
-              <button class="flex-shrink-0 text-[11px] text-violet-600 border border-violet-200 rounded-lg px-2.5 py-1 hover:bg-violet-50 transition-colors">View</button>
             </div>
 
-            <!-- VAWC Resolved -->
-            <div class="case-row flex items-start gap-4 px-5 py-4">
-              <div class="flex-shrink-0 mt-0.5">
-                <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1.5"></div>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-[12px] font-semibold text-slate-800">VAWC — Case #CV-2026-015</span>
-                  <span class="bg-emerald-100 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Resolved</span>
+            <!-- Stat Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div
+                    class="stat-card animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-2xl"></div>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Total Active
+                        Cases</p>
+                    <p class="text-3xl font-semibold text-navy-600 leading-none">412</p>
+                    <p class="text-[11px] text-slate-400 mt-1.5">Regular + confidential</p>
+                    <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-file-alt"></i></div>
                 </div>
-                <p class="text-[12px] text-slate-600 mt-1">Barangay protection order issued. Case resolved pending final documentation and 30-day monitoring.</p>
-                <p class="text-[10px] text-slate-400 mt-1.5">Updated Apr 10 · Assigned: R. Villanueva · Brgy. Poblacion</p>
-              </div>
-              <button class="flex-shrink-0 text-[11px] text-slate-400 border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-slate-50 transition-colors">View</button>
+
+                <div
+                    class="stat-card animate-fade-up-2 bg-white rounded-2xl border border-violet-100 p-4 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-violet-500 rounded-t-2xl"></div>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Pending
+                        Confidential</p>
+                    <p class="text-3xl font-semibold text-violet-700 leading-none">3</p>
+                    <p class="text-[11px] text-red-500 font-medium mt-1.5">Needs follow-up</p>
+                    <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-lock"></i></div>
+                </div>
+
+                <div
+                    class="stat-card animate-fade-up-3 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t-2xl"></div>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Clients This
+                        Month</p>
+                    <p class="text-3xl font-semibold text-navy-600 leading-none">89</p>
+                    <p class="text-[11px] text-emerald-600 font-medium mt-1.5">↑ +7 from last month</p>
+                    <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-users"></i></div>
+                </div>
+
+                <div
+                    class="stat-card animate-fade-up-4 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-2xl"></div>
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Pending
+                        Availments</p>
+                    <p class="text-3xl font-semibold text-navy-600 leading-none">7</p>
+                    <p class="text-[11px] text-amber-500 font-medium mt-1.5">Awaiting approval</p>
+                    <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-clock"></i></div>
+                </div>
             </div>
-          </div>
-        </div>
 
-        <!-- Right col -->
-        <div class="flex flex-col gap-4">
-
-          <!-- Budget Summary (view-only) -->
-          <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-[13px] font-semibold text-navy-600">Budget Summary</h2>
-              <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">View Only</span>
+            <!-- Quick Actions -->
+            <div class="animate-fade-up grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <button
+                    class="btn-action bg-white border border-slate-200 hover:border-navy-400 hover:bg-navy-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-base group-hover:bg-blue-100 transition-colors flex-shrink-0">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <span class="text-[12px] font-medium text-slate-700 group-hover:text-navy-600">Register
+                        Client</span>
+                </button>
+                <button
+                    class="btn-action bg-white border border-slate-200 hover:border-navy-400 hover:bg-navy-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-base group-hover:bg-emerald-100 transition-colors flex-shrink-0">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <span class="text-[12px] font-medium text-slate-700 group-hover:text-navy-600">New Availment</span>
+                </button>
+                <button
+                    class="btn-action bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-violet-100 flex items-center justify-center text-base group-hover:bg-violet-200 transition-colors flex-shrink-0">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <span class="text-[12px] font-medium text-violet-700 group-hover:text-violet-900">New Confidential
+                        Case</span>
+                </button>
             </div>
-            <div class="space-y-3" id="budgetMini"></div>
-            <p class="text-[10px] text-slate-400 mt-3 pt-3 border-t border-slate-100">Contact Admin to reallocate funds.</p>
-          </div>
 
-          <!-- Case Type Breakdown -->
-          <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
-            <h2 class="text-[13px] font-semibold text-navy-600 mb-4">Cases by Type <span class="text-[11px] text-slate-400 font-normal">— 2026</span></h2>
-            <div class="space-y-3">
-              <div class="flex items-center gap-3">
-                <span class="w-20 text-[12px] text-slate-500 flex-shrink-0">VAWC</span>
-                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div class="prog-bar-fill h-2 rounded-full bg-red-400" style="width:0%" data-target="65%"></div>
+            <!-- Main Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+                <!-- Confidential Case Updates -->
+                <div class="animate-fade-up lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-[13px] font-semibold text-navy-600">Confidential Case Updates</h2>
+                            <span
+                                class="bg-violet-100 text-violet-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Restricted</span>
+                        </div>
+                        <a href="#" class="text-[11px] text-violet-500 font-medium hover:text-violet-700">View all cases
+                            →</a>
+                    </div>
+
+                    <div class="divide-y divide-slate-100">
+                        <!-- VAWC Active -->
+                        <div class="case-row flex items-start gap-4 px-5 py-4">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-500 mt-1.5"></div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[12px] font-semibold text-slate-800">VAWC — Case
+                                        #CV-2026-018</span>
+                                    <span
+                                        class="bg-red-100 text-red-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Active</span>
+                                </div>
+                                <p class="text-[12px] text-slate-600 mt-1">Follow-up scheduled for April 16. Client
+                                    referred to legal assistance. Coordination with barangay ongoing.</p>
+                                <p class="text-[10px] text-slate-400 mt-1.5">Updated 1 hour ago · Assigned: R.
+                                    Villanueva · Brgy. Poblacion</p>
+                            </div>
+                            <button
+                                class="flex-shrink-0 text-[11px] text-violet-600 border border-violet-200 rounded-lg px-2.5 py-1 hover:bg-violet-50 transition-colors">View</button>
+                        </div>
+
+                        <!-- CICL Monitoring -->
+                        <div class="case-row flex items-start gap-4 px-5 py-4">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-amber-400 mt-1.5"></div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[12px] font-semibold text-slate-800">CICL — Case
+                                        #CC-2026-007</span>
+                                    <span
+                                        class="bg-amber-100 text-amber-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Monitoring</span>
+                                </div>
+                                <p class="text-[12px] text-slate-600 mt-1">Diversion program enrollment completed.
+                                    Monthly monitoring ongoing. Next check-in: April 22.</p>
+                                <p class="text-[10px] text-slate-400 mt-1.5">Updated yesterday · Assigned: R. Villanueva
+                                    · Brgy. San Jose</p>
+                            </div>
+                            <button
+                                class="flex-shrink-0 text-[11px] text-violet-600 border border-violet-200 rounded-lg px-2.5 py-1 hover:bg-violet-50 transition-colors">View</button>
+                        </div>
+
+                        <!-- Child Abuse Active -->
+                        <div class="case-row flex items-start gap-4 px-5 py-4">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-500 mt-1.5"></div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[12px] font-semibold text-slate-800">Child Abuse — Case
+                                        #CA-2026-003</span>
+                                    <span
+                                        class="bg-red-100 text-red-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Active</span>
+                                </div>
+                                <p class="text-[12px] text-slate-600 mt-1">Temporary shelter secured. Coordination with
+                                    DSWD Provincial in progress. Awaiting inter-agency response.</p>
+                                <p class="text-[10px] text-slate-400 mt-1.5">Updated 2 days ago · Assigned: R.
+                                    Villanueva · Brgy. Beguiligan</p>
+                            </div>
+                            <button
+                                class="flex-shrink-0 text-[11px] text-violet-600 border border-violet-200 rounded-lg px-2.5 py-1 hover:bg-violet-50 transition-colors">View</button>
+                        </div>
+
+                        <!-- VAWC Resolved -->
+                        <div class="case-row flex items-start gap-4 px-5 py-4">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 mt-1.5"></div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[12px] font-semibold text-slate-800">VAWC — Case
+                                        #CV-2026-015</span>
+                                    <span
+                                        class="bg-emerald-100 text-emerald-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Resolved</span>
+                                </div>
+                                <p class="text-[12px] text-slate-600 mt-1">Barangay protection order issued. Case
+                                    resolved pending final documentation and 30-day monitoring.</p>
+                                <p class="text-[10px] text-slate-400 mt-1.5">Updated Apr 10 · Assigned: R. Villanueva ·
+                                    Brgy. Poblacion</p>
+                            </div>
+                            <button
+                                class="flex-shrink-0 text-[11px] text-slate-400 border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-slate-50 transition-colors">View</button>
+                        </div>
+                    </div>
                 </div>
-                <span class="text-[11px] font-semibold text-red-500 w-6 text-right">13</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="w-20 text-[12px] text-slate-500 flex-shrink-0">CICL</span>
-                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div class="prog-bar-fill h-2 rounded-full bg-amber-400" style="width:0%" data-target="35%"></div>
+
+                <!-- Right col -->
+                <div class="flex flex-col gap-4">
+
+                    <!-- Budget Summary (view-only) -->
+                    <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-[13px] font-semibold text-navy-600">Budget Summary</h2>
+                            <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">View
+                                Only</span>
+                        </div>
+                        <div class="space-y-3" id="budgetMini"></div>
+                        <p class="text-[10px] text-slate-400 mt-3 pt-3 border-t border-slate-100">Contact Admin to
+                            reallocate funds.</p>
+                    </div>
+
+                    <!-- Case Type Breakdown -->
+                    <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
+                        <h2 class="text-[13px] font-semibold text-navy-600 mb-4">Cases by Type <span
+                                class="text-[11px] text-slate-400 font-normal">— 2026</span></h2>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3">
+                                <span class="w-20 text-[12px] text-slate-500 flex-shrink-0">VAWC</span>
+                                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                                    <div class="prog-bar-fill h-2 rounded-full bg-red-400" style="width:0%"
+                                        data-target="65%"></div>
+                                </div>
+                                <span class="text-[11px] font-semibold text-red-500 w-6 text-right">13</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-20 text-[12px] text-slate-500 flex-shrink-0">CICL</span>
+                                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                                    <div class="prog-bar-fill h-2 rounded-full bg-amber-400" style="width:0%"
+                                        data-target="35%"></div>
+                                </div>
+                                <span class="text-[11px] font-semibold text-amber-500 w-6 text-right">7</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-20 text-[12px] text-slate-500 flex-shrink-0">Child Abuse</span>
+                                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                                    <div class="prog-bar-fill h-2 rounded-full bg-violet-400" style="width:0%"
+                                        data-target="20%"></div>
+                                </div>
+                                <span class="text-[11px] font-semibold text-violet-500 w-6 text-right">4</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-20 text-[12px] text-slate-500 flex-shrink-0">CAR</span>
+                                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                                    <div class="prog-bar-fill h-2 rounded-full bg-blue-400" style="width:0%"
+                                        data-target="12%"></div>
+                                </div>
+                                <span class="text-[11px] font-semibold text-blue-500 w-6 text-right">2</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <span class="text-[11px] font-semibold text-amber-500 w-6 text-right">7</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="w-20 text-[12px] text-slate-500 flex-shrink-0">Child Abuse</span>
-                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div class="prog-bar-fill h-2 rounded-full bg-violet-400" style="width:0%" data-target="20%"></div>
-                </div>
-                <span class="text-[11px] font-semibold text-violet-500 w-6 text-right">4</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="w-20 text-[12px] text-slate-500 flex-shrink-0">CAR</span>
-                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div class="prog-bar-fill h-2 rounded-full bg-blue-400" style="width:0%" data-target="12%"></div>
-                </div>
-                <span class="text-[11px] font-semibold text-blue-500 w-6 text-right">2</span>
-              </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Regular Program Activity Table -->
-      <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h2 class="text-[13px] font-semibold text-navy-600">Recent Regular Program Activity</h2>
-          <a href="#" class="text-[11px] text-blue-500 font-medium hover:text-blue-700">View all availments →</a>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-[12px]">
-            <thead>
-              <tr class="bg-slate-50 border-b border-slate-100">
-                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Date</th>
-                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Client</th>
-                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Program</th>
-                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Type</th>
-                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Amount</th>
-                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr class="case-row">
-                <td class="px-5 py-3 text-slate-500">Apr 14</td>
-                <td class="px-5 py-3 font-medium text-navy-600">Maria Santos</td>
-                <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS</span></td>
-                <td class="px-5 py-3 text-slate-600">Medical</td>
-                <td class="px-5 py-3 font-semibold text-slate-700">₱3,500</td>
-                <td class="px-5 py-3"><span class="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span></td>
-              </tr>
-              <tr class="case-row">
-                <td class="px-5 py-3 text-slate-500">Apr 14</td>
-                <td class="px-5 py-3 font-medium text-navy-600">Pedro Cruz</td>
-                <td class="px-5 py-3"><span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-semibold">PWD</span></td>
-                <td class="px-5 py-3 text-slate-600">Financial</td>
-                <td class="px-5 py-3 font-semibold text-slate-700">₱2,000</td>
-                <td class="px-5 py-3"><span class="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Released</span></td>
-              </tr>
-              <tr class="case-row">
-                <td class="px-5 py-3 text-slate-500">Apr 13</td>
-                <td class="px-5 py-3 font-medium text-navy-600">Luz Bautista</td>
-                <td class="px-5 py-3"><span class="bg-teal-100 text-teal-700 px-2 py-0.5 rounded text-[10px] font-semibold">Solo Parent</span></td>
-                <td class="px-5 py-3 text-slate-600">SPID Issuance</td>
-                <td class="px-5 py-3 text-slate-400">—</td>
-                <td class="px-5 py-3"><span class="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span></td>
-              </tr>
-              <tr class="case-row">
-                <td class="px-5 py-3 text-slate-500">Apr 12</td>
-                <td class="px-5 py-3 font-medium text-navy-600">Elena Dela Cruz</td>
-                <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS</span></td>
-                <td class="px-5 py-3 text-slate-600">Burial</td>
-                <td class="px-5 py-3 font-semibold text-slate-700">₱5,000</td>
-                <td class="px-5 py-3"><span class="bg-amber-50 text-amber-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span></td>
-              </tr>
-              <tr class="case-row">
-                <td class="px-5 py-3 text-slate-500">Apr 12</td>
-                <td class="px-5 py-3 font-medium text-navy-600">Rodrigo Lim</td>
-                <td class="px-5 py-3"><span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-semibold">Senior</span></td>
-                <td class="px-5 py-3 text-slate-600">Pension Top-up</td>
-                <td class="px-5 py-3 font-semibold text-slate-700">₱500</td>
-                <td class="px-5 py-3"><span class="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Released</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+            <!-- Regular Program Activity Table -->
+            <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                    <h2 class="text-[13px] font-semibold text-navy-600">Recent Regular Program Activity</h2>
+                    <a href="#" class="text-[11px] text-blue-500 font-medium hover:text-blue-700">View all availments
+                        →</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-[12px]">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-100">
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Date</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Client</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Program</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Type</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Amount</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <tr class="case-row">
+                                <td class="px-5 py-3 text-slate-500">Apr 14</td>
+                                <td class="px-5 py-3 font-medium text-navy-600">Maria Santos</td>
+                                <td class="px-5 py-3"><span
+                                        class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS</span>
+                                </td>
+                                <td class="px-5 py-3 text-slate-600">Medical</td>
+                                <td class="px-5 py-3 font-semibold text-slate-700">₱3,500</td>
+                                <td class="px-5 py-3"><span
+                                        class="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span>
+                                </td>
+                            </tr>
+                            <tr class="case-row">
+                                <td class="px-5 py-3 text-slate-500">Apr 14</td>
+                                <td class="px-5 py-3 font-medium text-navy-600">Pedro Cruz</td>
+                                <td class="px-5 py-3"><span
+                                        class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-semibold">PWD</span>
+                                </td>
+                                <td class="px-5 py-3 text-slate-600">Financial</td>
+                                <td class="px-5 py-3 font-semibold text-slate-700">₱2,000</td>
+                                <td class="px-5 py-3"><span
+                                        class="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Released</span>
+                                </td>
+                            </tr>
+                            <tr class="case-row">
+                                <td class="px-5 py-3 text-slate-500">Apr 13</td>
+                                <td class="px-5 py-3 font-medium text-navy-600">Luz Bautista</td>
+                                <td class="px-5 py-3"><span
+                                        class="bg-teal-100 text-teal-700 px-2 py-0.5 rounded text-[10px] font-semibold">Solo
+                                        Parent</span></td>
+                                <td class="px-5 py-3 text-slate-600">SPID Issuance</td>
+                                <td class="px-5 py-3 text-slate-400">—</td>
+                                <td class="px-5 py-3"><span
+                                        class="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span>
+                                </td>
+                            </tr>
+                            <tr class="case-row">
+                                <td class="px-5 py-3 text-slate-500">Apr 12</td>
+                                <td class="px-5 py-3 font-medium text-navy-600">Elena Dela Cruz</td>
+                                <td class="px-5 py-3"><span
+                                        class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS</span>
+                                </td>
+                                <td class="px-5 py-3 text-slate-600">Burial</td>
+                                <td class="px-5 py-3 font-semibold text-slate-700">₱5,000</td>
+                                <td class="px-5 py-3"><span
+                                        class="bg-amber-50 text-amber-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span>
+                                </td>
+                            </tr>
+                            <tr class="case-row">
+                                <td class="px-5 py-3 text-slate-500">Apr 12</td>
+                                <td class="px-5 py-3 font-medium text-navy-600">Rodrigo Lim</td>
+                                <td class="px-5 py-3"><span
+                                        class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-semibold">Senior</span>
+                                </td>
+                                <td class="px-5 py-3 text-slate-600">Pension Top-up</td>
+                                <td class="px-5 py-3 font-semibold text-slate-700">₱500</td>
+                                <td class="px-5 py-3"><span
+                                        class="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Released</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-    </main>
+        </main>
 
-    <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
-      <span>MSWDO San Enrique Information System &mdash; Version 1.0.0</span>
-      <span>Support: mswdo@sanenrique.gov.ph</span>
-    </footer>
-  </div>
+        <footer
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+            <span>MSWDO San Enrique Information System</span>
+            <span>Developed by: Elupre, Macalino, Mana-ay, Ponclara</span>
+        </footer>
+    </div>
 
-  <script>
-    // Budget mini bars
-    const budgets = [
-      { name: 'AICS',         pct: 88, left: '₱28,400',  bar: 'bg-red-400',     text: 'text-red-500'    },
-      { name: 'Senior',       pct: 71, left: '₱87,000',  bar: 'bg-amber-400',   text: 'text-amber-500'  },
-      { name: 'Solo Parent',  pct: 68, left: '₱48,000',  bar: 'bg-amber-400',   text: 'text-amber-500'  },
-      { name: 'PWD',          pct: 28, left: '₱144,000', bar: 'bg-emerald-400', text: 'text-emerald-600' },
-      { name: 'SFP',          pct: 35, left: '₱130,000', bar: 'bg-emerald-400', text: 'text-emerald-600' },
-    ];
-    const mini = document.getElementById('budgetMini');
-    budgets.forEach(b => {
-      mini.innerHTML += `
+    <script>
+        const dateSpan = document.getElementById('currentDate');
+        if (dateSpan) {
+            const today = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateSpan.textContent = today.toLocaleDateString('en-US', options);
+        }
+    </script>
+
+    <script>
+        // Budget mini bars
+        const budgets = [
+            { name: 'AICS', pct: 88, left: '₱28,400', bar: 'bg-red-400', text: 'text-red-500' },
+            { name: 'Senior', pct: 71, left: '₱87,000', bar: 'bg-amber-400', text: 'text-amber-500' },
+            { name: 'Solo Parent', pct: 68, left: '₱48,000', bar: 'bg-amber-400', text: 'text-amber-500' },
+            { name: 'PWD', pct: 28, left: '₱144,000', bar: 'bg-emerald-400', text: 'text-emerald-600' },
+            { name: 'SFP', pct: 35, left: '₱130,000', bar: 'bg-emerald-400', text: 'text-emerald-600' },
+        ];
+        const mini = document.getElementById('budgetMini');
+        budgets.forEach(b => {
+            mini.innerHTML += `
         <div class="flex items-center gap-2 text-[11px]">
           <span class="w-20 text-slate-500 flex-shrink-0 truncate">${b.name}</span>
           <div class="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
@@ -473,16 +694,17 @@
           </div>
           <span class="w-16 text-right ${b.text} font-semibold flex-shrink-0">${b.left}</span>
         </div>`;
-    });
-
-    // Animate all bars
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        document.querySelectorAll('.prog-bar-fill').forEach(el => {
-          el.style.width = el.dataset.target;
         });
-      }, 300);
-    });
-  </script>
+
+        // Animate all bars
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                document.querySelectorAll('.prog-bar-fill').forEach(el => {
+                    el.style.width = el.dataset.target;
+                });
+            }, 300);
+        });
+    </script>
 </body>
+
 </html>
