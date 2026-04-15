@@ -1,433 +1,404 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MSWDO Staff Dashboard - San Enrique</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap"
-        rel="stylesheet" />
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['DM Sans', 'sans-serif'], mono: ['DM Mono', 'monospace'] },
-                    colors: {
-                        brand: { DEFAULT: '#1a6b4a', light: '#e6f4ee', mid: '#2e8a61', dark: '#134d35' },
-                        sidebar: '#111c17',
-                    }
-                }
-            }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Staff Dashboard – MSWDO San Enrique</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['DM Sans', 'sans-serif'],
+            serif: ['DM Serif Display', 'serif'],
+          },
+          colors: {
+            navy: {
+              DEFAULT: '#0B2545',
+              50:  '#E8EDF5',
+              100: '#C5D1E6',
+              400: '#3A5F93',
+              500: '#163566',
+              600: '#0B2545',
+              700: '#091D38',
+            },
+            gold: {
+              DEFAULT: '#C49A2A',
+              50:  '#FBF5E6',
+              100: '#F5E4B3',
+              400: '#C49A2A',
+            },
+            teal: {
+              50:  '#F0FDFA',
+              100: '#CCFBF1',
+              200: '#99F6E4',
+              400: '#2DD4BF',
+              500: '#14B8A6',
+              600: '#0D9488',
+              700: '#0F766E',
+            },
+            slate2: '#F4F7FC',
+          },
+          keyframes: {
+            fadeUp:  { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+            pulse2:  { '0%,100%': { opacity: '1' }, '50%': { opacity: '.45' } },
+            ping2:   { '0%': { transform: 'scale(1)', opacity: '.8' }, '100%': { transform: 'scale(2)', opacity: '0' } },
+          },
+          animation: {
+            'fade-up':   'fadeUp 0.4s ease both',
+            'fade-up-1': 'fadeUp 0.4s ease 0.05s both',
+            'fade-up-2': 'fadeUp 0.4s ease 0.10s both',
+            'fade-up-3': 'fadeUp 0.4s ease 0.15s both',
+            'fade-up-4': 'fadeUp 0.4s ease 0.20s both',
+            'fade-up-5': 'fadeUp 0.4s ease 0.25s both',
+            'fade-up-6': 'fadeUp 0.4s ease 0.30s both',
+            'fade-up-7': 'fadeUp 0.4s ease 0.35s both',
+            'fade-up-8': 'fadeUp 0.4s ease 0.40s both',
+            'pulse2':    'pulse2 2s ease-in-out infinite',
+            'ping2':     'ping2 1.5s ease-out infinite',
+          }
         }
-    </script>
-    <style>
-        body {
-            font-family: 'DM Sans', sans-serif;
-        }
-
-        .sidebar-link {
-            @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-all cursor-pointer;
-        }
-
-        .sidebar-link.active {
-            @apply bg-brand text-white font-medium;
-        }
-
-        .program-dot {
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .stat-card {
-            @apply bg-white border border-gray-00 rounded-xl p-4 shadow-sm;
-        }
-
-        .badge {
-            @apply text-xs font-medium px-2 py-0.5 rounded-full;
-        }
-
-        .badge-approved {
-            @apply bg-green-50 text-green-700;
-        }
-
-        .badge-released {
-            @apply bg-blue-50 text-blue-700;
-        }
-
-        .badge-pending {
-            @apply bg-amber-50 text-amber-700;
-        }
-
-        .prog-chip {
-            @apply flex flex-col items-center justify-center gap-1 bg-gray-50 border border-gray-100 rounded-xl p-3 text-center hover:shadow-sm hover:border-brand/30 transition-all cursor-pointer;
-        }
-
-        .budget-bar-bg {
-            @apply w-full bg-gray-100 rounded-full h-1.5 mt-1;
-        }
-
-        .budget-bar-fill {
-            @apply h-1.5 rounded-full;
-        }
-    </style>
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'DM Sans', sans-serif; }
+    .sidebar-item { transition: all .15s ease; }
+    .sidebar-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.95); }
+    .sidebar-item.active { background: rgba(13,148,136,.22); border-left-color: #C49A2A; color: #fff; }
+    .stat-card { transition: transform .2s ease, box-shadow .2s ease; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(11,37,69,.1); }
+    .btn-action { transition: all .15s ease; }
+    .btn-action:hover { transform: translateY(-1px); }
+    .prog-tile { transition: all .18s ease; }
+    .prog-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(11,37,69,.09); border-color: #14B8A6; }
+    .table-row { transition: background .12s; }
+    .table-row:hover { background: #F0FDFA; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
+    .live-dot { position: relative; display: inline-block; width: 8px; height: 8px; }
+    .live-dot::before { content: ''; position: absolute; inset: 0; border-radius: 9999px; background: #10B981; animation: ping2 1.5s ease-out infinite; }
+    .live-dot::after  { content: ''; position: absolute; inset: 0; border-radius: 9999px; background: #10B981; }
+  </style>
 </head>
+<body class="bg-slate2 min-h-screen flex">
 
-<body class="bg-gray-50 flex h-screen overflow-hidden">
+  <!-- ══════════════════════════ SIDEBAR ══════════════════════════ -->
+  <aside class="w-56 min-h-screen bg-navy-600 flex flex-col flex-shrink-0 fixed top-0 left-0 h-full z-30">
 
-    <!-- SIDEBAR -->
-    <aside class="w-52 flex-shrink-0 flex flex-col" style="background:#e9849d;">
-        <!-- Logo -->
-        <div class="px-4 pt-5 pb-4 border-b border-white/10">
-            <div class="flex items-center gap-2.5">
-                <div
-                    class="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                    M</div>
+    <!-- Logo -->
+    <div class="px-5 pt-5 pb-4 border-b border-white/10">
+      <div class="w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center text-navy-600 text-lg font-serif font-bold mb-3">M</div>
+      <p class="font-serif text-white text-sm leading-snug">MSWDO San Enrique</p>
+      <p class="text-white/40 text-[10px] mt-0.5 tracking-wide">Information System</p>
+    </div>
+
+    <!-- Nav — NO Confidential section -->
+    <nav class="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+
+      <p class="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Main</p>
+      <a href="#" class="sidebar-item active flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white border-l-[3px]">
+        <span class="text-sm">📊</span> Dashboard
+      </a>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+        <span class="text-sm">👥</span> Clients
+      </a>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+        <span class="text-sm">📋</span> Availments
+      </a>
+
+      <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">💊</span> AICS</a>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">🏠</span> 4Ps</a>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">💼</span> SLP</a>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">🍽️</span> SFP</a>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">🏫</span> Day Care</a>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">👴</span> Senior Citizen</a>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">♿</span> PWD</a>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">👤</span> Solo Parent</a>
+
+      <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Reports</p>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">📄</span> Reports</a>
+      <a href="#" class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><span class="text-sm">💰</span> Budget Monitor</a>
+    </nav>
+
+    <!-- User footer -->
+    <div class="px-4 py-3 border-t border-white/10 flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">AR</div>
+      <div class="min-w-0">
+        <p class="text-white text-xs font-medium truncate">Ana Reyes</p>
+        <p class="text-white/40 text-[10px]">Staff</p>
+      </div>
+      <button class="ml-auto text-white/30 hover:text-white/70 text-sm transition-colors" title="Logout">⏻</button>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════ MAIN ══════════════════════════════ -->
+  <div class="ml-56 flex-1 flex flex-col min-h-screen">
+
+    <!-- Top bar -->
+    <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 animate-fade-up">
+      <div class="flex items-center gap-3">
+        <h1 class="text-[15px] font-semibold text-navy-600">Dashboard</h1>
+        <span class="bg-teal-50 text-teal-700 text-[11px] font-semibold px-3 py-0.5 rounded-full border border-teal-200">Staff</span>
+        <span class="text-slate-400 text-xs hidden sm:block">Monday, April 14, 2026</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="btn-action text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 bg-white hover:border-teal-400 hover:text-teal-700">
+          + Register Client
+        </button>
+        <button class="btn-action text-[12px] font-semibold text-white bg-teal-600 rounded-lg px-3 py-1.5 hover:bg-teal-700">
+          + New Availment
+        </button>
+        <button class="relative w-9 h-9 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:border-teal-400 transition-all">
+          🔔
+          <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">2</span>
+        </button>
+        <div class="w-9 h-9 rounded-lg bg-teal-600 flex items-center justify-center text-white text-xs font-bold ml-1">AR</div>
+      </div>
+    </header>
+
+    <main class="flex-1 p-6 space-y-5 overflow-y-auto">
+
+      <!-- Stat Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="stat-card animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-0.5 bg-teal-500 rounded-t-2xl"></div>
+          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Clients Served Today</p>
+          <p class="text-3xl font-semibold text-navy-600 leading-none">14</p>
+          <p class="text-[11px] text-teal-600 font-medium mt-1.5">6 new registrations</p>
+          <div class="absolute right-3 top-3 text-2xl opacity-10">👤</div>
+        </div>
+
+        <div class="stat-card animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-2xl"></div>
+          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Availments This Week</p>
+          <p class="text-3xl font-semibold text-navy-600 leading-none">58</p>
+          <p class="text-[11px] text-slate-400 mt-1.5">AICS: 32 · PWD: 12 · Other: 14</p>
+          <div class="absolute right-3 top-3 text-2xl opacity-10">📋</div>
+        </div>
+
+        <div class="stat-card animate-fade-up-3 bg-white rounded-2xl border border-amber-100 p-4 relative overflow-hidden">
+          <div class="absolute top-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-2xl"></div>
+          <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Pending Applications</p>
+          <p class="text-3xl font-semibold text-amber-500 leading-none">7</p>
+          <p class="text-[11px] text-amber-500 font-medium mt-1.5">Needs follow-up</p>
+          <div class="absolute right-3 top-3 text-2xl opacity-10">⏳</div>
+        </div>
+      </div>
+
+      <!-- Program Quick Access Grid -->
+      <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-[13px] font-semibold text-navy-600">Program Quick Access</h2>
+          <span class="text-[11px] text-slate-400">Click a program to start an availment</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="progGrid"></div>
+      </div>
+
+      <!-- Main Grid: Transactions + Budget -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        <!-- Recent Transactions -->
+        <div class="animate-fade-up lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <h2 class="text-[13px] font-semibold text-navy-600">Recent Transactions</h2>
+            <a href="#" class="text-[11px] text-blue-500 font-medium hover:text-blue-700">View all →</a>
+          </div>
+          <!-- Search bar -->
+          <div class="px-5 py-3 border-b border-slate-100">
+            <input type="text" placeholder="🔍  Search client name or ID..."
+              class="w-full text-[12px] px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 outline-none focus:border-teal-400 focus:bg-white transition-colors placeholder-slate-400"/>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-[12px]">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-100">
+                  <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Client</th>
+                  <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Program</th>
+                  <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Amount</th>
+                  <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Date</th>
+                  <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Status</th>
+                  <th class="px-5 py-3"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr class="table-row">
+                  <td class="px-5 py-3 font-medium text-navy-600">Maria Santos</td>
+                  <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS</span><span class="text-slate-500 ml-1.5">Medical</span></td>
+                  <td class="px-5 py-3 font-semibold text-slate-700">₱3,500</td>
+                  <td class="px-5 py-3 text-slate-400">Apr 14</td>
+                  <td class="px-5 py-3"><span class="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span></td>
+                  <td class="px-5 py-3 text-right"><button class="text-[11px] text-teal-600 hover:underline">View</button></td>
+                </tr>
+                <tr class="table-row">
+                  <td class="px-5 py-3 font-medium text-navy-600">Pedro Cruz</td>
+                  <td class="px-5 py-3"><span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-semibold">PWD</span><span class="text-slate-500 ml-1.5">Financial</span></td>
+                  <td class="px-5 py-3 font-semibold text-slate-700">₱2,000</td>
+                  <td class="px-5 py-3 text-slate-400">Apr 14</td>
+                  <td class="px-5 py-3"><span class="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Released</span></td>
+                  <td class="px-5 py-3 text-right"><button class="text-[11px] text-teal-600 hover:underline">View</button></td>
+                </tr>
+                <tr class="table-row">
+                  <td class="px-5 py-3 font-medium text-navy-600">Luz Bautista</td>
+                  <td class="px-5 py-3"><span class="bg-teal-100 text-teal-700 px-2 py-0.5 rounded text-[10px] font-semibold">Solo Parent</span><span class="text-slate-500 ml-1.5">SPID</span></td>
+                  <td class="px-5 py-3 text-slate-400">—</td>
+                  <td class="px-5 py-3 text-slate-400">Apr 13</td>
+                  <td class="px-5 py-3"><span class="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span></td>
+                  <td class="px-5 py-3 text-right"><button class="text-[11px] text-teal-600 hover:underline">View</button></td>
+                </tr>
+                <tr class="table-row">
+                  <td class="px-5 py-3 font-medium text-navy-600">Rodrigo Lim</td>
+                  <td class="px-5 py-3"><span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-semibold">Senior</span><span class="text-slate-500 ml-1.5">Pension</span></td>
+                  <td class="px-5 py-3 font-semibold text-slate-700">₱500</td>
+                  <td class="px-5 py-3 text-slate-400">Apr 13</td>
+                  <td class="px-5 py-3"><span class="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Released</span></td>
+                  <td class="px-5 py-3 text-right"><button class="text-[11px] text-teal-600 hover:underline">View</button></td>
+                </tr>
+                <tr class="table-row">
+                  <td class="px-5 py-3 font-medium text-navy-600">Elena Dela Cruz</td>
+                  <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS</span><span class="text-slate-500 ml-1.5">Burial</span></td>
+                  <td class="px-5 py-3 font-semibold text-slate-700">₱5,000</td>
+                  <td class="px-5 py-3 text-slate-400">Apr 12</td>
+                  <td class="px-5 py-3"><span class="bg-amber-50 text-amber-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span></td>
+                  <td class="px-5 py-3 text-right"><button class="text-[11px] text-teal-600 hover:underline">View</button></td>
+                </tr>
+                <tr class="table-row">
+                  <td class="px-5 py-3 font-medium text-navy-600">Jose Reyes</td>
+                  <td class="px-5 py-3"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-semibold">SFP</span><span class="text-slate-500 ml-1.5">Feeding</span></td>
+                  <td class="px-5 py-3 text-slate-400">—</td>
+                  <td class="px-5 py-3 text-slate-400">Apr 12</td>
+                  <td class="px-5 py-3"><span class="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span></td>
+                  <td class="px-5 py-3 text-right"><button class="text-[11px] text-teal-600 hover:underline">View</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right col -->
+        <div class="flex flex-col gap-4">
+
+          <!-- Budget view-only -->
+          <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-[13px] font-semibold text-navy-600">Budget Status</h2>
+              <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">View Only</span>
+            </div>
+            <div class="space-y-3">
+              <!-- Critical -->
+              <div class="flex items-center justify-between bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
                 <div>
-                    <p class="text-white text-xs font-semibold leading-tight">MSWDO San Enrique</p>
-                    <p class="text-gray-400 text-[10px] leading-tight">Information System</p>
+                  <p class="text-[12px] font-semibold text-red-600">AICS</p>
+                  <p class="text-[10px] text-slate-500 mt-0.5">₱28,400 left · 12%</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- Nav -->
-        <nav class="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-            <p class="text-[10px] text-gray-500 uppercase tracking-widest px-3 pt-1 pb-2 font-medium">Main</p>
-            <div class="sidebar-link active">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="7" height="7" rx="1" />
-                    <rect x="14" y="3" width="7" height="7" rx="1" />
-                    <rect x="3" y="14" width="7" height="7" rx="1" />
-                    <rect x="14" y="14" width="7" height="7" rx="1" />
-                </svg>
-                Dashboard
-            </div>
-            <div class="sidebar-link">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                </svg>
-                Clients
-            </div>
-            <div class="sidebar-link">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-                    <rect x="9" y="3" width="6" height="4" rx="1" />
-                </svg>
-                Availments
-            </div>
-
-            <p class="text-[10px] text-gray-500 uppercase tracking-widest px-3 pt-4 pb-2 font-medium">Programs</p>
-            <div class="sidebar-link">
-                <div class="program-dot" style="background:#f97316;"></div>AICS
-            </div>
-            <div class="sidebar-link">
-                <div class="program-dot" style="background:#3b82f6;"></div>4Ps
-            </div>
-            <div class="sidebar-link">
-                <div class="program-dot" style="background:#8b5cf6;"></div>SLP
-            </div>
-            <div class="sidebar-link">
-                <div class="program-dot" style="background:#ec4899;"></div>SFP
-            </div>
-            <div class="sidebar-link">
-                <div class="program-dot" style="background:#14b8a6;"></div>Day Care
-            </div>
-            <div class="sidebar-link">
-                <div class="program-dot" style="background:#eab308;"></div>Senior Citizen
-            </div>
-            <div class="sidebar-link">
-                <div class="program-dot" style="background:#6366f1;"></div>PWD
-            </div>
-            <div class="sidebar-link">
-                <div class="program-dot" style="background:#10b981;"></div>Solo Parent
-            </div>
-
-            <p class="text-[10px] text-gray-500 uppercase tracking-widest px-3 pt-4 pb-2 font-medium">Reports</p>
-            <div class="sidebar-link">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                </svg>
-                Reports
-            </div>
-            <div class="sidebar-link">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M12 20V10" />
-                    <path d="M18 20V4" />
-                    <path d="M6 20v-6" />
-                </svg>
-                Budget Monitor
-            </div>
-        </nav>
-
-        <!-- User -->
-        <div class="px-3 py-3 border-t border-white/10">
-            <div class="flex items-center gap-2.5">
-                <div
-                    class="w-7 h-7 rounded-full bg-brand-mid flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                    AR</div>
+                <span class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+              </div>
+              <div class="flex items-center justify-between bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
                 <div>
-                    <p class="text-white text-xs font-medium leading-tight">Ana Reyes</p>
-                    <p class="text-gray-400 text-[10px]">Staff</p>
+                  <p class="text-[12px] font-semibold text-red-600">SLP</p>
+                  <p class="text-[10px] text-slate-500 mt-0.5">₱12,000 left · 8%</p>
                 </div>
+                <span class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+              </div>
+              <!-- Warning -->
+              <div class="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
+                <div>
+                  <p class="text-[12px] font-semibold text-amber-600">Senior Citizen</p>
+                  <p class="text-[10px] text-slate-500 mt-0.5">₱87,000 left · 29%</p>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>
+              </div>
+              <!-- OK -->
+              <div class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
+                <div>
+                  <p class="text-[12px] font-semibold text-slate-600">4Ps</p>
+                  <p class="text-[10px] text-slate-500 mt-0.5">₱348,000 left · 58%</p>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
+              </div>
+              <div class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5">
+                <div>
+                  <p class="text-[12px] font-semibold text-slate-600">PWD</p>
+                  <p class="text-[10px] text-slate-500 mt-0.5">₱144,000 left · 72%</p>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
+              </div>
             </div>
-        </div>
-    </aside>
-
-    <!-- MAIN CONTENT -->
-    <main class="flex-1 overflow-y-auto">
-        <!-- Top bar -->
-        <div class="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-10">
-            <div>
-                <h1 class="text-gray-900 font-semibold text-lg leading-tight">Dashboard</h1>
-                <p class="text-gray-400 text-xs font-mono">Monday, April 14, 2026</p>
+            <div class="flex items-center gap-3 mt-3 pt-3 border-t border-slate-100 text-[10px] text-slate-400">
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>OK</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>Low</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>Critical</span>
             </div>
-            <div class="flex items-center gap-3">
-                <div class="relative">
-                    <input type="text" placeholder="Search clients, programs…"
-                        class="text-sm bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 py-1.5 w-52 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 placeholder-gray-400" />
-                    <svg class="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor"
-                        stroke-width="2" viewBox="0 0 24 24">
-                        <circle cx="11" cy="11" r="8" />
-                        <path d="M21 21l-4.35-4.35" />
-                    </svg>
-                </div>
-                <button
-                    class="bg-brand text-white text-sm px-3 py-1.5 rounded-lg font-medium hover:bg-brand-mid transition-colors">+
-                    New Client</button>
+          </div>
+
+          <!-- Today's Summary -->
+          <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
+            <h2 class="text-[13px] font-semibold text-navy-600 mb-4">Today's Summary</h2>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between text-[12px]">
+                <span class="text-slate-500 flex items-center gap-2"><span>💊</span> AICS</span>
+                <span class="font-semibold text-navy-600">8 availments</span>
+              </div>
+              <div class="flex items-center justify-between text-[12px]">
+                <span class="text-slate-500 flex items-center gap-2"><span>♿</span> PWD</span>
+                <span class="font-semibold text-navy-600">3 availments</span>
+              </div>
+              <div class="flex items-center justify-between text-[12px]">
+                <span class="text-slate-500 flex items-center gap-2"><span>👴</span> Senior</span>
+                <span class="font-semibold text-navy-600">2 availments</span>
+              </div>
+              <div class="flex items-center justify-between text-[12px]">
+                <span class="text-slate-500 flex items-center gap-2"><span>👤</span> Solo Parent</span>
+                <span class="font-semibold text-navy-600">1 availment</span>
+              </div>
+              <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-[12px]">
+                <span class="text-slate-500 font-medium">Total</span>
+                <span class="font-bold text-teal-600">14 transactions</span>
+              </div>
             </div>
-        </div>
-
-        <div class="p-6 space-y-5">
-
-            <!-- Stat Cards -->
-            <div class="grid grid-cols-3 gap-4">
-                <div class="stat-card">
-                    <div style="display:inline-block;border:2px solid rgb(189,200,8);border-radius:12px;padding:24px;text-align:center;background:white;box-shadow:0 4px 12px rgba(0,0,0,.1);height:800;width:280px;margin:20px auto;">
-                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Clients Served Today</p>
-                    <p class="text-3xl font-semibold text-gray-900 mt-1">14</p>
-                    <p class="text-xs text-gray-400 mt-1">6 new registrations</p>
-                </div>
-                </div>
-                <div class="stat-card">
-                    <div style="display:inline-block;border:2px solid rgb(211, 18, 60);border-radius:12px;padding:24px;text-align:center;background:rgb(255, 255, 255);box-shadow:0 4px 12px rgba(0,0,0,.1);height:1000;width:280px;margin:20px auto;">
-                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Availments This Week</p>
-                    <p class="text-3xl font-semibold text-gray-900 mt-1">58</p>
-                    <p class="text-xs text-gray-400 mt-1">AICS: 32 · PWD: 12 · Other: 14</p>
-                </div>
-                </div>
-                <div class="stat-card">
-                    <div style="display:inline-block;border:2px solid rgb(32, 35, 204);border-radius:12px;padding:24px;text-align:center;background:rgb(255, 255, 255);box-shadow:0 4px 12px rgba(0,0,0,.1);height:800;width:280px;margin:20px auto;">
-                    <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Pending Applications</p>
-                    <p class="text-3xl font-semibold text-gray-900 mt-1">7</p>
-                    <p class="text-xs text-amber-600 mt-1 font-medium">Needs follow up</p>
-                </div>
-            </div>
-
-            <!-- Transactions + Budget -->
-            <div class="grid grid-cols-3 gap-4">
-
-                <!-- Recent Transactions -->
-                <div class="col-span-2 bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
-                    <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-50">
-                        <p class="font-semibold text-gray-800 text-sm">Recent Transactions</p>
-                        <a href="#" class="text-xs text-brand font-medium hover:underline">View all</a>
-                    </div>
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="text-[11px] text-gray-400 uppercase tracking-wide">
-                                <th class="px-5 py-2.5 text-left font-medium">Client</th>
-                                <th class="px-3 py-2.5 text-left font-medium">Program</th>
-                                <th class="px-3 py-2.5 text-right font-medium">Amount</th>
-                                <th class="px-3 py-2.5 text-left font-medium">Date</th>
-                                <th class="px-5 py-2.5 text-left font-medium">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-50">
-                            <tr class="hover:bg-gray-50/60 transition-colors">
-                                <td class="px-5 py-3 text-gray-800 font-medium">Maria Santos</td>
-                                <td class="px-3 py-3"><span
-                                        class="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-medium">AICS
-                                        – Medical</span></td>
-                                <td class="px-3 py-3 text-right font-mono text-gray-700 text-xs">₱3,500</td>
-                                <td class="px-3 py-3 text-gray-400 text-xs">Apr 14</td>
-                                <td class="px-5 py-3"><span class="badge badge-approved">Approved</span></td>
-                            </tr>
-                            <tr class="hover:bg-gray-50/60 transition-colors">
-                                <td class="px-5 py-3 text-gray-800 font-medium">Pedro Cruz</td>
-                                <td class="px-3 py-3"><span
-                                        class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">PWD
-                                        – Financial</span></td>
-                                <td class="px-3 py-3 text-right font-mono text-gray-700 text-xs">₱2,000</td>
-                                <td class="px-3 py-3 text-gray-400 text-xs">Apr 14</td>
-                                <td class="px-5 py-3"><span class="badge badge-released">Released</span></td>
-                            </tr>
-                            <tr class="hover:bg-gray-50/60 transition-colors">
-                                <td class="px-5 py-3 text-gray-800 font-medium">Luz Bautista</td>
-                                <td class="px-3 py-3"><span
-                                        class="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">Solo
-                                        Parent – SPID</span></td>
-                                <td class="px-3 py-3 text-right font-mono text-gray-400 text-xs">—</td>
-                                <td class="px-3 py-3 text-gray-400 text-xs">Apr 13</td>
-                                <td class="px-5 py-3"><span class="badge badge-approved">Approved</span></td>
-                            </tr>
-                            <tr class="hover:bg-gray-50/60 transition-colors">
-                                <td class="px-5 py-3 text-gray-800 font-medium">Rodrigo Lim</td>
-                                <td class="px-3 py-3"><span
-                                        class="text-xs bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-full font-medium">Senior
-                                        – Pension</span></td>
-                                <td class="px-3 py-3 text-right font-mono text-gray-700 text-xs">₱500</td>
-                                <td class="px-3 py-3 text-gray-400 text-xs">Apr 13</td>
-                                <td class="px-5 py-3"><span class="badge badge-released">Released</span></td>
-                            </tr>
-                            <tr class="hover:bg-gray-50/60 transition-colors">
-                                <td class="px-5 py-3 text-gray-800 font-medium">Elena Dela Cruz</td>
-                                <td class="px-3 py-3"><span
-                                        class="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-medium">AICS
-                                        – Burial</span></td>
-                                <td class="px-3 py-3 text-right font-mono text-gray-700 text-xs">₱5,000</td>
-                                <td class="px-3 py-3 text-gray-400 text-xs">Apr 12</td>
-                                <td class="px-5 py-3"><span class="badge badge-pending">Pending</span></td>
-                            </tr>
-                            <tr class="hover:bg-gray-50/60 transition-colors">
-                                <td class="px-5 py-3 text-gray-800 font-medium">Jose Reyes</td>
-                                <td class="px-3 py-3"><span
-                                        class="text-xs bg-pink-50 text-pink-700 px-2 py-0.5 rounded-full font-medium">SFP
-                                        – Feeding</span></td>
-                                <td class="px-3 py-3 text-right font-mono text-gray-400 text-xs">—</td>
-                                <td class="px-3 py-3 text-gray-400 text-xs">Apr 12</td>
-                                <td class="px-5 py-3"><span class="badge badge-approved">Approved</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Budget Monitor -->
-                <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
-                    <p class="font-semibold text-gray-800 text-sm mb-1">Budget <span
-                            class="text-xs font-normal text-gray-400">(View Only)</span></p>
-                    <p class="text-xs text-gray-400 mb-4">Remaining allocations</p>
-
-                    <div class="space-y-4 text-sm">
-                        <div>
-                            <div class="flex justify-between items-center">
-                                <span class="flex items-center gap-1.5 text-gray-700">
-                                    <div class="program-dot" style="background:#f97316;"></div>AICS
-                                </span>
-                                <span class="font-mono text-xs text-gray-600">₱23.4k left</span>
-                            </div>
-                            <div class="budget-bar-bg">
-                                <div class="budget-bar-fill bg-orange-400" style="width:62%;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between items-center">
-                                <span class="flex items-center gap-1.5 text-gray-700">
-                                    <div class="program-dot" style="background:#3b82f6;"></div>4Ps
-                                </span>
-                                <span class="font-mono text-xs text-gray-600">₱168.0k left</span>
-                            </div>
-                            <div class="budget-bar-bg">
-                                <div class="budget-bar-fill bg-blue-400" style="width:78%;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between items-center">
-                                <span class="flex items-center gap-1.5 text-gray-700">
-                                    <div class="program-dot" style="background:#8b5cf6;"></div>SLP
-                                </span>
-                                <span class="font-mono text-xs text-gray-600">₱12.0k left</span>
-                            </div>
-                            <div class="budget-bar-bg">
-                                <div class="budget-bar-fill bg-violet-400" style="width:30%;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between items-center">
-                                <span class="flex items-center gap-1.5 text-gray-700">
-                                    <div class="program-dot" style="background:#eab308;"></div>Senior
-                                </span>
-                                <span class="font-mono text-xs text-gray-600">₱87.1k left</span>
-                            </div>
-                            <div class="budget-bar-bg">
-                                <div class="budget-bar-fill bg-yellow-400" style="width:55%;"></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between items-center">
-                                <span class="flex items-center gap-1.5 text-gray-700">
-                                    <div class="program-dot" style="background:#6366f1;"></div>PWD
-                                </span>
-                                <span class="font-mono text-xs text-gray-600">₱44.3k left</span>
-                            </div>
-                            <div class="budget-bar-bg">
-                                <div class="budget-bar-fill bg-indigo-400" style="width:44%;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button
-                        class="mt-5 w-full text-xs text-brand border border-brand/30 rounded-lg py-2 hover:bg-brand-light transition-colors font-medium">Full
-                        Budget Report →</button>
-                </div>
-            </div>
-
-            <!-- Program Quick Access -->
-            <div class="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
-                <p class="font-semibold text-gray-800 text-sm mb-4">Program Quick Access</p>
-                <div class="grid grid-cols-4 sm:grid-cols-8 gap-3">
-                    <div class="prog-chip">
-                        <div class="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-base">🧡</div>
-                        <p class="text-xs font-medium text-gray-700">AICS</p>
-                        <p class="text-[10px] text-gray-400">32 this week</p>
-                    </div>
-                    <div class="prog-chip">
-                        <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-base">💙</div>
-                        <p class="text-xs font-medium text-gray-700">4Ps</p>
-                        <p class="text-[10px] text-gray-400">18 active</p>
-                    </div>
-                    <div class="prog-chip">
-                        <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center text-base">💼</div>
-                        <p class="text-xs font-medium text-gray-700">SLP</p>
-                        <p class="text-[10px] text-gray-400">5 this month</p>
-                    </div>
-                    <div class="prog-chip">
-                        <div class="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center text-base">🍽️</div>
-                        <p class="text-xs font-medium text-gray-700">SFP</p>
-                        <p class="text-[10px] text-gray-400">24 enrolled</p>
-                    </div>
-                    <div class="prog-chip">
-                        <div class="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center text-base">🏫</div>
-                        <p class="text-xs font-medium text-gray-700">Day Care</p>
-                        <p class="text-[10px] text-gray-400">3 centers</p>
-                    </div>
-                    <div class="prog-chip">
-                        <div class="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center text-base">👴</div>
-                        <p class="text-xs font-medium text-gray-700">Senior Citizen</p>
-                        <p class="text-[10px] text-gray-400">47 beneficiaries</p>
-                    </div>
-                    <div class="prog-chip">
-                        <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-base">♿</div>
-                        <p class="text-xs font-medium text-gray-700">PWD</p>
-                        <p class="text-[10px] text-gray-400">12 this week</p>
-                    </div>
-                    <div class="prog-chip">
-                        <div class="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-base">👤</div>
-                        <p class="text-xs font-medium text-gray-700">Solo Parent</p>
-                        <p class="text-[10px] text-gray-400">9 this month</p>
-                    </div>
-                </div>
-            </div>
+          </div>
 
         </div>
+      </div>
+
     </main>
 
-</body>
+    <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+      <span>MSWDO San Enrique Information System &mdash; Version 1.0.0</span>
+      <span>Support: mswdo@sanenrique.gov.ph</span>
+    </footer>
+  </div>
 
+  <script>
+    // Program quick access tiles
+    const programs = [
+      { icon: '💊', name: 'AICS',          count: '32 this week', color: 'border-blue-200   hover:border-blue-400',   bg: 'bg-blue-50',   text: 'text-blue-700'   },
+      { icon: '🏠', name: '4Ps',           count: '18 active',    color: 'border-green-200  hover:border-green-400',  bg: 'bg-green-50',  text: 'text-green-700'  },
+      { icon: '💼', name: 'SLP',           count: '5 this month', color: 'border-amber-200  hover:border-amber-400',  bg: 'bg-amber-50',  text: 'text-amber-700'  },
+      { icon: '🍽️', name: 'SFP',           count: '24 enrolled',  color: 'border-lime-200   hover:border-lime-400',   bg: 'bg-lime-50',   text: 'text-lime-700'   },
+      { icon: '🏫', name: 'Day Care',      count: '3 centers',    color: 'border-orange-200 hover:border-orange-400', bg: 'bg-orange-50', text: 'text-orange-700' },
+      { icon: '👴', name: 'Senior Citizen',count: '47 benefic.',  color: 'border-yellow-200 hover:border-yellow-400', bg: 'bg-yellow-50', text: 'text-yellow-700' },
+      { icon: '♿', name: 'PWD',           count: '12 this week', color: 'border-indigo-200  hover:border-indigo-400', bg: 'bg-indigo-50', text: 'text-indigo-700' },
+      { icon: '👤', name: 'Solo Parent',   count: '9 this month', color: 'border-teal-200   hover:border-teal-400',   bg: 'bg-teal-50',   text: 'text-teal-700'   },
+    ];
+
+    const grid = document.getElementById('progGrid');
+    programs.forEach((p, i) => {
+      const div = document.createElement('div');
+      div.className = `prog-tile animate-fade-up-${(i % 8) + 1} bg-white border rounded-xl p-3.5 cursor-pointer flex items-center gap-3 ${p.color}`;
+      div.style.animationDelay = `${i * 40}ms`;
+      div.innerHTML = `
+        <div class="w-10 h-10 rounded-xl ${p.bg} flex items-center justify-center text-xl flex-shrink-0">${p.icon}</div>
+        <div class="min-w-0">
+          <p class="text-[12px] font-semibold ${p.text} truncate">${p.name}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5">${p.count}</p>
+        </div>`;
+      grid.appendChild(div);
+    });
+  </script>
+</body>
 </html>
