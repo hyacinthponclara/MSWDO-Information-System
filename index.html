@@ -5,12 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MSWDO Login</title>
-
-    <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
     <script>
         tailwind.config = {
@@ -47,7 +44,6 @@
 
             <div class="absolute inset-0 bg-[#0f2a44]/85"></div>
 
-            <!-- Content -->
             <div class="relative z-10">
                 <br><br><br><br>
 
@@ -88,8 +84,14 @@
 
                     <div>
                         <label class="text-xs text-navy-400">PASSWORD</label>
-                        <input type="password" placeholder="Enter your password"
-                            class="w-full mt-1 px-4 py-3 rounded-md bg-white border border-navy-100 text-navy-700 placeholder-navy-300 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400">
+                        <div class="relative mt-1">
+                            <input type="password" id="passwordInput" placeholder="Enter your password"
+                                class="w-full px-4 py-3 pr-10 rounded-md bg-white border border-navy-100 text-navy-700 placeholder-navy-300 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400">
+                            <button type="button" id="togglePassword"
+                                class="absolute inset-y-0 right-0 flex items-center px-3 text-navy-400 hover:text-navy-600">
+                                <i class="far fa-eye opacity-50" id="eyeIcon"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <button type="submit"
@@ -130,6 +132,18 @@
         </div>
 
     </div>
+    <script>
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('passwordInput');
+        const eyeIcon = document.getElementById('eyeIcon');
+
+        togglePassword.addEventListener('click', function () {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            eyeIcon.classList.toggle('fa-eye');
+            eyeIcon.classList.toggle('fa-eye-slash');
+        });
+    </script>
 
 </body>
 
