@@ -1,488 +1,557 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Client Registration – MSWDO San Enrique</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['DM Sans','sans-serif'], serif: ['DM Serif Display','serif'] },
-          colors: {
-            navy:  { DEFAULT:'#0B2545', 50:'#E8EDF5', 100:'#C5D1E6', 400:'#3A5F93', 500:'#163566', 600:'#0B2545', 700:'#091D38' },
-            gold:  { DEFAULT:'#C49A2A', 400:'#C49A2A' },
-            slate2:'#F4F7FC',
-          },
-          keyframes: {
-            fadeUp: { '0%':{ opacity:'0', transform:'translateY(10px)' }, '100%':{ opacity:'1', transform:'translateY(0)' } },
-            slideIn:{ '0%':{ opacity:'0', transform:'translateX(-8px)' }, '100%':{ opacity:'1', transform:'translateX(0)' } },
-          },
-          animation: {
-            'fade-up'  : 'fadeUp 0.35s ease both',
-            'fade-up-1': 'fadeUp 0.35s ease 0.05s both',
-            'fade-up-2': 'fadeUp 0.35s ease 0.10s both',
-            'fade-up-3': 'fadeUp 0.35s ease 0.15s both',
-            'fade-up-4': 'fadeUp 0.35s ease 0.20s both',
-            'fade-up-5': 'fadeUp 0.35s ease 0.25s both',
-            'slide-in' : 'slideIn 0.3s ease both',
-          }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Registration – MSWDO San Enrique</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+        rel="stylesheet">
+        
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                        serif: ['DM Serif Display', 'serif']
+                    },
+                    colors: {
+                        navy: { DEFAULT: '#0B2545', 50: '#E8EDF5', 100: '#C5D1E6', 400: '#3A5F93', 500: '#163566', 600: '#0B2545', 700: '#091D38' },
+                        gold: { DEFAULT: '#C49A2A', 400: '#C49A2A' },
+                        slate2: '#F4F7FC',
+                    }
+                }
+            }
         }
-      }
-    }
-  </script>
-  <style>
-    body { font-family:'DM Sans',sans-serif; }
-    .sidebar-item { transition: all .15s ease; }
-    .sidebar-item:hover { background:rgba(255,255,255,.07); color:rgba(255,255,255,.95); }
-    .sidebar-item.active { background:rgba(29,111,164,.28); border-left-color:#C49A2A; color:#fff; }
+    </script>
+    <style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+        }
 
-    /* Step indicator */
-    .step-btn { transition: all .2s ease; }
+        .sidebar-item {
+            transition: all .15s ease;
+        }
 
-    /* Form fields */
-    .field { @apply block w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[13px] text-slate-800 outline-none transition-all; }
-    .field:focus { @apply border-navy-400 bg-white ring-2 ring-navy-100; }
-    .field::placeholder { color:#9CA3AF; }
-    select.field { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; background-size:16px; appearance:none; }
-    .field-label { @apply block text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1.5; }
-    .required-dot::after { content:'*'; color:#EF4444; margin-left:2px; }
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, .07);
+            color: rgba(255, 255, 255, .95);
+        }
 
-    /* Step panel */
-    .step-panel { display:none; }
-    .step-panel.active { display:block; animation: fadeUp 0.3s ease both; }
+        .sidebar-item.active {
+            background: rgba(29, 111, 164, .28);
+            border-left-color: #C49A2A;
+            color: #fff;
+        }
 
-    /* Family table */
-    .fam-input { width:100%; border:none; background:transparent; font-size:12px; font-family:'DM Sans',sans-serif; color:#1e293b; outline:none; padding:2px 4px; }
-    .fam-input:focus { border-bottom:1.5px solid #3A5F93; }
-    .fam-row:hover { background:#F8FAFC; }
+        .field {
+            @apply block w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[13px] text-slate-800 outline-none transition-all;
+        }
 
-    /* Checkbox card */
-    .check-card { transition: all .15s ease; }
-    .check-card:has(input:checked) { border-color:#0B2545; background:#E8EDF5; }
-    .check-card:hover { border-color:#9AAECE; }
+        .field:focus {
+            @apply border-navy-400 bg-white ring-2 ring-navy-100;
+        }
 
-    ::-webkit-scrollbar { width:4px; }
-    ::-webkit-scrollbar-track { background:transparent; }
-    ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); border-radius:2px; }
-  </style>
+        .field::placeholder {
+            color: #9CA3AF;
+        }
+
+        select.field {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 16px;
+            appearance: none;
+        }
+
+        .field-label {
+            @apply block text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1.5;
+        }
+
+        .required-dot::after {
+            content: '*';
+            color: #EF4444;
+            margin-left: 2px;
+        }
+
+        .check-card {
+            transition: all .15s ease;
+        }
+
+        .check-card:has(input:checked) {
+            border-color: #0B2545;
+            background: #E8EDF5;
+        }
+
+        .check-card:hover {
+            border-color: #9AAECE;
+        }
+
+        .fam-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 12px;
+            font-family: 'DM Sans', sans-serif;
+            color: #1e293b;
+            outline: none;
+            padding: 2px 4px;
+        }
+
+        .fam-input:focus {
+            border-bottom: 1.5px solid #3A5F93;
+        }
+
+        .fam-row:hover {
+            background: #F8FAFC;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .15);
+            border-radius: 2px;
+        }
+    </style>
 </head>
+
 <body class="bg-slate2 min-h-screen flex">
 
+    <!-- SIDEBAR -->
+    <div class="w-56 fixed left-0 top-0 h-full bg-navy-600 text-white/80 text-[13px] flex flex-col shadow-xl">
 
-  <!-- MAIN -->
-  <div class="ml-56 flex-1 flex flex-col min-h-screen">
+    </div>
 
-    <!-- Topbar -->
-    <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
-      <div class="flex items-center gap-2 text-[13px]">
-        <a href="#" class="text-slate-400 hover:text-navy-600 transition-colors">Clients</a>
-        <span class="text-slate-300">/</span>
-        <span class="text-navy-600 font-semibold">New Registration</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <button class="text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-navy-400 hover:text-navy-600 transition-all">Cancel</button>
-        <button onclick="saveAndAnother()" class="text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-3 py-1.5 hover:bg-navy-100 transition-all">Save &amp; Register Another</button>
-        <button onclick="saveClient()" class="text-[12px] font-semibold text-white bg-navy-600 rounded-lg px-4 py-1.5 hover:bg-navy-500 transition-all">Save Client</button>
-      </div>
-    </header>
+    <!-- MAIN -->
+    <div class="ml-56 flex-1 flex flex-col min-h-screen">
 
-    <main class="flex-1 p-6 max-w-4xl w-full mx-auto">
-
-      <!-- Page header -->
-      <div class="mb-6 animate-fade-up">
-        <h1 class="text-xl font-serif text-navy-600">New Client Registration</h1>
-        <p class="text-[13px] text-slate-500 mt-1">Complete all required fields to create a permanent client profile in the system.</p>
-      </div>
-
-      <!-- Step Wizard -->
-      <div class="animate-fade-up-1 mb-6">
-        <!-- Step bar -->
-        <div class="flex items-center gap-0 mb-6 bg-white rounded-2xl border border-slate-200 p-1.5 overflow-x-auto">
-          <button onclick="goStep(1)" id="step-btn-1" class="step-btn flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-semibold bg-navy-600 text-white min-w-[100px]">
-            <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0">1</span>
-            Personal Info
-          </button>
-          <button onclick="goStep(2)" id="step-btn-2" class="step-btn flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-medium text-slate-500 hover:bg-slate-50 min-w-[80px]">
-            <span class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 flex-shrink-0">2</span>
-            Address
-          </button>
-          <button onclick="goStep(3)" id="step-btn-3" class="step-btn flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-medium text-slate-500 hover:bg-slate-50 min-w-[100px]">
-            <span class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 flex-shrink-0">3</span>
-            Socio-Economic
-          </button>
-          <button onclick="goStep(4)" id="step-btn-4" class="step-btn flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-medium text-slate-500 hover:bg-slate-50 min-w-[90px]">
-            <span class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 flex-shrink-0">4</span>
-            Sectoral
-          </button>
-          <button onclick="goStep(5)" id="step-btn-5" class="step-btn flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-medium text-slate-500 hover:bg-slate-50 min-w-[90px]">
-            <span class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 flex-shrink-0">5</span>
-            Family
-          </button>
-        </div>
-
-        <!-- Progress bar -->
-        <div class="h-1 bg-slate-100 rounded-full overflow-hidden mb-6">
-          <div id="progressBar" class="h-1 bg-navy-600 rounded-full transition-all duration-500" style="width:20%"></div>
-        </div>
-
-        <!-- ── STEP 1: Personal Information ── -->
-        <div class="step-panel active" id="panel-1">
-          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-              <div class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">1</div>
-              <div>
-                <h2 class="text-[14px] font-semibold text-navy-600">Personal Information</h2>
-                <p class="text-[11px] text-slate-400">Basic identifying details of the client</p>
-              </div>
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
+            <div class="flex items-center gap-2 text-[13px]">
+                <a href="#" class="text-slate-400 hover:text-navy-600 transition-colors">Clients</a>
+                <span class="text-slate-300">/</span>
+                <span class="text-navy-600 font-semibold">New Registration</span>
             </div>
-            <div class="p-6 space-y-5">
-              <!-- Name row -->
-              <div class="grid grid-cols-12 gap-4">
-                <div class="col-span-4">
-                  <label class="field-label required-dot">Last Name</label>
-                  <input type="text" class="field" placeholder="e.g. Santos">
-                </div>
-                <div class="col-span-4">
-                  <label class="field-label required-dot">First Name</label>
-                  <input type="text" class="field" placeholder="e.g. Maria">
-                </div>
-                <div class="col-span-3">
-                  <label class="field-label">Middle Name</label>
-                  <input type="text" class="field" placeholder="Optional">
-                </div>
-                <div class="col-span-1">
-                  <label class="field-label">Suffix</label>
-                  <select class="field">
-                    <option value="">—</option>
-                    <option>Jr.</option><option>Sr.</option><option>II</option><option>III</option>
-                  </select>
-                </div>
-              </div>
-              <!-- Date / Age / Sex -->
-              <div class="grid grid-cols-4 gap-4">
-                <div>
-                  <label class="field-label required-dot">Birthdate</label>
-                  <input type="date" id="birthdate" class="field" oninput="computeAge()">
-                </div>
-                <div>
-                  <label class="field-label">Age</label>
-                  <div class="relative">
-                    <input type="text" id="ageField" class="field bg-slate-100 cursor-not-allowed" readonly placeholder="Auto-computed">
-                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">yrs</span>
-                  </div>
-                </div>
-                <div>
-                  <label class="field-label required-dot">Sex</label>
-                  <div class="flex gap-2 mt-0.5">
-                    <label class="flex-1 flex items-center justify-center gap-2 border border-slate-200 rounded-xl py-2.5 cursor-pointer hover:border-navy-400 transition-all text-[12px] font-medium text-slate-600 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
-                      <input type="radio" name="sex" value="Male" class="hidden"> ♂ Male
-                    </label>
-                    <label class="flex-1 flex items-center justify-center gap-2 border border-slate-200 rounded-xl py-2.5 cursor-pointer hover:border-navy-400 transition-all text-[12px] font-medium text-slate-600 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
-                      <input type="radio" name="sex" value="Female" class="hidden"> ♀ Female
-                    </label>
-                  </div>
-                </div>
-                <div>
-                  <label class="field-label required-dot">Civil Status</label>
-                  <select class="field">
-                    <option value="">Select</option>
-                    <option>Single</option><option>Married</option><option>Widowed</option>
-                    <option>Separated</option><option>Solo Parent</option>
-                  </select>
-                </div>
-              </div>
-              <!-- Contact -->
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="field-label">Contact Number</label>
-                  <input type="text" class="field" placeholder="09XX-XXX-XXXX">
-                </div>
-              </div>
+            <div class="flex items-center gap-2">
+                <button
+                    class="text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-4 py-1.5 hover:border-navy-400 hover:text-navy-600 transition-all">Cancel</button>
             </div>
-          </div>
-        </div>
+        </header>
 
-        <!-- ── STEP 2: Address ── -->
-        <div class="step-panel" id="panel-2">
-          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-              <div class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">2</div>
-              <div>
-                <h2 class="text-[14px] font-semibold text-navy-600">Address</h2>
-                <p class="text-[11px] text-slate-400">Current residential address within San Enrique</p>
-              </div>
+        <main class="flex-1 p-6 max-w-4xl w-full mx-auto">
+
+            <!-- Page header -->
+            <div class="mb-6 animate-fade-up">
+                <h1 class="text-xl font-serif text-navy-600">New Client Registration</h1>
+                <p class="text-[13px] text-slate-500 mt-1">Complete all required fields to create a permanent client
+                    profile.</p>
             </div>
-            <div class="p-6 space-y-5">
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="field-label required-dot">Barangay</label>
-                  <select class="field">
-                    <option value="">Select Barangay</option>
-                    <option>Poblacion</option><option>San Jose</option><option>Beguiligan</option>
-                    <option>Buenavista</option><option>Doldol</option><option>Guintorilan</option><option>Tabunan</option>
-                  </select>
+
+            <div class="space-y-6">
+
+                <!-- PERSONAL INFORMATION -->
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-up">
+                    <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                        <div
+                            class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                            1</div>
+                        <div>
+                            <h2 class="text-[14px] font-semibold text-navy-600">Personal Information</h2>
+                            <p class="text-[11px] text-slate-400">Basic identifying details of the client</p>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <div class="grid grid-cols-12 gap-4">
+                            <div class="col-span-4">
+                                <label class="field-label required-dot">Last Name</label>
+                                <input type="text" class="field" placeholder="e.g. Mana-ay">
+                            </div>
+                            <div class="col-span-4">
+                                <label class="field-label required-dot">First Name</label>
+                                <input type="text" class="field" placeholder="e.g. Alexanne">
+                            </div>
+                            <div class="col-span-3">
+                                <label class="field-label">Middle Name</label>
+                                <input type="text" class="field" placeholder="Optional">
+                            </div>
+                            <div class="col-span-1">
+                                <label class="field-label">Suffix</label>
+                                <select class="field">
+                                    <option value="">—</option>
+                                    <option>Sr.</option>
+                                    <option>Jr.</option>
+                                    <option>I</option>
+                                    <option>II</option>
+                                    <option>III</option>
+                                    <option>IV</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-4">
+                            <div>
+                                <label class="field-label required-dot">Birthdate</label>
+                                <input type="date" id="birthdate" class="field" oninput="computeAge()" max="9999-12-31">
+                                <p class="text-[10px] text-slate-400 mt-1">Click to select date</p>
+                            </div>
+                            <div>
+                                <label class="field-label">Age</label>
+                                <div class="relative">
+                                    <input type="text" id="ageField" class="field bg-slate-100 cursor-not-allowed"
+                                        readonly placeholder="Auto">
+                                    <span
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">yrs</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label required-dot">Sex</label>
+                                <div class="flex gap-2 mt-0.5">
+                                    <label
+                                        class="flex-1 flex items-center justify-center gap-2 border border-slate-200 rounded-xl py-2.5 cursor-pointer hover:border-navy-400 transition-all text-[12px] font-medium text-slate-600 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
+                                        <input type="radio" name="sex" value="Male" class="hidden"> <i class="fas fa-mars"></i> Male
+                                    </label>
+                                    <label
+                                        class="flex-1 flex items-center justify-center gap-2 border border-slate-200 rounded-xl py-2.5 cursor-pointer hover:border-navy-400 transition-all text-[12px] font-medium text-slate-600 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
+                                        <input type="radio" name="sex" value="Female" class="hidden"> <i class="fas fa-venus"></i> Female
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label required-dot">Civil Status</label>
+                                <select class="field">
+                                    <option value="">Select</option>
+                                    <option>Single</option>
+                                    <option>Married</option>
+                                    <option>Widowed</option>
+                                    <option>Separated</option>
+                                    <option>Solo Parent</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Contact -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="field-label">Contact Number</label>
+                                <input type="text" class="field" placeholder="09XX-XXX-XXXX">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                  <label class="field-label">Purok / Sitio</label>
-                  <input type="text" class="field" placeholder="e.g. Purok 3, Sitio Maligaya">
+
+                <!-- ADDRESS -->
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-up">
+                    <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                        <div
+                            class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                            2</div>
+                        <div>
+                            <h2 class="text-[14px] font-semibold text-navy-600">Address</h2>
+                            <p class="text-[11px] text-slate-400">Current residential address</p>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="field-label">Street / House No.</label>
+                                <input type="text" class="field" placeholder="e.g. 123 Rizal St.">
+                            </div>
+                            <div>
+                                <label class="field-label required-dot">Barangay</label>
+                                <select class="field">
+                                    <option value="">Select Barangay</option>
+                                    <option>Bagonawa</option>
+                                    <option>Baliwagan</option>
+                                    <option>Batuan</option>
+                                    <option>Guintorilan</option>
+                                    <option>Nayon</option>
+                                    <option>Poblacion</option>
+                                    <option>Sibucao</option>
+                                    <option>Tabao Baybay</option>
+                                    <option>Tabao Rizal</option>
+                                    <option>Tibsoc</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-4">
+                            <div>
+                                <label class="field-label">Municipality:</label>
+                                <input type="text" class="field bg-slate-100 cursor-not-allowed" value="San Enrique"
+                                    readonly>
+                            </div>
+                            <div>
+                                <label class="field-label">Province:</label>
+                                <input type="text" class="field bg-slate-100 cursor-not-allowed"
+                                    value="Negros Occidental" readonly>
+                            </div>
+                            <div>
+                                <label class="field-label">Region:</label>
+                                <input type="text" class="field bg-slate-100 cursor-not-allowed" value="VI"
+                                    readonly>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                            <i class="fas fa-info-circle text-blue-500"></i>
+                            <p class="text-[12px] text-blue-700">MSWDO services are limited to residents of San Enrique,
+                                Negros Occidental.</p>
+                        </div>
+                    </div>
                 </div>
-              </div>
-              <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
-                <span class="text-blue-400 text-lg flex-shrink-0">ℹ️</span>
-                <p class="text-[12px] text-blue-700">Only barangays within San Enrique, Negros Occidental are eligible for MSWDO services. Out-of-area clients may be referred to their respective MSWDO.</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- ── STEP 3: Socio-Economic ── -->
-        <div class="step-panel" id="panel-3">
-          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-              <div class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">3</div>
-              <div>
-                <h2 class="text-[14px] font-semibold text-navy-600">Socio-Economic Information</h2>
-                <p class="text-[11px] text-slate-400">Used for indigency assessment and program eligibility</p>
-              </div>
-            </div>
-            <div class="p-6 space-y-5">
-              <div class="grid grid-cols-3 gap-4">
-                <div>
-                  <label class="field-label">Occupation</label>
-                  <input type="text" class="field" placeholder="e.g. Farmer, Vendor, Housewife">
+                <!-- SOCIO-ECONOMIC -->
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-up">
+                    <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                        <div
+                            class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                            3</div>
+                        <div>
+                            <h2 class="text-[14px] font-semibold text-navy-600">Socio-Economic Information</h2>
+                            <p class="text-[11px] text-slate-400">Used for indigency assessment and program eligibility
+                            </p>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="field-label">Occupation</label>
+                                <input type="text" class="field" placeholder="e.g. Farmer, Vendor">
+                            </div>
+                            <div>
+                                <label class="field-label">Monthly Income (₱)</label>
+                                <div class="relative">
+                                    <span
+                                        class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[13px] font-medium">₱</span>
+                                    <input type="number" min="0" class="field pl-7" placeholder="0.00">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Educational Attainment</label>
+                                <select class="field">
+                                    <option value="">Select</option>
+                                    <option>No Formal Education</option>
+                                    <option>Elementary</option>
+                                    <option>High School</option>
+                                    <option>Vocational</option>
+                                    <option>College</option>
+                                    <option>Graduate</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                  <label class="field-label">Monthly Income (₱)</label>
-                  <div class="relative">
-                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[13px] font-medium">₱</span>
-                    <input type="number" min="0" class="field pl-7" placeholder="0.00">
-                  </div>
+
+                <!-- SECTORAL CLASSIFICATION -->
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-up">
+                    <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                        <div
+                            class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                            4</div>
+                        <div>
+                            <h2 class="text-[14px] font-semibold text-navy-600">Sectoral Classification</h2>
+                            <p class="text-[11px] text-slate-400">Select all that apply — determines program eligibility
+                                badges</p>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <label
+                                class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
+                                <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
+                                <div>
+                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-home"></i> 4Ps Member</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">Pantawid Pamilyang Pilipino</p>
+                                </div>
+                            </label>
+                            <label
+                                class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
+                                <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
+                                <div>
+                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-wheelchair"></i> PWD</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">Person with Disability</p>
+                                </div>
+                            </label>
+                            <label
+                                class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
+                                <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
+                                <div>
+                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-user-friends"></i> Senior Citizen</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">60 years old and above</p>
+                                </div>
+                            </label>
+                            <label
+                                class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
+                                <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
+                                <div>
+                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-user"></i> Solo Parent</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">RA 8972 qualified</p>
+                                </div>
+                            </label>
+                            <label
+                                class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
+                                <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
+                                <div>
+                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-list"></i> Indigent</p>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">DSWD/DOH assessment</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                  <label class="field-label">Educational Attainment</label>
-                  <select class="field">
-                    <option value="">Select</option>
-                    <option>No Formal Education</option><option>Elementary</option>
-                    <option>High School</option><option>Vocational</option>
-                    <option>College</option><option>Graduate</option>
-                  </select>
+
+                <!-- FAMILY COMPOSITION -->
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-up">
+                    <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                        <div
+                            class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                            5</div>
+                        <div>
+                            <h2 class="text-[14px] font-semibold text-navy-600">Family Composition</h2>
+                            <p class="text-[11px] text-slate-400">All household members including the client</p>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="rounded-xl border border-slate-200 overflow-hidden mb-3">
+                            <table class="w-full text-[12px]">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200">
+                                        <th
+                                            class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-8">
+                                            #</th>
+                                        <th
+                                            class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                            Full Name</th>
+                                        <th
+                                            class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-32">
+                                            Relationship</th>
+                                        <th
+                                            class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-16">
+                                            Age</th>
+                                        <th
+                                            class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                            Occupation</th>
+                                        <th
+                                            class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-28">
+                                            Monthly Income (₱)</th>
+                                        <th class="w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="famBody">
+                                    <tr class="fam-row border-b border-slate-100">
+                                        <td class="px-3 py-2.5 text-slate-400 font-medium">1</td>
+                                        <td class="px-3 py-2.5"><input class="fam-input" type="text"
+                                                placeholder="Full name"></td>
+                                        <td class="px-3 py-2.5"><input class="fam-input" type="text"
+                                                placeholder="e.g. Spouse"></td>
+                                        <td class="px-3 py-2.5"><input class="fam-input" type="number" placeholder="Age"
+                                                min="0"></td>
+                                        <td class="px-3 py-2.5"><input class="fam-input" type="text"
+                                                placeholder="Occupation"></td>
+                                        <td class="px-3 py-2.5"><input class="fam-input" type="number" min="0"
+                                                step="0.01" placeholder="0.00"></td>
+                                        <td class="px-3 py-2.5 text-center"><button
+                                                onclick="this.closest('tr').remove(); renumber()"
+                                                class="text-slate-300 hover:text-red-400 transition-colors text-sm">✕</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button onclick="addFamRow()"
+                            class="flex items-center gap-2 text-[12px] font-medium text-navy-600 border-2 border-dashed border-navy-200 rounded-xl px-4 py-2.5 hover:border-navy-400 hover:bg-navy-50 transition-all w-full justify-center">
+                            + Add Member
+                        </button>
+                    </div>
                 </div>
-              </div>
+
+                <div class="flex items-center justify-end pt-2">
+                    <button onclick="saveClient()"
+                        class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-8 py-2.5 hover:bg-navy-500 transition-all">Save
+                        Client</button>
+                </div>
             </div>
-          </div>
-        </div>
 
-        <!-- ── STEP 4: Sectoral Classification ── -->
-        <div class="step-panel" id="panel-4">
-          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-              <div class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">4</div>
-              <div>
-                <h2 class="text-[14px] font-semibold text-navy-600">Sectoral Classification</h2>
-                <p class="text-[11px] text-slate-400">Select all that apply — determines program eligibility badges</p>
-              </div>
-            </div>
-            <div class="p-6">
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <label class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
-                  <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
-                  <div>
-                    <p class="text-[13px] font-semibold text-slate-700">🏠 4Ps Member</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">Pantawid Pamilyang Pilipino</p>
-                  </div>
-                </label>
-                <label class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
-                  <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
-                  <div>
-                    <p class="text-[13px] font-semibold text-slate-700">♿ PWD</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">Person with Disability</p>
-                  </div>
-                </label>
-                <label class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
-                  <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
-                  <div>
-                    <p class="text-[13px] font-semibold text-slate-700">👴 Senior Citizen</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">60 years old and above</p>
-                  </div>
-                </label>
-                <label class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
-                  <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
-                  <div>
-                    <p class="text-[13px] font-semibold text-slate-700">👤 Solo Parent</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">RA 8972 qualified</p>
-                  </div>
-                </label>
-                <label class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
-                  <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
-                  <div>
-                    <p class="text-[13px] font-semibold text-slate-700">📋 Indigent</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">DSWD/DOH assessment</p>
-                  </div>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
+        </main>
 
-        <!-- ── STEP 5: Family Composition ── -->
-        <div class="step-panel" id="panel-5">
-          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-              <div class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">5</div>
-              <div>
-                <h2 class="text-[14px] font-semibold text-navy-600">Family Composition</h2>
-                <p class="text-[11px] text-slate-400">All household members including the client</p>
-              </div>
-            </div>
-            <div class="p-6">
-              <div class="rounded-xl border border-slate-200 overflow-hidden mb-3">
-                <table class="w-full text-[12px]">
-                  <thead>
-                    <tr class="bg-slate-50 border-b border-slate-200">
-                      <th class="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-8">#</th>
-                      <th class="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Full Name</th>
-                      <th class="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-28">Relationship</th>
-                      <th class="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-16">Age</th>
-                      <th class="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Occupation</th>
-                      <th class="w-10"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="famBody">
-                    <tr class="fam-row border-b border-slate-100">
-                      <td class="px-4 py-2.5 text-slate-400 font-medium">1</td>
-                      <td class="px-4 py-2.5"><input class="fam-input" type="text" placeholder="Full name"></td>
-                      <td class="px-4 py-2.5"><input class="fam-input" type="text" placeholder="e.g. Spouse"></td>
-                      <td class="px-4 py-2.5"><input class="fam-input" type="number" placeholder="Age" min="0"></td>
-                      <td class="px-4 py-2.5"><input class="fam-input" type="text" placeholder="Occupation"></td>
-                      <td class="px-4 py-2.5 text-center"><button onclick="this.closest('tr').remove(); renumber()" class="text-slate-300 hover:text-red-400 transition-colors text-sm">✕</button></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <button onclick="addFamRow()" class="flex items-center gap-2 text-[12px] font-medium text-navy-600 border-2 border-dashed border-navy-200 rounded-xl px-4 py-2.5 hover:border-navy-400 hover:bg-navy-50 transition-all w-full justify-center">
-                + Add Member
-              </button>
-            </div>
-          </div>
-        </div>
+        <footer
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+            <span>MSWDO San Enrique Information System</span>
+        </footer>
+    </div>
 
-      </div><!-- end wizard -->
+    <!-- Success Toast -->
+    <div id="toast"
+        class="fixed bottom-6 right-6 bg-navy-600 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300">
+        <span class="text-emerald-400 text-base">✓</span>
+        <span>Client saved successfully!</span>
+    </div>
 
-      <!-- Bottom Nav Buttons -->
-      <div class="animate-fade-up-5 flex items-center justify-between">
-        <button id="prevBtn" onclick="prevStep()" class="hidden flex items-center gap-2 text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">
-          ← Previous
-        </button>
-        <div class="ml-auto flex items-center gap-3">
-          <div class="flex items-center gap-1.5 text-[11px] text-slate-400" id="stepCounter">Step 1 of 5</div>
-          <button id="nextBtn" onclick="nextStep()" class="flex items-center gap-2 text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-5 py-2.5 hover:bg-navy-500 transition-all">
-            Next →
-          </button>
-        </div>
-      </div>
+    <script>
+        // Age computation
+        function computeAge() {
+            const dob = new Date(document.getElementById('birthdate').value);
+            if (isNaN(dob)) return;
+            const age = Math.floor((new Date() - dob) / (365.25 * 24 * 3600 * 1000));
+            document.getElementById('ageField').value = age;
+        }
 
-    </main>
+        // Family composition dynamic rows
+        let famCount = 1;
+        function addFamRow() {
+            famCount++;
+            const tr = document.createElement('tr');
+            tr.className = 'fam-row border-b border-slate-100';
+            tr.innerHTML = `
+        <td class="px-3 py-2.5 text-slate-400 font-medium">${famCount}</td>
+        <td class="px-3 py-2.5"><input class="fam-input" type="text" placeholder="Full name"></td>
+        <td class="px-3 py-2.5"><input class="fam-input" type="text" placeholder="e.g. Child"></td>
+        <td class="px-3 py-2.5"><input class="fam-input" type="number" placeholder="Age" min="0"></td>
+        <td class="px-3 py-2.5"><input class="fam-input" type="text" placeholder="Occupation"></td>
+        <td class="px-3 py-2.5"><input class="fam-input" type="number" min="0" step="0.01" placeholder="0.00"></td>
+        <td class="px-3 py-2.5 text-center"><button onclick="this.closest('tr').remove(); renumber()" class="text-slate-300 hover:text-red-400 transition-colors text-sm">✕</button></td>
+      `;
+            document.getElementById('famBody').appendChild(tr);
+        }
 
-    <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
-      <span>MSWDO San Enrique Information System </span>
-    </footer>
-  </div>
+        function renumber() {
+            const rows = document.querySelectorAll('#famBody tr');
+            rows.forEach((tr, i) => {
+                tr.querySelector('td').textContent = i + 1;
+            });
+            famCount = rows.length;
+        }
 
-  <!-- Success Toast -->
-  <div id="toast" class="fixed bottom-6 right-6 bg-navy-600 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300">
-    <span class="text-emerald-400 text-base">✓</span>
-    Client saved successfully!
-  </div>
+        // Toast notification
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.querySelector('span:last-child').textContent = ' ' + msg;
+            t.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+            t.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                t.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+                t.classList.remove('opacity-100', 'translate-y-0');
+            }, 3000);
+        }
 
-<script>
-  let current = 1;
-  const total  = 5;
-  const pcts   = ['20%','40%','60%','80%','100%'];
+        function saveClient() {
+            showToast('Client saved successfully!');
+            // Here you would typically submit form data
+        }
 
-  function goStep(n) {
-    document.getElementById(`panel-${current}`).classList.remove('active');
-    document.getElementById(`step-btn-${current}`).className =
-      'step-btn flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-medium text-slate-500 hover:bg-slate-50 min-w-[80px]';
-    document.getElementById(`step-btn-${current}`).querySelector('span').className =
-      'w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 flex-shrink-0';
 
-    // Mark completed steps with checkmark
-    if (n > current) {
-      document.getElementById(`step-btn-${current}`).querySelector('span').textContent = '✓';
-      document.getElementById(`step-btn-${current}`).querySelector('span').className =
-        'w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-600 flex-shrink-0';
-    }
-
-    current = n;
-    document.getElementById(`panel-${current}`).classList.add('active');
-    document.getElementById('progressBar').style.width = pcts[current - 1];
-    document.getElementById('stepCounter').textContent = `Step ${current} of ${total}`;
-
-    // Active step button
-    document.getElementById(`step-btn-${current}`).className =
-      'step-btn flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[12px] font-semibold bg-navy-600 text-white min-w-[80px]';
-    document.getElementById(`step-btn-${current}`).querySelector('span').className =
-      'w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] font-bold flex-shrink-0';
-    document.getElementById(`step-btn-${current}`).querySelector('span').textContent = current;
-
-    document.getElementById('prevBtn').classList.toggle('hidden', current === 1);
-    document.getElementById('nextBtn').textContent = current === total ? 'Save Client' : 'Next →';
-  }
-
-  function nextStep() {
-    if (current < total) goStep(current + 1);
-    else saveClient();
-  }
-  function prevStep() {
-    if (current > 1) goStep(current - 1);
-  }
-
-  function computeAge() {
-    const dob = new Date(document.getElementById('birthdate').value);
-    if (isNaN(dob)) return;
-    const age = Math.floor((new Date() - dob) / (365.25 * 24 * 3600 * 1000));
-    document.getElementById('ageField').value = age;
-  }
-
-  let famCount = 1;
-  function addFamRow() {
-    famCount++;
-    const tr = document.createElement('tr');
-    tr.className = 'fam-row border-b border-slate-100';
-    tr.innerHTML = `
-      <td class="px-4 py-2.5 text-slate-400 font-medium">${famCount}</td>
-      <td class="px-4 py-2.5"><input class="fam-input" type="text" placeholder="Full name"></td>
-      <td class="px-4 py-2.5"><input class="fam-input" type="text" placeholder="e.g. Child"></td>
-      <td class="px-4 py-2.5"><input class="fam-input" type="number" placeholder="Age" min="0"></td>
-      <td class="px-4 py-2.5"><input class="fam-input" type="text" placeholder="Occupation"></td>
-      <td class="px-4 py-2.5 text-center"><button onclick="this.closest('tr').remove(); renumber()" class="text-slate-300 hover:text-red-400 transition-colors text-sm">✕</button></td>`;
-    document.getElementById('famBody').appendChild(tr);
-  }
-
-  function renumber() {
-    document.querySelectorAll('#famBody tr').forEach((tr, i) => {
-      tr.querySelector('td').textContent = i + 1;
-    });
-    famCount = document.querySelectorAll('#famBody tr').length;
-  }
-
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.querySelector('span + *') ? null : null;
-    t.lastChild.textContent = ' ' + msg;
-    t.classList.remove('opacity-0','translate-y-4','pointer-events-none');
-    t.classList.add('opacity-100','translate-y-0');
-    setTimeout(() => {
-      t.classList.add('opacity-0','translate-y-4','pointer-events-none');
-      t.classList.remove('opacity-100','translate-y-0');
-    }, 3000);
-  }
-
-  function saveClient() { showToast('Client saved successfully!'); }
-  function saveAndAnother() { showToast('Client saved! Form cleared for next registration.'); goStep(1); }
-</script>
+        // Initialize any defaults
+        window.onload = function () {
+            // If needed, prefill age if date exists
+        };
+    </script>
 </body>
+
 </html>
