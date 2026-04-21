@@ -9,8 +9,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
         rel="stylesheet">
-        
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
         tailwind.config = {
             theme: {
@@ -49,11 +49,26 @@
         }
 
         .field {
-            @apply block w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[13px] text-slate-800 outline-none transition-all;
+            display: block;
+            width: 100%;
+            border-radius: 0.75rem;
+            border: 1px solid #94a3b8;
+            background: #F8FAFC;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #1e293b;
+            outline: none;
+            transition: all .2s ease;
         }
 
         .field:focus {
-            @apply border-navy-400 bg-white ring-2 ring-navy-100;
+            border: 1px solid black;
+            background: white;
+            box-shadow: none;
+        }
+
+        .field::placeholder {
+            color: #9CA3AF;
         }
 
         .field::placeholder {
@@ -69,7 +84,13 @@
         }
 
         .field-label {
-            @apply block text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1.5;
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 6px;
         }
 
         .required-dot::after {
@@ -218,11 +239,13 @@
                                 <div class="flex gap-2 mt-0.5">
                                     <label
                                         class="flex-1 flex items-center justify-center gap-2 border border-slate-200 rounded-xl py-2.5 cursor-pointer hover:border-navy-400 transition-all text-[12px] font-medium text-slate-600 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
-                                        <input type="radio" name="sex" value="Male" class="hidden"> <i class="fas fa-mars"></i> Male
+                                        <input type="radio" name="sex" value="Male" class="hidden"> <i
+                                            class="fas fa-mars"></i> Male
                                     </label>
                                     <label
                                         class="flex-1 flex items-center justify-center gap-2 border border-slate-200 rounded-xl py-2.5 cursor-pointer hover:border-navy-400 transition-all text-[12px] font-medium text-slate-600 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
-                                        <input type="radio" name="sex" value="Female" class="hidden"> <i class="fas fa-venus"></i> Female
+                                        <input type="radio" name="sex" value="Female" class="hidden"> <i
+                                            class="fas fa-venus"></i> Female
                                     </label>
                                 </div>
                             </div>
@@ -295,8 +318,7 @@
                             </div>
                             <div>
                                 <label class="field-label">Region:</label>
-                                <input type="text" class="field bg-slate-100 cursor-not-allowed" value="VI"
-                                    readonly>
+                                <input type="text" class="field bg-slate-100 cursor-not-allowed" value="VI" readonly>
                             </div>
                         </div>
                         <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
@@ -367,7 +389,8 @@
                                 class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
                                 <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
                                 <div>
-                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-home"></i> 4Ps Member</p>
+                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-home"></i> 4Ps
+                                        Member</p>
                                     <p class="text-[11px] text-slate-400 mt-0.5">Pantawid Pamilyang Pilipino</p>
                                 </div>
                             </label>
@@ -375,7 +398,8 @@
                                 class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
                                 <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
                                 <div>
-                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-wheelchair"></i> PWD</p>
+                                    <p class="text-[13px] font-semibold text-slate-700"><i
+                                            class="fas fa-wheelchair"></i> PWD</p>
                                     <p class="text-[11px] text-slate-400 mt-0.5">Person with Disability</p>
                                 </div>
                             </label>
@@ -383,7 +407,8 @@
                                 class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
                                 <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
                                 <div>
-                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-user-friends"></i> Senior Citizen</p>
+                                    <p class="text-[13px] font-semibold text-slate-700"><i
+                                            class="fas fa-user-friends"></i> Senior Citizen</p>
                                     <p class="text-[11px] text-slate-400 mt-0.5">60 years old and above</p>
                                 </div>
                             </label>
@@ -391,7 +416,8 @@
                                 class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
                                 <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
                                 <div>
-                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-user"></i> Solo Parent</p>
+                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-user"></i> Solo
+                                        Parent</p>
                                     <p class="text-[11px] text-slate-400 mt-0.5">RA 8972 qualified</p>
                                 </div>
                             </label>
@@ -399,7 +425,8 @@
                                 class="check-card flex items-center gap-3 border-2 border-slate-200 rounded-2xl p-4 cursor-pointer">
                                 <input type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
                                 <div>
-                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-list"></i> Indigent</p>
+                                    <p class="text-[13px] font-semibold text-slate-700"><i class="fas fa-list"></i>
+                                        Indigent</p>
                                     <p class="text-[11px] text-slate-400 mt-0.5">DSWD/DOH assessment</p>
                                 </div>
                             </label>
