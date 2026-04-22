@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Program Availment – MSWDO San Enrique</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['DM Sans', 'sans-serif'], serif: ['DM Serif Display', 'serif'] },
+                    colors: {
+                        navy: { DEFAULT: '#0B2545', 50: '#E8EDF5', 100: '#C5D1E6', 400: '#3A5F93', 500: '#163566', 600: '#0B2545', 700: '#091D38' },
+                        gold: { DEFAULT: '#C49A2A', 400: '#C49A2A' },
+                        slate2: '#F4F7FC',
+                    },
+                    keyframes: {
+                        fadeUp: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        scaleIn: { '0%': { opacity: '0', transform: 'scale(.96)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+                    },
+                    animation: {
+                        'fade-up': 'fadeUp 0.35s ease both',
+                        'fade-up-1': 'fadeUp 0.35s 0.04s ease both',
+                        'fade-up-2': 'fadeUp 0.35s 0.08s ease both',
+                        'fade-up-3': 'fadeUp 0.35s 0.12s ease both',
+                        'scale-in': 'scaleIn 0.25s ease both',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .sidebar-item {
+            transition: all .15s ease;
+        }
+
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, .07);
+            color: rgba(255, 255, 255, .95);
+        }
+
+        .sidebar-item.active {
+            background: rgba(29, 111, 164, .28);
+            border-left-color: #C49A2A;
+            color: #fff;
+        }
+
+        /* Program cards */
+        .prog-card {
+            transition: all .2s cubic-bezier(.4, 0, .2, 1);
+            cursor: pointer;
+        }
+
+        .prog-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(11, 37, 69, .12);
+        }
+
+        .prog-card:hover .prog-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .prog-card:active {
+            transform: translateY(-1px) scale(.99);
+        }
+
+        .prog-arrow {
+            opacity: 0;
+            transform: translateX(-4px);
+            transition: all .2s ease;
+        }
+
+        /* Subtype badges */
+        .sub-badge {
+            transition: all .15s ease;
+        }
+
+        .sub-badge:hover {
+            transform: scale(1.04);
+        }
+
+        /* Eligibility check row */
+        .elig-row {
+            transition: background .1s;
+        }
+
+        .elig-row:hover {
+            background: #F8FAFC;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .15);
+            border-radius: 2px;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-slate2 min-h-screen flex">
+
+
+    <!-- MAIN -->
+    <div class="ml-56 flex-1 flex flex-col min-h-screen">
+
+        <!-- Topbar -->
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
+            <div class="flex items-center gap-2 text-[13px]">
+                <a href="#" class="text-slate-400 hover:text-navy-600 transition-colors">Clients</a>
+                <span class="text-slate-300">/</span>
+                <a href="#" class="text-slate-400 hover:text-navy-600 transition-colors">Maria Santos</a>
+                <span class="text-slate-300">/</span>
+                <span class="text-navy-600 font-semibold">Select Program</span>
+            </div>
+            <a href="#"
+                class="text-[12px] text-slate-500 hover:text-navy-600 flex items-center gap-1.5 transition-colors">←
+                Back to Profile</a>
+        </header>
+
+        <main class="flex-1 p-6 max-w-5xl w-full mx-auto">
+
+            <!-- Client mini header -->
+            <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-4 mb-6">
+                <div
+                    class="w-12 h-12 rounded-xl bg-navy-600 flex items-center justify-center text-white font-serif text-lg flex-shrink-0">
+                    MS</div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[15px] font-semibold text-navy-600">Maria R. Santos</p>
+                    <p class="text-[12px] text-slate-400 mt-0.5">CLT-2024-00142 &nbsp;·&nbsp; Poblacion &nbsp;·&nbsp; 62
+                        yrs, Female</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <span class="bg-purple-100 text-purple-700 text-[10px] font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-house-user text-[9px]"></i>
+                        4Ps</span>
+                    <span class="bg-amber-100 text-amber-700 text-[10px] font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-user-friends text-[9px]"></i>
+                        Senior</span>
+                    <span class="bg-emerald-100 text-emerald-700 text-[10px] font-semibold px-2.5 py-1 rounded-full"><i class="fas fa-list text-[9px]"></i>
+                        Indigent</span>
+                </div>
+            </div>
+
+            <!-- Eligibility Quick Check -->
+            <div class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 overflow-hidden mb-6">
+                <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
+                    <span class="text-base"><i class="fas fa-check-circle text-emerald-500"></i></span>
+                    <h2 class="text-[13px] font-semibold text-navy-600">Eligibility &amp; Limit Check — This Client</h2>
+                    <span class="ml-auto text-[11px] text-slate-400">Real-time system check</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-slate-100">
+                    <div class="elig-row px-5 py-3.5">
+                        <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-1">AICS This Quarter
+                        </p>
+                        <p class="text-[14px] font-bold text-emerald-600">0 / 1</p>
+                        <p class="text-[10px] text-emerald-600 mt-0.5 font-medium">✓ Eligible</p>
+                    </div>
+                    <div class="elig-row px-5 py-3.5">
+                        <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-1">AICS This Year
+                        </p>
+                        <p class="text-[14px] font-bold text-emerald-600">2 / 4</p>
+                        <p class="text-[10px] text-emerald-600 mt-0.5 font-medium">✓ 2 remaining</p>
+                    </div>
+                    <div class="elig-row px-5 py-3.5">
+                        <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-1">SLP Status</p>
+                        <p class="text-[14px] font-bold text-emerald-600">Not availed</p>
+                        <p class="text-[10px] text-emerald-600 mt-0.5 font-medium">✓ Eligible</p>
+                    </div>
+                    <div class="elig-row px-5 py-3.5">
+                        <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-1">Last Case Study
+                        </p>
+                        <p class="text-[14px] font-bold text-navy-600">Apr 5, 2025</p>
+                        <p class="text-[10px] text-amber-500 mt-0.5 font-medium">⚠ Update recommended</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page title -->
+            <div class="animate-fade-up-2 mb-5">
+                <h1 class="text-[18px] font-serif text-navy-600">Select a Program</h1>
+                <p class="text-[13px] text-slate-500 mt-1">Choose the program to begin a new availment transaction for
+                    this client.</p>
+            </div>
+
+            <!-- Program Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="progGrid"></div>
+
+        </main>
+
+        <footer
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+            <span>MSWDO San Enrique Information System — Version 1.0.0</span>
+            <span>Support: mswdo@sanenrique.gov.ph</span>
+        </footer>
+    </div>
+
+    <!-- Selected Program Modal -->
+    <div id="modal"
+        class="fixed inset-0 bg-navy-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 hidden">
+        <div id="modalBox" class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div id="mIcon" class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"></div>
+                    <div>
+                        <h3 id="mTitle" class="text-[16px] font-semibold text-navy-600"></h3>
+                        <p id="mSub" class="text-[12px] text-slate-400 mt-0.5"></p>
+                    </div>
+                </div>
+                <button onclick="closeModal()"
+                    class="text-slate-300 hover:text-slate-500 text-xl leading-none mt-0.5">✕</button>
+            </div>
+            <div id="mSubtypes" class="mb-5"></div>
+            <div id="mBudget" class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-5 text-[12px] flex gap-4">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeModal()"
+                    class="flex-1 py-2.5 border border-slate-200 rounded-xl text-[13px] font-medium text-slate-600 hover:border-navy-400 transition-all">Cancel</button>
+                <button onclick="proceedAvailment()"
+                    class="flex-1 py-2.5 bg-navy-600 rounded-xl text-[13px] font-semibold text-white hover:bg-navy-500 transition-all">Proceed
+                    →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const programs = [
+            {
+                id: 'aics', icon: '<i class="fas fa-pills"></i>', name: 'AICS', fullName: 'Assistance to Individuals in Crisis Situation',
+                color: 'blue', border: 'border-blue-200', hover: 'hover:border-blue-400',
+                iconBg: 'bg-blue-50', iconText: 'text-blue-600',
+                subtypes: ['Medical', 'Financial', 'Educational', 'Livelihood', 'Burial'],
+                subColors: ['bg-red-100 text-red-700', 'bg-green-100 text-green-700', 'bg-blue-100 text-blue-700', 'bg-amber-100 text-amber-700', 'bg-slate-100 text-slate-600'],
+                limits: 'Max 1/quarter · 4/year · ₱500–₱5,000',
+                budget: '₱28,400 remaining', budgetColor: 'text-red-500',
+                budgetPct: '12%', budgetBar: 'bg-red-400',
+                tags: ['Crisis Assistance'],
+                eligible: true,
+                delay: 0
+            },
+            {
+                id: '4ps', icon: '<i class="fas fa-house-user"></i>', name: '4Ps', fullName: 'Pantawid Pamilyang Pilipino Program',
+                color: 'purple', border: 'border-purple-200', hover: 'hover:border-purple-400',
+                iconBg: 'bg-purple-50', iconText: 'text-purple-600',
+                subtypes: ['Household Monitoring'],
+                subColors: ['bg-purple-100 text-purple-700'],
+                limits: 'No availment limit · Status tracking only',
+                budget: '₱348,000 remaining', budgetColor: 'text-emerald-600',
+                budgetPct: '58%', budgetBar: 'bg-emerald-400',
+                tags: ['Monitoring'],
+                eligible: true,
+                delay: 40
+            },
+            {
+                id: 'slp', icon: '<i class="fas fa-briefcase"></i>', name: 'SLP', fullName: 'Sustainable Livelihood Program',
+                color: 'amber', border: 'border-amber-200', hover: 'hover:border-amber-400',
+                iconBg: 'bg-amber-50', iconText: 'text-amber-600',
+                subtypes: ['Livelihood Assistance'],
+                subColors: ['bg-amber-100 text-amber-700'],
+                limits: 'Re-application is only allowed if prior availment succeeds',
+                budget: '₱12,000 remaining', budgetColor: 'text-red-500',
+                budgetPct: '8%', budgetBar: 'bg-red-400',
+                tags: ['Livelihood'],
+                eligible: true,
+                delay: 80
+            },
+            {
+                id: 'sfp', icon: '<i class="fas fa-utensils"></i>', name: 'SFP', fullName: 'Supplementary Feeding Program',
+                color: 'green', border: 'border-green-200', hover: 'hover:border-green-400',
+                iconBg: 'bg-green-50', iconText: 'text-green-600',
+                subtypes: ['Child Feeding Enrollment'],
+                subColors: ['bg-green-100 text-green-700'],
+                limits: 'Per child · Per feeding cycle',
+                budget: '₱130,000 remaining', budgetColor: 'text-emerald-600',
+                budgetPct: '65%', budgetBar: 'bg-emerald-400',
+                tags: ['Children'],
+                eligible: true,
+                delay: 120
+            },
+            {
+                id: 'daycare', icon: '<i class="fas fa-school"></i>', name: 'Day Care', fullName: 'Day Care Center Assessment',
+                color: 'orange', border: 'border-orange-200', hover: 'hover:border-orange-400',
+                iconBg: 'bg-orange-50', iconText: 'text-orange-600',
+                subtypes: ['Center Assessment'],
+                subColors: ['bg-orange-100 text-orange-700'],
+                limits: 'Annual · Per center',
+                budget: '₱45,000 remaining', budgetColor: 'text-emerald-600',
+                budgetPct: '75%', budgetBar: 'bg-emerald-400',
+                tags: ['Centers'],
+                eligible: true,
+                delay: 160
+            },
+            {
+                id: 'senior', icon: '<i class="fas fa-user-friends"></i>', name: 'Senior Citizen', fullName: 'Senior Citizen Assistance Program',
+                color: 'amber', border: 'border-yellow-200', hover: 'hover:border-yellow-400',
+                iconBg: 'bg-yellow-50', iconText: 'text-yellow-600',
+                subtypes: ['SCID Issuance', 'Pension Top-up', 'Centenarian Benefit'],
+                subColors: ['bg-yellow-100 text-yellow-700', 'bg-amber-100 text-amber-700', 'bg-orange-100 text-orange-700'],
+                limits: 'Pension top-up monthly · SCID once',
+                budget: '₱87,000 remaining', budgetColor: 'text-amber-500',
+                budgetPct: '29%', budgetBar: 'bg-amber-400',
+                tags: ['60+ yrs'],
+                eligible: true,
+                delay: 200
+            },
+            {
+                id: 'pwd', icon: '<i class="fas fa-wheelchair"></i>', name: 'PWD', fullName: 'Persons with Disability Program',
+                color: 'indigo', border: 'border-indigo-200', hover: 'hover:border-indigo-400',
+                iconBg: 'bg-indigo-50', iconText: 'text-indigo-600',
+                subtypes: ['PWD ID Issuance', 'Financial Assistance'],
+                subColors: ['bg-indigo-100 text-indigo-700', 'bg-blue-100 text-blue-700'],
+                limits: 'ID: once · Financial: varies',
+                budget: '₱144,000 remaining', budgetColor: 'text-emerald-600',
+                budgetPct: '72%', budgetBar: 'bg-emerald-400',
+                tags: ['Disability'],
+                eligible: true,
+                delay: 240
+            },
+            {
+                id: 'soloparent', icon: '<i class="fas fa-user"></i>', name: 'Solo Parent', fullName: 'Solo Parent Welfare Program',
+                color: 'teal', border: 'border-teal-200', hover: 'hover:border-teal-400',
+                iconBg: 'bg-teal-50', iconText: 'text-teal-600',
+                subtypes: ['SPID Issuance', 'Livelihood Assistance', 'Educational Assistance'],
+                subColors: ['bg-teal-100 text-teal-700', 'bg-green-100 text-green-700', 'bg-blue-100 text-blue-700'],
+                limits: 'ID: once · Assistance: varies',
+                budget: '₱48,000 remaining', budgetColor: 'text-amber-500',
+                budgetPct: '32%', budgetBar: 'bg-amber-400',
+                tags: ['RA 8972'],
+                eligible: true,
+                delay: 280
+            },
+            {
+                id: 'wc', icon: '<i class="fas fa-lock"></i>', name: 'Women & Child', fullName: 'Women & Child Protection Program',
+                color: 'violet', border: 'border-violet-200', hover: 'hover:border-violet-300',
+                iconBg: 'bg-violet-50', iconText: 'text-violet-600',
+                subtypes: ['VAWC', 'CICL', 'Child Abuse', 'CAR'],
+                subColors: ['bg-red-100 text-red-700', 'bg-amber-100 text-amber-700', 'bg-violet-100 text-violet-700', 'bg-blue-100 text-blue-700'],
+                limits: 'Confidential · No preset limit',
+                budget: 'Restricted access', budgetColor: 'text-violet-500',
+                budgetPct: null, budgetBar: null,
+                tags: ['Confidential', 'MSWDO Head only'],
+                eligible: false,
+                restricted: true,
+                delay: 320
+            },
+        ];
+
+        let selected = null;
+
+        function renderCards() {
+            const grid = document.getElementById('progGrid');
+            programs.forEach(p => {
+                const card = document.createElement('div');
+                card.className = `prog-card animate-fade-up bg-white rounded-2xl border-2 ${p.border} ${p.hover} p-5 flex flex-col gap-3 relative overflow-hidden`;
+                card.style.animationDelay = p.delay + 'ms';
+                if (p.restricted) card.className += ' opacity-75';
+
+                const subtypesHtml = p.subtypes.slice(0, 3).map((s, i) =>
+                    `<span class="sub-badge inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${p.subColors[i] || p.subColors[0]}">${s}</span>`
+                ).join('') + (p.subtypes.length > 3 ? `<span class="text-[10px] text-slate-400">+${p.subtypes.length - 3} more</span>` : '');
+
+                const tagsHtml = p.tags.map(t =>
+                    `<span class="text-[10px] text-slate-400 border border-slate-200 px-2 py-0.5 rounded-full">${t}</span>`
+                ).join('');
+
+                card.innerHTML = `
+        ${p.restricted ? '<div class="absolute top-3 right-3 text-[10px] bg-violet-100 text-violet-600 font-semibold px-2 py-0.5 rounded-full">Admin / Head only</div>' : ''}
+        <div class="flex items-start gap-3">
+          <div class="w-11 h-11 rounded-xl ${p.iconBg} flex items-center justify-center text-xl flex-shrink-0">${p.icon}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <p class="text-[14px] font-semibold text-navy-600">${p.name}</p>
+              <span class="prog-arrow text-navy-400 text-sm">→</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5 leading-snug">${p.fullName}</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-1.5">${subtypesHtml}</div>
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+          <div class="flex gap-1.5 flex-wrap">${tagsHtml}</div>
+          <span class="text-[11px] font-semibold ${p.budgetColor} flex-shrink-0">${p.budget}</span>
+        </div>`;
+
+                card.onclick = () => openModal(p);
+                grid.appendChild(card);
+            });
+        }
+
+        function openModal(p) {
+            selected = p;
+            document.getElementById('mIcon').className = `w-12 h-12 rounded-xl ${p.iconBg} flex items-center justify-center text-2xl`;
+            document.getElementById('mIcon').textContent = p.icon;
+            document.getElementById('mTitle').textContent = p.name;
+            document.getElementById('mSub').textContent = p.fullName;
+
+            // Subtypes
+            const subtypesEl = document.getElementById('mSubtypes');
+            if (p.subtypes.length > 1) {
+                subtypesEl.innerHTML = `<p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-2">Choose Subtype</p>
+        <div class="flex flex-wrap gap-2">
+          ${p.subtypes.map((s, i) => `<button onclick="selectSubtype(this)" class="sub-badge px-3 py-1.5 rounded-xl border-2 border-slate-200 text-[12px] font-medium text-slate-600 hover:border-navy-400 hover:text-navy-600 transition-all">${s}</button>`).join('')}
+        </div>`;
+            } else {
+                subtypesEl.innerHTML = `<div class="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-[12px] text-slate-600 font-medium">${p.subtypes[0]}</div>`;
+            }
+
+            // Budget
+            const budgetEl = document.getElementById('mBudget');
+            if (p.budgetBar) {
+                budgetEl.innerHTML = `
+        <div class="flex-1">
+          <p class="text-slate-400 mb-1">Available Budget</p>
+          <p class="font-semibold ${p.budgetColor} text-[13px]">${p.budget}</p>
+        </div>
+        <div class="flex-1">
+          <p class="text-slate-400 mb-1">Utilization</p>
+          <div class="flex items-center gap-2">
+            <div class="flex-1 bg-slate-200 rounded-full h-1.5"><div class="h-1.5 rounded-full ${p.budgetBar}" style="width:${p.budgetPct}"></div></div>
+            <span class="text-[11px] font-semibold ${p.budgetColor}">${p.budgetPct}</span>
+          </div>
+        </div>
+        <div class="flex-1">
+          <p class="text-slate-400 mb-1">Limit</p>
+          <p class="text-slate-600 text-[11px] leading-snug">${p.limits}</p>
+        </div>`;
+            } else {
+                budgetEl.innerHTML = `<p class="text-violet-600 text-[12px] font-medium">🔒 Restricted — MSWDO Head or Admin access only</p>`;
+            }
+
+            if (p.restricted) {
+                document.getElementById('modalBox').querySelector('button:last-child').textContent = '🔒 Access Restricted';
+                document.getElementById('modalBox').querySelector('button:last-child').disabled = true;
+                document.getElementById('modalBox').querySelector('button:last-child').className = 'flex-1 py-2.5 bg-slate-100 rounded-xl text-[13px] font-semibold text-slate-400 cursor-not-allowed';
+            } else {
+                document.getElementById('modalBox').querySelector('button:last-child').textContent = 'Proceed →';
+                document.getElementById('modalBox').querySelector('button:last-child').disabled = false;
+                document.getElementById('modalBox').querySelector('button:last-child').className = 'flex-1 py-2.5 bg-navy-600 rounded-xl text-[13px] font-semibold text-white hover:bg-navy-500 transition-all';
+            }
+
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+        function selectSubtype(btn) {
+            btn.closest('.flex').querySelectorAll('button').forEach(b => {
+                b.className = 'sub-badge px-3 py-1.5 rounded-xl border-2 border-slate-200 text-[12px] font-medium text-slate-600 hover:border-navy-400 hover:text-navy-600 transition-all';
+            });
+            btn.className = 'sub-badge px-3 py-1.5 rounded-xl border-2 border-navy-600 bg-navy-50 text-[12px] font-semibold text-navy-700 transition-all';
+        }
+        function proceedAvailment() {
+            alert(`Proceeding to ${selected ? selected.name : ''} availment form...`);
+            closeModal();
+        }
+
+        // Close modal on backdrop click
+        document.getElementById('modal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+
+        renderCards();
+    </script>
+</body>
+
+</html>
