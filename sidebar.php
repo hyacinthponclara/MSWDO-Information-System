@@ -78,7 +78,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-chart-pie text-sm"></i> Dashboard
         </a>
 
-        <a href="clientslist.html"
+        <a href="clientslist.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
@@ -178,7 +178,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'mswdohead.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie text-sm"></i> Dashboard
         </a>
-        <a href="#"
+        <a href="clientslist.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
@@ -264,7 +264,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-chart-pie text-sm"></i> Dashboard
         </a>
         </a>
-        <a href="#"
+        <a href="clientslist.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
