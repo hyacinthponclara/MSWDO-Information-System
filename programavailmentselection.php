@@ -1,3 +1,8 @@
+<?php
+require 'auth.php';
+requireRole(['Admin', 'Social Worker', 'Staff']);
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -55,6 +60,7 @@
 </head>
 
 <body class="bg-slate2 min-h-screen flex">
+    <?php include 'sidebar.php'; ?>
 
     <div class="ml-56 flex-1 flex flex-col min-h-screen">
 
