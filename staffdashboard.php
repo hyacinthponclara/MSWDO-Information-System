@@ -171,7 +171,7 @@ requireRole('Staff');
     <!-- ══════════════════════════ SIDEBAR ══════════════════════════ -->
     <?php require 'sidebar.php'; ?>
     <!-- ══════════════════════════ MAIN ══════════════════════════════ -->
-    <div class="flex-1 flex flex-col min-h-screen">
+    <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <!-- Top bar -->
         <header

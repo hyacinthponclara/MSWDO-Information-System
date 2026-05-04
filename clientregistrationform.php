@@ -156,7 +156,7 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
     <!-- SIDEBAR -->
     <?php include 'sidebar.php'; ?>
     <!-- MAIN -->
-    <div class="flex-1 flex flex-col min-h-screen">
+    <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <header
             class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">

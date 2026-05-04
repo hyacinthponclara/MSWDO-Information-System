@@ -59,7 +59,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
 </html>
 
-<aside id="sidebar" class="w-64 min-h-screen flex flex-col" style="background: #0B2545;">
+<aside id="sidebar" class="fixed top-0 left-0 w-64 h-screen flex flex-col overflow-y-auto z-50" style="background: #0B2545;">
 
     <!-- Logo -->
     <div class="px-5 pt-5 pb-4 border-b border-white/10">

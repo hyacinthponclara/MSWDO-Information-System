@@ -404,7 +404,7 @@ requireRole(['Social Worker']);
     <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
     <?php include 'sidebar.php'; ?>
     <!-- ═══════════════════ MAIN ═══════════════════ -->
-    <div class="flex-1 flex flex-col min-h-screen">
+    <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <!-- Topbar -->
         <header
