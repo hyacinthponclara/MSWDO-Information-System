@@ -156,7 +156,7 @@ requireRole('Admin');
         <span class="text-slate-400 text-xs hidden sm:block" id="currentDate"></span>
       </div>
       <div class="flex items-center gap-2">
-        <a href="clientregistrationform.html"
+        <a href="clientregistrationform.php"
           class="text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 bg-white hover:border-navy-400 hover:text-navy-600">
           + Register Client
         </a>
