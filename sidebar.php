@@ -182,11 +182,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
-        <a href="#"
+        <a href="programavailments.html"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-list text-sm"></i> Availments
         </a>
-        <a href="#"
+        <a href="casestudy.html"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-book text-sm"></i> Case Study
         </a>

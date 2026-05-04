@@ -1,3 +1,8 @@
+<?php
+require 'auth.php';
+requireRole('Social Worker');
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -177,105 +182,7 @@
 <body class="bg-slate2 min-h-screen flex">
 
     <!-- ══════════════════════════ SIDEBAR ══════════════════════════ -->
-    <aside class="w-56 min-h-screen bg-navy-600 flex flex-col flex-shrink-0 fixed top-0 left-0 h-full z-30">
-
-        <!-- Logo -->
-        <div class="px-5 pt-5 pb-4 border-b border-white/10">
-            <div
-                class="w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center text-navy-600 text-lg font-serif font-bold mb-3">
-                M</div>
-            <p class="font-serif text-white text-sm leading-snug">MSWDO San Enrique</p>
-            <p class="text-white/40 text-[10px] mt-0.5 tracking-wide">Information System</p>
-        </div>
-
-        <!-- Nav -->
-        <nav class="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-
-            <p class="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Main</p>
-            <a href="#"
-                class="sidebar-item active flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white border-l-[3px]">
-                <i class="fas fa-chart-pie text-sm"></i> Dashboard
-            </a>
-            <a href="clientslist.html"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-                <i class="fas fa-users text-sm"></i> Clients
-            </a>
-            <a href="programavailmentselection.html"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-                <i class="fas fa-list text-sm"></i> Availments
-            </a>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-                <i class="fas fa-book text-sm"></i> Case Study
-            </a>
-
-            <!-- Confidential section — violet tinted -->
-            <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-violet-300/60 font-medium">Confidential
-            </p>
-            <a href="#"
-                class="sidebar-conf active-conf flex items-center justify-between px-3 py-2 rounded text-[13px]">
-                <span class="flex items-center gap-2.5"><i class="fas fa-lock text-sm"></i> Confidential Cases</span>
-                <span
-                    class="badge-ring relative bg-red-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">3</span>
-            </a>
-            <a href="#" class="sidebar-conf flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-violet-200/50">
-                <i class="fas fa-search text-sm"></i> Case Search
-            </a>
-
-            <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-capsules text-sm"></i> AICS</a>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-home text-sm"></i> 4Ps</a>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-briefcase text-sm"></i> SLP</a>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-utensils text-sm"></i> SFP</a>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-school text-sm"></i> Day Care</a>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-user-friends text-sm"></i> Senior Citizen</a>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-wheelchair text-sm"></i> PWD</a>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-user text-sm"></i> Solo Parent</a>
-
-            <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Reports</p>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-file-alt text-sm"></i> Reports</a>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-map-marked-alt text-sm"></i> Geographic</a>
-            <a href="#"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-money-bill text-sm"></i> Budget Monitor</a>
-        </nav>
-
-        <!-- User footer -->
-        <div class="px-4 py-3 border-t border-white/10 flex items-center gap-3">
-            <div
-                class="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                MP</div>
-            <div class="min-w-0">
-                <p class="text-white text-xs font-medium truncate">Ma. Teresa C. Ponclara </p>
-                <p class="text-violet-300/60 text-[10px]">MSWDO Head</p>
-            </div>
-            <a href="index.html" class="ml-auto text-white/30 hover:text-white/70 text-sm transition-colors"
-                title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-            </a>
-        </div>
-    </aside>
-
+    <?php require 'sidebar.php'; ?>
     <!-- ══════════════════════════ MAIN ══════════════════════════════ -->
     <div class="ml-56 flex-1 flex flex-col min-h-screen">
 
