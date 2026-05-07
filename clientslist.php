@@ -1,8 +1,94 @@
 <?php
 require 'auth.php';
 requireRole(['Admin', 'Social Worker', 'Staff']);
-?>
+require 'db_connect.php';
 
+
+$clients = $pdo->query("
+    SELECT
+        c.client_id,
+        c.cl_lastname,
+        c.cl_firstname,
+        c.cl_middlename,
+        c.cl_age,
+        c.cl_sex,
+        c.cl_contact_num,
+        c.cl_date_registered,
+        c.cl_is_4ps,
+        c.cl_is_pwd,
+        c.cl_is_senior,
+        c.cl_is_soloparent,
+        c.cl_is_indigent,
+        b.barangay_name,
+        COUNT(a.availment_id) AS total_availments,
+        MAX(a.av_date_applied) AS last_availment
+    FROM CLIENT c
+    LEFT JOIN BARANGAY b ON c.brgy_id = b.barangay_id
+    LEFT JOIN AVAILMENT a ON c.client_id = a.client_id
+    GROUP BY c.client_id
+    ORDER BY c.cl_date_registered DESC
+")->fetchAll();
+
+
+$totalClients    = count($clients);
+$thisMonth       = 0;
+$thisMonthYear   = date('Y-m');
+
+foreach ($clients as $c) {
+    // check if registered this month
+    if (isset($c['cl_date_registered']) && str_starts_with($c['cl_date_registered'], $thisMonthYear)) {
+        $thisMonth++;
+    }
+}
+
+// --- fetch barangays for the filter dropdown ---
+$barangays = $pdo->query("SELECT barangay_name FROM BARANGAY ORDER BY barangay_name")->fetchAll();
+
+// --- build the JS-safe client array from DB rows ---
+// we build it in PHP then json_encode it so JS can use it exactly like before
+$jsClients = [];
+foreach ($clients as $c) {
+    // full name
+    $name = $c['cl_lastname'] . ', ' . $c['cl_firstname'];
+    if (!empty($c['cl_middlename'])) {
+        $name .= ' ' . $c['cl_middlename'][0] . '.'; // middle initial
+    }
+
+    // build sectors array based on boolean columns
+    $sectors = [];
+    if ($c['cl_is_4ps'])        $sectors[] = '4ps';
+    if ($c['cl_is_pwd'])        $sectors[] = 'pwd';
+    if ($c['cl_is_senior'])     $sectors[] = 'senior';
+    if ($c['cl_is_soloparent']) $sectors[] = 'solo';
+    if ($c['cl_is_indigent'])   $sectors[] = 'indigent';
+
+    // format the client ID like CLT-2024-00101
+    $year   = date('Y', strtotime($c['cl_date_registered'] ?? 'now'));
+    $idStr  = 'CLT-' . $year . '-' . str_pad($c['client_id'], 5, '0', STR_PAD_LEFT);
+
+    // format dates for display
+    $registered  = $c['cl_date_registered']
+        ? date('M j, Y', strtotime($c['cl_date_registered']))
+        : '—';
+    $lastAvailed = $c['last_availment']
+        ? date('M j, Y', strtotime($c['last_availment']))
+        : 'None yet';
+
+    $jsClients[] = [
+        'id'         => $idStr,
+        'client_id'  => $c['client_id'],  // real DB id for links
+        'name'       => $name,
+        'sex'        => $c['cl_sex'] ?? '—',
+        'age'        => (int)($c['cl_age'] ?? 0),
+        'barangay'   => $c['barangay_name'] ?? 'Unknown',
+        'contact'    => $c['cl_contact_num'] ?? '—',
+        'sectors'    => $sectors,
+        'availments' => (int)$c['total_availments'],
+        'last'       => $lastAvailed,
+        'registered' => $registered,
+    ];
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -11,9 +97,7 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Clients – MSWDO San Enrique</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link
-        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
-        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
         tailwind.config = {
@@ -28,242 +112,84 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
                     keyframes: {
                         fadeUp: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
                         fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-                        shimmer: { '0%': { backgroundPosition: '-600px 0' }, '100%': { backgroundPosition: '600px 0' } },
                     },
                     animation: {
-                        'fade-up': 'fadeUp 0.35s ease both',
+                        'fade-up':   'fadeUp 0.35s ease both',
                         'fade-up-1': 'fadeUp 0.35s 0.05s ease both',
                         'fade-up-2': 'fadeUp 0.35s 0.10s ease both',
                         'fade-up-3': 'fadeUp 0.35s 0.15s ease both',
                         'fade-up-4': 'fadeUp 0.35s 0.20s ease both',
-                        'fade-in': 'fadeIn 0.2s ease both',
+                        'fade-in':   'fadeIn 0.2s ease both',
                     }
                 }
             }
         }
     </script>
     <style>
-        body {
-            font-family: 'DM Sans', sans-serif;
-        }
+        body { font-family: 'DM Sans', sans-serif; }
 
-        /* Sidebar */
-        .sidebar-item {
-            transition: all .15s;
-        }
+        .sidebar-item { transition: all .15s; }
+        .sidebar-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.95); }
+        .sidebar-item.active { background: rgba(29,111,164,.28); border-left-color: #C49A2A; color: #fff; }
 
-        .sidebar-item:hover {
-            background: rgba(255, 255, 255, .07);
-            color: rgba(255, 255, 255, .95);
-        }
+        #mainSearch:focus { box-shadow: 0 0 0 4px rgba(58,95,147,.15); }
 
-        .sidebar-item.active {
-            background: rgba(29, 111, 164, .28);
-            border-left-color: #C49A2A;
-            color: #fff;
-        }
+        .client-row { transition: all .15s ease; cursor: pointer; }
+        .client-row:hover { background: #F0F4FA; }
+        .client-row:hover .row-arrow { opacity: 1; transform: translateX(0); }
+        .row-arrow { opacity: 0; transform: translateX(-4px); transition: all .15s ease; }
 
-        /* Search input glow on focus */
-        #mainSearch:focus {
-            box-shadow: 0 0 0 4px rgba(58, 95, 147, .15);
-        }
+        .filter-chip { transition: all .15s ease; cursor: pointer; user-select: none; }
+        .filter-chip:hover { border-color: #3A5F93; color: #0B2545; }
+        .filter-chip.active { background: #0B2545; color: #fff; border-color: #0B2545; }
+        .filter-chip.active .chip-count { background: rgba(255,255,255,.2); color: #fff; }
 
-        /* Client rows */
-        .client-row {
-            transition: all .15s ease;
-            cursor: pointer;
-        }
+        .badge-4ps      { background: #EDE9FE; color: #5B21B6; }
+        .badge-pwd      { background: #DBEAFE; color: #1E40AF; }
+        .badge-senior   { background: #FEF3C7; color: #92400E; }
+        .badge-solo     { background: #CCFBF1; color: #0F766E; }
+        .badge-indigent { background: #DCFCE7; color: #15803D; }
 
-        .client-row:hover {
-            background: #F0F4FA;
-        }
+        .sort-btn { transition: color .12s; }
+        .sort-btn:hover { color: #0B2545; }
+        .sort-btn.asc::after  { content: ' ↑'; font-size: 10px; }
+        .sort-btn.desc::after { content: ' ↓'; font-size: 10px; }
 
-        .client-row:hover .row-arrow {
-            opacity: 1;
-            transform: translateX(0);
-        }
+        .av-0 { background: #0B2545; } .av-1 { background: #1D6FA4; }
+        .av-2 { background: #0F766E; } .av-3 { background: #92400E; }
+        .av-4 { background: #6D28D9; } .av-5 { background: #065F46; }
+        .av-6 { background: #9D174D; } .av-7 { background: #1D4ED8; }
 
-        .row-arrow {
-            opacity: 0;
-            transform: translateX(-4px);
-            transition: all .15s ease;
-        }
+        .empty-state { animation: fadeUp 0.4s ease both; }
+        #quickCard { transition: all .2s ease; }
 
-        /* Filter chips */
-        .filter-chip {
-            transition: all .15s ease;
-            cursor: pointer;
-            user-select: none;
-        }
+        .pg-btn { transition: all .15s; }
+        .pg-btn:hover:not(:disabled) { border-color: #3A5F93; color: #0B2545; background: #EBF4FB; }
+        .pg-btn.active { background: #0B2545; color: #fff; border-color: #0B2545; }
+        .pg-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-        .filter-chip:hover {
-            border-color: #3A5F93;
-            color: #0B2545;
-        }
-
-        .filter-chip.active {
-            background: #0B2545;
-            color: #fff;
-            border-color: #0B2545;
-        }
-
-        .filter-chip.active .chip-count {
-            background: rgba(255, 255, 255, .2);
-            color: #fff;
-        }
-
-        /* Sectoral badge */
-        .badge-4ps {
-            background: #EDE9FE;
-            color: #5B21B6;
-        }
-
-        .badge-pwd {
-            background: #DBEAFE;
-            color: #1E40AF;
-        }
-
-        .badge-senior {
-            background: #FEF3C7;
-            color: #92400E;
-        }
-
-        .badge-solo {
-            background: #CCFBF1;
-            color: #0F766E;
-        }
-
-        .badge-indigent {
-            background: #DCFCE7;
-            color: #15803D;
-        }
-
-        /* Sort arrow */
-        .sort-btn {
-            transition: color .12s;
-        }
-
-        .sort-btn:hover {
-            color: #0B2545;
-        }
-
-        .sort-btn.asc::after {
-            content: ' ↑';
-            font-size: 10px;
-        }
-
-        .sort-btn.desc::after {
-            content: ' ↓';
-            font-size: 10px;
-        }
-
-        /* Avatar colors cycle */
-        .av-0 {
-            background: #0B2545;
-        }
-
-        .av-1 {
-            background: #1D6FA4;
-        }
-
-        .av-2 {
-            background: #0F766E;
-        }
-
-        .av-3 {
-            background: #92400E;
-        }
-
-        .av-4 {
-            background: #6D28D9;
-        }
-
-        .av-5 {
-            background: #065F46;
-        }
-
-        .av-6 {
-            background: #9D174D;
-        }
-
-        .av-7 {
-            background: #1D4ED8;
-        }
-
-        /* Empty state */
-        .empty-state {
-            animation: fadeUp 0.4s ease both;
-        }
-
-        /* Quick view card */
-        #quickCard {
-            transition: all .2s ease;
-        }
-
-        /* Pagination btn */
-        .pg-btn {
-            transition: all .15s;
-        }
-
-        .pg-btn:hover:not(:disabled) {
-            border-color: #3A5F93;
-            color: #0B2545;
-            background: #EBF4FB;
-        }
-
-        .pg-btn.active {
-            background: #0B2545;
-            color: #fff;
-            border-color: #0B2545;
-        }
-
-        .pg-btn:disabled {
-            opacity: .4;
-            cursor: not-allowed;
-        }
-
-        ::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, .15);
-            border-radius: 2px;
-        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
 
         @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
+            from { opacity: 0; }
+            to   { opacity: 1; }
         }
     </style>
 </head>
 
 <body class="bg-slate2 min-h-screen flex">
+
     <?php include 'sidebar.php'; ?>
 
-    <!-- ═══════════════════ MAIN ═══════════════════ -->
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <!-- Topbar -->
-        <header
-            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 animate-fade-up">
+        <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 animate-fade-up">
             <div class="flex items-center gap-2 text-[13px]">
                 <span class="text-navy-600 font-semibold">Clients</span>
             </div>
@@ -276,41 +202,29 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
                     class="text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-navy-400 hover:text-navy-600 transition-all flex items-center gap-1.5">
                     <i class="fas fa-file-export"></i> Export
                 </button>
-                <button onclick="showToast('Navigating to registration form...')"
+                <a href="clientregistrationform.php"
                     class="text-[12px] font-semibold text-white bg-navy-600 rounded-lg px-4 py-1.5 hover:bg-navy-500 transition-all flex items-center gap-1.5">
                     <i class="fas fa-user-plus"></i> Register New Client
-                </button>
+                </a>
             </div>
         </header>
 
         <main class="flex-1 p-6 flex flex-col gap-5">
 
-            <!-- ── PAGE HEADER ── -->
+            <!-- Page header -->
             <div class="animate-fade-up">
                 <h1 class="text-xl font-serif text-navy-600">Client Registry</h1>
-                <p class="text-[13px] text-slate-500 mt-0.5">Search, filter, and manage all registered clients across
-                    programs.</p>
+                <p class="text-[13px] text-slate-500 mt-0.5">Search, filter, and manage all registered clients across programs.</p>
             </div>
 
-            <!-- ── STAT CHIPS ── -->
-            <div class="animate-fade-up-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="animate-fade-up-1 grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div class="bg-white rounded-2xl border border-slate-200 px-4 py-3 flex items-center gap-3">
                     <div class="w-9 h-9 rounded-xl bg-navy-50 flex items-center justify-center text-base flex-shrink-0">
                         <i class="fas fa-users"></i>
                     </div>
                     <div>
-                        <p class="text-[20px] font-bold text-navy-600 leading-none">1,284</p>
+                        <p class="text-[20px] font-bold text-navy-600 leading-none"><?= number_format($totalClients) ?></p>
                         <p class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">Total Clients</p>
-                    </div>
-                </div>
-                <div class="bg-white rounded-2xl border border-slate-200 px-4 py-3 flex items-center gap-3">
-                    <div
-                        class="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-base flex-shrink-0">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div>
-                        <p class="text-[20px] font-bold text-emerald-600 leading-none">1,198</p>
-                        <p class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">Active</p>
                     </div>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200 px-4 py-3 flex items-center gap-3">
@@ -318,29 +232,28 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
                         <i class="fas fa-calendar-alt"></i>
                     </div>
                     <div>
-                        <p class="text-[20px] font-bold text-blue-600 leading-none">47</p>
+                        <p class="text-[20px] font-bold text-blue-600 leading-none"><?= $thisMonth ?></p>
                         <p class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">Registered This Month</p>
                     </div>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200 px-4 py-3 flex items-center gap-3">
-                    <div
-                        class="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-base flex-shrink-0">
-                        <i class="fas fa-clock"></i>
+                    <div class="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-base flex-shrink-0">
+                        <i class="fas fa-database"></i>
                     </div>
                     <div>
-                        <p class="text-[20px] font-bold text-amber-500 leading-none">86</p>
-                        <p class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">Inactive</p>
+                        <!-- count of clients with at least 1 availment -->
+                        <p class="text-[20px] font-bold text-emerald-600 leading-none">
+                            <?= count(array_filter($jsClients, fn($c) => $c['availments'] > 0)) ?>
+                        </p>
+                        <p class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">With Availments</p>
                     </div>
                 </div>
             </div>
 
-            <!-- ── SEARCH + FILTERS ── -->
+            <!-- Search + Filters -->
             <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
-
-                <!-- Main search bar -->
                 <div class="relative mb-4">
-                    <span
-                        class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none"><i class="fas fa-search"></i></span>
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none"><i class="fas fa-search"></i></span>
                     <input id="mainSearch" type="text"
                         placeholder="Search by name, Client ID, barangay, contact number..."
                         class="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-[13px] text-slate-800 outline-none transition-all focus:border-navy-400 focus:bg-white"
@@ -349,54 +262,37 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
                         class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 text-lg hidden">✕</button>
                 </div>
 
-                <!-- Filter row -->
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mr-1">Filter:</span>
 
-                    <!-- Sectoral chips -->
-                    <button onclick="toggleChip(this,'4ps')"
-                        class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
-                        <i class="fas fa-home"></i> 4Ps <span
-                            class="chip-count bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-0.5">312</span>
+                    <button onclick="toggleChip(this,'4ps')" class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
+                        <i class="fas fa-home"></i> 4Ps
                     </button>
-                    <button onclick="toggleChip(this,'pwd')"
-                        class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
-                        <i class="fas fa-wheelchair"></i> PWD <span
-                            class="chip-count bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-0.5">198</span>
+                    <button onclick="toggleChip(this,'pwd')" class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
+                        <i class="fas fa-wheelchair"></i> PWD
                     </button>
-                    <button onclick="toggleChip(this,'senior')"
-                        class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
-                        <i class="fas fa-user-friends"></i> Senior <span
-                            class="chip-count bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-0.5">247</span>
+                    <button onclick="toggleChip(this,'senior')" class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
+                        <i class="fas fa-user-friends"></i> Senior
                     </button>
-                    <button onclick="toggleChip(this,'solo')"
-                        class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
-                        <i class="fas fa-user"></i> Solo Parent <span
-                            class="chip-count bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-0.5">134</span>
+                    <button onclick="toggleChip(this,'solo')" class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
+                        <i class="fas fa-user"></i> Solo Parent
                     </button>
-                    <button onclick="toggleChip(this,'indigent')"
-                        class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
-                        <i class="fas fa-list"></i> Indigent <span
-                            class="chip-count bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-0.5">891</span>
+                    <button onclick="toggleChip(this,'indigent')" class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
+                        <i class="fas fa-list"></i> Indigent
                     </button>
 
                     <div class="w-px h-5 bg-slate-200 mx-1"></div>
 
-                    <!-- Barangay filter -->
+                    <!-- Barangay dropdown -->
                     <select onchange="filterBarangay(this.value)"
                         class="text-[11px] border border-slate-200 rounded-full px-3 py-1 bg-white text-slate-600 outline-none focus:border-navy-400 appearance-none pr-7 cursor-pointer"
                         style="background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 20 20%22%3E%3Cpath stroke=%22%236B7280%22 stroke-width=%221.5%22 d=%22M6 8l4 4 4-4%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 6px center;background-size:12px;">
-                        <option value=""></i>All Barangays</option>
-                        <option>Poblacion</option>
-                        <option>San Jose</option>
-                        <option>Beguiligan</option>
-                        <option>Buenavista</option>
-                        <option>Doldol</option>
-                        <option>Guintorilan</option>
-                        <option>Tabunan</option>
+                        <option value="">All Barangays</option>
+                        <?php foreach ($barangays as $b): ?>
+                            <option><?= htmlspecialchars($b['barangay_name']) ?></option>
+                        <?php endforeach; ?>
                     </select>
 
-                    <!-- Sex filter -->
                     <select onchange="filterSex(this.value)"
                         class="text-[11px] border border-slate-200 rounded-full px-3 py-1 bg-white text-slate-600 outline-none focus:border-navy-400 appearance-none pr-7 cursor-pointer"
                         style="background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 20 20%22%3E%3Cpath stroke=%22%236B7280%22 stroke-width=%221.5%22 d=%22M6 8l4 4 4-4%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 6px center;background-size:12px;">
@@ -405,186 +301,123 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
                         <option>Male</option>
                     </select>
 
-                    <!-- Clear all -->
                     <button id="clearFiltersBtn" onclick="clearAllFilters()"
                         class="hidden ml-auto text-[11px] font-medium text-red-500 hover:text-red-700 flex items-center gap-1 transition-colors">
                         ✕ Clear all filters
                     </button>
 
-                    <!-- Result count -->
-                    <span id="resultCount" class="ml-auto text-[11px] text-slate-400 font-medium">Showing <strong
-                            class="text-slate-600" id="countNum">1,284</strong> clients</span>
+                    <span id="resultCount" class="ml-auto text-[11px] text-slate-400 font-medium">
+                        Showing <strong class="text-slate-600" id="countNum">0</strong> clients
+                    </span>
                 </div>
             </div>
 
-            <!-- ── TABLE + QUICK CARD ── -->
+            <!-- Table + Quick Card -->
             <div class="animate-fade-up-3 flex gap-4 items-start">
 
-                <!-- Table -->
                 <div class="flex-1 bg-white rounded-2xl border border-slate-200 overflow-hidden min-w-0">
 
-                    <!-- Table header with sort -->
                     <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
                         <div class="flex items-center gap-3">
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"
-                                    class="w-4 h-4 accent-navy-600 rounded">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="w-4 h-4 accent-navy-600 rounded">
                                 <span class="text-[11px] text-slate-400">Select all</span>
                             </label>
                             <div id="bulkActions" class="hidden flex items-center gap-2 animate-fade-in">
                                 <span class="text-[11px] font-medium text-navy-600" id="selectedCount">0 selected</span>
-                                <button
-                                    class="text-[11px] font-medium text-blue-600 border border-blue-200 bg-blue-50 rounded-lg px-2.5 py-1 hover:bg-blue-100 transition-all">Export
-                                    selected</button>
-                                <button
-                                    class="text-[11px] font-medium text-slate-500 border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-slate-50 transition-all">Print
-                                    list</button>
+                                <button class="text-[11px] font-medium text-blue-600 border border-blue-200 bg-blue-50 rounded-lg px-2.5 py-1 hover:bg-blue-100 transition-all">Export selected</button>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <!-- View toggle -->
                             <div class="flex border border-slate-200 rounded-lg overflow-hidden">
-                                <button id="viewTable" onclick="setView('table')"
-                                    class="px-2.5 py-1.5 text-sm bg-navy-600 text-white transition-all"
-                                    title="Table view">☰</button>
-                                <button id="viewGrid" onclick="setView('grid')"
-                                    class="px-2.5 py-1.5 text-sm bg-white text-slate-500 hover:bg-slate-50 transition-all"
-                                    title="Card view">⊞</button>
+                                <button id="viewTable" onclick="setView('table')" class="px-2.5 py-1.5 text-sm bg-navy-600 text-white transition-all">
+                                    <i class="fas fa-list"></i>
+                                </button>
+                                <button id="viewGrid" onclick="setView('grid')" class="px-2.5 py-1.5 text-sm bg-white text-slate-500 hover:bg-slate-50 transition-all">
+                                    <i class="fas fa-th"></i>
+                                </button>
                             </div>
-                            <select
-                                class="text-[11px] border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-600 outline-none focus:border-navy-400 cursor-pointer"
-                                style="background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 fill=%22none%22 viewBox=%220 0 20 20%22%3E%3Cpath stroke=%22%236B7280%22 stroke-width=%221.5%22 d=%22M6 8l4 4 4-4%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 6px center;background-size:12px;appearance:none;padding-right:1.5rem;">
-                                <option>25 per page</option>
-                                <option>50 per page</option>
-                                <option>100 per page</option>
-                            </select>
                         </div>
                     </div>
 
-                    <!-- TABLE VIEW -->
+                    <!-- Table view -->
                     <div id="tableView">
                         <table class="w-full text-[12px]">
                             <thead>
-                                <tr class="border-b border-slate-100 bg-slate-50/50">
+                                <tr class="border-b border-slate-100 bg-slate-50/40">
                                     <th class="w-8 px-4 py-3"></th>
-                                    <th class="text-left px-4 py-3">
-                                        <button
-                                            class="sort-btn asc text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-navy-600 flex items-center gap-1"
-                                            onclick="sortBy('name',this)">Client</button>
+                                    <th class="px-4 py-3 text-left">
+                                        <button class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400" onclick="sortBy('name',this)">Client</button>
                                     </th>
-                                    <th class="text-left px-4 py-3">
-                                        <button
-                                            class="sort-btn text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-navy-600"
-                                            onclick="sortBy('id',this)">Client ID</button>
+                                    <th class="px-4 py-3 text-left">
+                                        <button class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400" onclick="sortBy('id',this)">Client ID</button>
                                     </th>
-                                    <th class="text-left px-4 py-3">
-                                        <button
-                                            class="sort-btn text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-navy-600"
-                                            onclick="sortBy('barangay',this)">Barangay</button>
+                                    <th class="px-4 py-3 text-left">
+                                        <button class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400" onclick="sortBy('barangay',this)">Barangay</button>
                                     </th>
-                                    <th class="text-left px-4 py-3 hidden sm:table-cell">
-                                        <span
-                                            class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Sectors</span>
+                                    <th class="px-4 py-3 text-left hidden sm:table-cell">
+                                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sectors</span>
                                     </th>
-                                    <th class="text-left px-4 py-3 hidden md:table-cell">
-                                        <button
-                                            class="sort-btn text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-navy-600"
-                                            onclick="sortBy('availments',this)">Availments</button>
+                                    <th class="px-4 py-3 text-left hidden md:table-cell">
+                                        <button class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400" onclick="sortBy('availments',this)">Availments</button>
                                     </th>
-                                    <th class="text-left px-4 py-3 hidden lg:table-cell">
-                                        <button
-                                            class="sort-btn text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-navy-600"
-                                            onclick="sortBy('date',this)">Registered</button>
+                                    <th class="px-4 py-3 text-left hidden lg:table-cell">
+                                        <button class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400" onclick="sortBy('date',this)">Registered</button>
                                     </th>
-                                    <th class="px-4 py-3"></th>
+                                    <th class="px-4 py-3 text-left">
+                                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Action</span>
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody id="clientTableBody" class="divide-y divide-slate-100"></tbody>
+                            <tbody id="clientTableBody"></tbody>
                         </table>
 
-                        <!-- Empty state -->
-                        <div id="emptyState" class="hidden py-16 text-center empty-state">
-                            <div class="text-4xl mb-3">🔍</div>
+                        <!-- empty state - shows when search/filter returns nothing -->
+                        <div id="emptyState" class="hidden empty-state flex flex-col items-center justify-center py-16 text-center">
+                            <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl mb-4">🔍</div>
                             <p class="text-[14px] font-semibold text-slate-600">No clients found</p>
                             <p class="text-[12px] text-slate-400 mt-1">Try adjusting your search or filters</p>
-                            <button onclick="clearSearch(); clearAllFilters()"
-                                class="mt-4 text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-4 py-2 hover:bg-navy-100 transition-all">
-                                Clear search &amp; filters
-                            </button>
+                            <button onclick="clearAllFilters()" class="mt-4 text-[12px] font-medium text-navy-600 border border-navy-200 rounded-lg px-4 py-2 hover:bg-navy-50 transition-all">Clear filters</button>
                         </div>
                     </div>
 
-                    <!-- CARD / GRID VIEW -->
-                    <div id="gridView" class="hidden p-4 grid grid-cols-2 gap-3" id="clientGridBody"></div>
-
-                    <!-- Pagination -->
-                    <div class="px-5 py-3.5 border-t border-slate-100 flex items-center justify-between">
-                        <span class="text-[11px] text-slate-400">Page <strong class="text-slate-600"
-                                id="pageNum">1</strong> of <strong class="text-slate-600"
-                                id="pageTotal">52</strong></span>
-                        <div class="flex items-center gap-1.5">
-                            <button disabled
-                                class="pg-btn w-8 h-8 rounded-lg border border-slate-200 text-[11px] text-slate-400 flex items-center justify-center">←</button>
-                            <button
-                                class="pg-btn active w-8 h-8 rounded-lg border text-[11px] flex items-center justify-center">1</button>
-                            <button
-                                class="pg-btn w-8 h-8 rounded-lg border border-slate-200 text-[11px] text-slate-500 flex items-center justify-center">2</button>
-                            <button
-                                class="pg-btn w-8 h-8 rounded-lg border border-slate-200 text-[11px] text-slate-500 flex items-center justify-center">3</button>
-                            <span class="text-slate-300 text-[11px]">…</span>
-                            <button
-                                class="pg-btn w-8 h-8 rounded-lg border border-slate-200 text-[11px] text-slate-500 flex items-center justify-center">52</button>
-                            <button
-                                class="pg-btn w-8 h-8 rounded-lg border border-slate-200 text-[11px] text-slate-500 flex items-center justify-center">→</button>
-                        </div>
+                    <!-- Grid view -->
+                    <div id="gridView" class="hidden p-4">
+                        <div id="clientGridBody" class="grid grid-cols-2 lg:grid-cols-3 gap-3"></div>
                     </div>
                 </div>
 
-                <!-- Quick View Card (appears on row hover/click) -->
-                <div id="quickCard" class="w-64 flex-shrink-0 hidden">
-                    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden sticky top-20">
-                        <div class="h-1 bg-gradient-to-r from-navy-600 to-blue-400"></div>
-                        <div class="p-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Quick View</p>
-                                <button onclick="closeQuick()"
-                                    class="text-slate-300 hover:text-slate-500 text-lg leading-none">✕</button>
+                <!-- Quick view card -->
+                <div id="quickCard" class="hidden w-64 flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden animate-fade-in sticky top-20">
+                    <div class="p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Quick View</p>
+                            <button onclick="closeQuick()" class="text-slate-300 hover:text-slate-500 text-lg leading-none">✕</button>
+                        </div>
+                        <div class="flex items-center gap-3 mb-4">
+                            <div id="qcAvatar" class="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"></div>
+                            <div>
+                                <p id="qcName" class="text-[13px] font-semibold text-navy-600"></p>
+                                <p id="qcId" class="text-[10px] text-slate-400 mt-0.5"></p>
                             </div>
-                            <div class="flex items-center gap-3 mb-4">
-                                <div id="qcAvatar"
-                                    class="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                                </div>
-                                <div>
-                                    <p id="qcName" class="text-[13px] font-semibold text-navy-600"></p>
-                                    <p id="qcId" class="text-[10px] text-slate-400 mt-0.5"></p>
-                                </div>
-                            </div>
-                            <div class="space-y-2 mb-4">
-                                <div class="flex justify-between text-[11px]"><span
-                                        class="text-slate-400">Barangay</span><span id="qcBrgy"
-                                        class="font-medium text-slate-700"></span></div>
-                                <div class="flex justify-between text-[11px]"><span class="text-slate-400">Age /
-                                        Sex</span><span id="qcAge" class="font-medium text-slate-700"></span></div>
-                                <div class="flex justify-between text-[11px]"><span
-                                        class="text-slate-400">Contact</span><span id="qcContact"
-                                        class="font-medium text-slate-700"></span></div>
-                                <div class="flex justify-between text-[11px]"><span class="text-slate-400">Total
-                                        Availments</span><span id="qcAvails" class="font-semibold text-navy-600"></span>
-                                </div>
-                                <div class="flex justify-between text-[11px]"><span class="text-slate-400">Last
-                                        Availed</span><span id="qcLast" class="font-medium text-slate-700"></span></div>
-                            </div>
-                            <div id="qcBadges" class="flex flex-wrap gap-1.5 mb-4"></div>
-                            <div class="space-y-2">
-                                <button onclick="showToast('Opening client profile...')"
-                                    class="w-full py-2.5 bg-navy-600 text-white text-[12px] font-semibold rounded-xl hover:bg-navy-500 transition-all">
-                                    View Full Profile →
-                                </button>
-                                <button onclick="showToast('Starting new availment...')"
-                                    class="w-full py-2.5 border border-navy-200 bg-navy-50 text-navy-700 text-[12px] font-medium rounded-xl hover:bg-navy-100 transition-all">
-                                    + New Availment
-                                </button>
-                            </div>
+                        </div>
+                        <div class="space-y-2 mb-4">
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Barangay</span><span id="qcBrgy" class="font-medium text-slate-700"></span></div>
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Age / Sex</span><span id="qcAge" class="font-medium text-slate-700"></span></div>
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Contact</span><span id="qcContact" class="font-medium text-slate-700"></span></div>
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Total Availments</span><span id="qcAvails" class="font-semibold text-navy-600"></span></div>
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Last Availed</span><span id="qcLast" class="font-medium text-slate-700"></span></div>
+                        </div>
+                        <div id="qcBadges" class="flex flex-wrap gap-1.5 mb-4"></div>
+                        <div class="space-y-2">
+                            <a id="qcProfileBtn" href="#"
+                                class="block w-full py-2.5 bg-navy-600 text-white text-[12px] font-semibold rounded-xl hover:bg-navy-500 transition-all text-center">
+                                View Full Profile →
+                            </a>
+                            <a id="qcAvailBtn" href="#"
+                                class="block w-full py-2.5 border border-navy-200 bg-navy-50 text-navy-700 text-[12px] font-medium rounded-xl hover:bg-navy-100 transition-all text-center">
+                                + New Availment
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -593,51 +426,36 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
 
         </main>
 
-        <footer
-            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+        <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
             <span>MSWDO San Enrique Information System</span>
         </footer>
     </div>
 
-    <!-- Toast -->
-    <div id="toast"
-        class="fixed bottom-6 right-6 bg-navy-600 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
+    <div id="toast" class="fixed bottom-6 right-6 bg-navy-600 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
         <span class="text-emerald-400 text-base">✓</span>
         <span id="toastMsg">Done!</span>
     </div>
 
     <script>
-        // ── DATA ──────────────────────────────────────────────────────────
-        const ALL_CLIENTS = [
-            { id: 'CLT-2024-00142', name: 'Maria R. Santos', sex: 'Female', age: 62, barangay: 'Poblacion', contact: '0917-234-5678', sectors: ['senior', 'indigent', '4ps'], availments: 6, last: 'Apr 14, 2026', registered: 'Jan 10, 2024' },
-            { id: 'CLT-2024-00203', name: 'Rodrigo P. Cruz', sex: 'Male', age: 45, barangay: 'San Jose', contact: '0928-112-3344', sectors: ['pwd', 'indigent'], availments: 3, last: 'Apr 14, 2026', registered: 'Feb 3, 2024' },
-            { id: 'CLT-2024-00187', name: 'Luz A. Bautista', sex: 'Female', age: 34, barangay: 'Poblacion', contact: '0912-445-6677', sectors: ['solo', 'indigent'], availments: 4, last: 'Apr 13, 2026', registered: 'Jan 28, 2024' },
-            { id: 'CLT-2024-00389', name: 'Pedro M. Reyes', sex: 'Male', age: 29, barangay: 'Beguiligan', contact: '0935-667-8899', sectors: ['indigent'], availments: 2, last: 'Apr 12, 2026', registered: 'Mar 5, 2024' },
-            { id: 'CLT-2023-00104', name: 'Elena G. Dela Cruz', sex: 'Female', age: 57, barangay: 'Buenavista', contact: '0919-332-1100', sectors: ['senior', '4ps', 'indigent'], availments: 8, last: 'Apr 12, 2026', registered: 'Aug 20, 2023' },
-            { id: 'CLT-2024-00411', name: 'Jose T. Manalo', sex: 'Male', age: 72, barangay: 'Doldol', contact: '0926-778-9900', sectors: ['senior', 'indigent'], availments: 5, last: 'Apr 10, 2026', registered: 'Mar 18, 2024' },
-            { id: 'CLT-2024-00298', name: 'Anita C. Flores', sex: 'Female', age: 41, barangay: 'San Jose', contact: '0921-556-4433', sectors: ['4ps', 'indigent'], availments: 3, last: 'Apr 8, 2026', registered: 'Feb 14, 2024' },
-            { id: 'CLT-2023-00089', name: 'Renato B. Villanueva', sex: 'Male', age: 55, barangay: 'Poblacion', contact: '0917-009-8877', sectors: ['pwd'], availments: 2, last: 'Apr 7, 2026', registered: 'Jul 11, 2023' },
-            { id: 'CLT-2024-00355', name: 'Carla M. Ramos', sex: 'Female', age: 26, barangay: 'Guintorilan', contact: '0910-223-4455', sectors: ['solo', '4ps'], availments: 1, last: 'Apr 5, 2026', registered: 'Mar 1, 2024' },
-            { id: 'CLT-2024-00422', name: 'Benjamin R. Torres', sex: 'Male', age: 68, barangay: 'Tabunan', contact: '0925-881-2233', sectors: ['senior', 'pwd', 'indigent'], availments: 7, last: 'Apr 3, 2026', registered: 'Mar 22, 2024' },
-        ];
+        const ALL_CLIENTS = <?= json_encode($jsClients, JSON_HEX_TAG | JSON_HEX_APOS) ?>;
 
         const SECTOR_META = {
-            '4ps': { label: '4Ps', cls: 'badge-4ps' },
-            'pwd': { label: 'PWD', cls: 'badge-pwd' },
-            'senior': { label: 'Senior', cls: 'badge-senior' },
-            'solo': { label: 'Solo Parent', cls: 'badge-solo' },
-            'indigent': { label: 'Indigent', cls: 'badge-indigent' },
+            '4ps':     { label: '4Ps',        cls: 'badge-4ps' },
+            'pwd':     { label: 'PWD',         cls: 'badge-pwd' },
+            'senior':  { label: 'Senior',      cls: 'badge-senior' },
+            'solo':    { label: 'Solo Parent', cls: 'badge-solo' },
+            'indigent':{ label: 'Indigent',    cls: 'badge-indigent' },
         };
-        const AV_COLORS = ['av-0', 'av-1', 'av-2', 'av-3', 'av-4', 'av-5', 'av-6', 'av-7'];
+        const AV_COLORS = ['av-0','av-1','av-2','av-3','av-4','av-5','av-6','av-7'];
 
-        let filtered = [...ALL_CLIENTS];
+        let filtered    = [...ALL_CLIENTS];
         let activeChips = new Set();
         let currentView = 'table';
         let searchQuery = '';
 
-        // ── RENDER TABLE ──────────────────────────────────────────────────
         function initials(name) {
-            return name.split(' ').filter((_, i, a) => i === 0 || i === a.length - 1).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+            const parts = name.split(/[\s,]+/).filter(Boolean);
+            return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
         }
 
         function renderTable() {
@@ -653,8 +471,8 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
             empty.classList.add('hidden');
 
             tbody.innerHTML = filtered.map((c, i) => {
-                const av = AV_COLORS[i % AV_COLORS.length];
-                const ini = initials(c.name);
+                const av     = AV_COLORS[i % AV_COLORS.length];
+                const ini    = initials(c.name);
                 const badges = c.sectors.map(s => {
                     const m = SECTOR_META[s];
                     return `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.cls}">${m.label}</span>`;
@@ -665,75 +483,74 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
                     return c.name.replace(re, '<mark class="bg-yellow-200 rounded">$1</mark>');
                 };
                 return `
-      <tr class="client-row" onclick="openQuick(${i})" data-idx="${i}">
-        <td class="px-4 py-3.5">
-          <input type="checkbox" class="w-4 h-4 accent-navy-600 row-cb" onclick="event.stopPropagation()" onchange="updateBulk()">
-        </td>
-        <td class="px-4 py-3.5">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-xl ${av} flex items-center justify-center text-white text-xs font-bold flex-shrink-0">${ini}</div>
-            <div>
-              <p class="font-semibold text-navy-600 text-[13px]">${highlight(searchQuery)}</p>
-              <p class="text-[10px] text-slate-400 mt-0.5">${c.sex} · ${c.age} yrs · ${c.barangay}</p>
-            </div>
-          </div>
-        </td>
-        <td class="px-4 py-3.5">
-          <span class="font-mono text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${c.id}</span>
-        </td>
-        <td class="px-4 py-3.5 text-[12px] text-slate-600">${c.barangay}</td>
-        <td class="px-4 py-3.5 hidden sm:table-cell"><div class="flex flex-wrap gap-1">${badges}</div></td>
-        <td class="px-4 py-3.5 hidden md:table-cell">
-          <div class="flex items-center gap-2">
-            <span class="text-[13px] font-semibold text-navy-600">${c.availments}</span>
-            <div class="flex-1 max-w-[40px] bg-slate-100 rounded-full h-1.5 overflow-hidden">
-              <div class="h-1.5 rounded-full bg-navy-400" style="width:${Math.min(c.availments * 10, 100)}%"></div>
-            </div>
-          </div>
-        </td>
-        <td class="px-4 py-3.5 hidden lg:table-cell text-[11px] text-slate-400">${c.registered}</td>
-        <td class="px-4 py-3.5">
-          <div class="flex items-center gap-2">
-            <button onclick="event.stopPropagation(); showToast('Opening profile for ${c.name}...')"
-              class="text-[11px] font-semibold text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-2.5 py-1.5 hover:bg-navy-100 transition-all whitespace-nowrap">
-              View Profile
-            </button>
-            <span class="row-arrow text-navy-400 text-sm">→</span>
-          </div>
-        </td>
-      </tr>`;
+                <tr class="client-row border-b border-slate-50" onclick="openQuick(${i})" data-idx="${i}">
+                    <td class="px-4 py-3.5">
+                        <input type="checkbox" class="w-4 h-4 accent-navy-600 row-cb" onclick="event.stopPropagation()" onchange="updateBulk()">
+                    </td>
+                    <td class="px-4 py-3.5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-xl ${av} flex items-center justify-center text-white text-xs font-bold flex-shrink-0">${ini}</div>
+                            <div>
+                                <p class="font-semibold text-navy-600 text-[13px]">${highlight(searchQuery)}</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">${c.sex} · ${c.age} yrs · ${c.barangay}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3.5">
+                        <span class="font-mono text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${c.id}</span>
+                    </td>
+                    <td class="px-4 py-3.5 text-[12px] text-slate-600">${c.barangay}</td>
+                    <td class="px-4 py-3.5 hidden sm:table-cell"><div class="flex flex-wrap gap-1">${badges}</div></td>
+                    <td class="px-4 py-3.5 hidden md:table-cell">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[13px] font-semibold text-navy-600">${c.availments}</span>
+                            <div class="flex-1 max-w-[40px] bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                <div class="h-1.5 rounded-full bg-navy-400" style="width:${Math.min(c.availments * 10, 100)}%"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3.5 hidden lg:table-cell text-[11px] text-slate-400">${c.registered}</td>
+                    <td class="px-4 py-3.5">
+                        <div class="flex items-center gap-2">
+                            <a href="clientprofile.php?id=${c.client_id}"
+                                onclick="event.stopPropagation()"
+                                class="text-[11px] font-semibold text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-2.5 py-1.5 hover:bg-navy-100 transition-all whitespace-nowrap">
+                                View Profile
+                            </a>
+                            <span class="row-arrow text-navy-400 text-sm">→</span>
+                        </div>
+                    </td>
+                </tr>`;
             }).join('');
         }
 
-        // ── GRID VIEW ──────────────────────────────────────────────────────
         function renderGrid() {
             const grid = document.getElementById('clientGridBody');
             grid.innerHTML = filtered.map((c, i) => {
-                const av = AV_COLORS[i % AV_COLORS.length];
-                const ini = initials(c.name);
+                const av     = AV_COLORS[i % AV_COLORS.length];
+                const ini    = initials(c.name);
                 const badges = c.sectors.slice(0, 2).map(s => {
                     const m = SECTOR_META[s];
                     return `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.cls}">${m.label}</span>`;
                 }).join('');
                 return `
-      <div onclick="openQuick(${i})" class="client-row border border-slate-200 rounded-xl p-3.5 cursor-pointer hover:border-navy-400 transition-all">
-        <div class="flex items-center gap-2.5 mb-2.5">
-          <div class="w-9 h-9 rounded-xl ${av} flex items-center justify-center text-white text-xs font-bold flex-shrink-0">${ini}</div>
-          <div class="min-w-0">
-            <p class="text-[12px] font-semibold text-navy-600 truncate">${c.name}</p>
-            <p class="text-[10px] text-slate-400">${c.id}</p>
-          </div>
-        </div>
-        <div class="text-[11px] space-y-1 mb-2.5">
-          <div class="flex justify-between"><span class="text-slate-400">Barangay</span><span class="font-medium text-slate-600">${c.barangay}</span></div>
-          <div class="flex justify-between"><span class="text-slate-400">Availments</span><span class="font-semibold text-navy-600">${c.availments}</span></div>
-        </div>
-        <div class="flex flex-wrap gap-1">${badges}</div>
-      </div>`;
+                <div onclick="openQuick(${i})" class="client-row border border-slate-200 rounded-xl p-3.5 cursor-pointer hover:border-navy-400 transition-all">
+                    <div class="flex items-center gap-2.5 mb-2.5">
+                        <div class="w-9 h-9 rounded-xl ${av} flex items-center justify-center text-white text-xs font-bold flex-shrink-0">${ini}</div>
+                        <div class="min-w-0">
+                            <p class="text-[12px] font-semibold text-navy-600 truncate">${c.name}</p>
+                            <p class="text-[10px] text-slate-400">${c.id}</p>
+                        </div>
+                    </div>
+                    <div class="text-[11px] space-y-1 mb-2.5">
+                        <div class="flex justify-between"><span class="text-slate-400">Barangay</span><span class="font-medium text-slate-600">${c.barangay}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Availments</span><span class="font-semibold text-navy-600">${c.availments}</span></div>
+                    </div>
+                    <div class="flex flex-wrap gap-1">${badges}</div>
+                </div>`;
             }).join('');
         }
 
-        // ── SEARCH ────────────────────────────────────────────────────────
         function doSearch(q) {
             searchQuery = q.trim().toLowerCase();
             document.getElementById('clearSearch').classList.toggle('hidden', !q);
@@ -747,7 +564,6 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
             applyFilters();
         }
 
-        // ── FILTERS ───────────────────────────────────────────────────────
         function toggleChip(btn, sector) {
             if (activeChips.has(sector)) {
                 activeChips.delete(sector);
@@ -761,21 +577,21 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
         }
 
         function filterBarangay(val) { applyFilters(); }
-        function filterSex(val) { applyFilters(); }
+        function filterSex(val)      { applyFilters(); }
 
         function applyFilters() {
             const brgy = document.querySelector('select').value;
-            const sex = document.querySelectorAll('select')[1].value;
+            const sex  = document.querySelectorAll('select')[1].value;
 
             filtered = ALL_CLIENTS.filter(c => {
-                const matchSearch = !searchQuery ||
+                const matchSearch  = !searchQuery ||
                     c.name.toLowerCase().includes(searchQuery) ||
                     c.id.toLowerCase().includes(searchQuery) ||
                     c.barangay.toLowerCase().includes(searchQuery) ||
                     c.contact.includes(searchQuery);
                 const matchSectors = activeChips.size === 0 || [...activeChips].every(s => c.sectors.includes(s));
-                const matchBrgy = !brgy || c.barangay === brgy;
-                const matchSex = !sex || c.sex === sex;
+                const matchBrgy    = !brgy || c.barangay === brgy;
+                const matchSex     = !sex  || c.sex === sex;
                 return matchSearch && matchSectors && matchBrgy && matchSex;
             });
 
@@ -792,25 +608,28 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
             applyFilters();
         }
 
-        // ── QUICK VIEW CARD ────────────────────────────────────────────────
         function openQuick(idx) {
-            const c = filtered[idx];
+            const c    = filtered[idx];
             const card = document.getElementById('quickCard');
-            const av = AV_COLORS[idx % AV_COLORS.length];
+            const av   = AV_COLORS[idx % AV_COLORS.length];
 
             document.getElementById('qcAvatar').className = `w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${av}`;
             document.getElementById('qcAvatar').textContent = initials(c.name);
-            document.getElementById('qcName').textContent = c.name;
-            document.getElementById('qcId').textContent = c.id;
-            document.getElementById('qcBrgy').textContent = c.barangay;
-            document.getElementById('qcAge').textContent = `${c.age} yrs · ${c.sex}`;
+            document.getElementById('qcName').textContent    = c.name;
+            document.getElementById('qcId').textContent      = c.id;
+            document.getElementById('qcBrgy').textContent    = c.barangay;
+            document.getElementById('qcAge').textContent     = `${c.age} yrs · ${c.sex}`;
             document.getElementById('qcContact').textContent = c.contact;
-            document.getElementById('qcAvails').textContent = c.availments + ' records';
-            document.getElementById('qcLast').textContent = c.last;
-            document.getElementById('qcBadges').innerHTML = c.sectors.map(s => {
+            document.getElementById('qcAvails').textContent  = c.availments + ' records';
+            document.getElementById('qcLast').textContent    = c.last;
+            document.getElementById('qcBadges').innerHTML    = c.sectors.map(s => {
                 const m = SECTOR_META[s];
                 return `<span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${m.cls}">${m.label}</span>`;
             }).join('');
+
+            // quick card buttons link to the real client
+            document.getElementById('qcProfileBtn').href = `clientprofile.php?id=${c.client_id}`;
+            document.getElementById('qcAvailBtn').href   = `newavailment.php?client_id=${c.client_id}`;
 
             card.classList.remove('hidden');
         }
@@ -819,15 +638,13 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
             document.getElementById('quickCard').classList.add('hidden');
         }
 
-        // ── SORT ──────────────────────────────────────────────────────────
         let sortDir = {};
         function sortBy(key, btn) {
-            document.querySelectorAll('.sort-btn').forEach(b => { b.classList.remove('asc', 'desc'); });
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('asc','desc'));
             sortDir[key] = sortDir[key] === 'asc' ? 'desc' : 'asc';
             btn.classList.add(sortDir[key]);
-
             const dir = sortDir[key] === 'asc' ? 1 : -1;
-            const map = { name: 'name', id: 'id', barangay: 'barangay', availments: 'availments', date: 'registered' };
+            const map = { name:'name', id:'id', barangay:'barangay', availments:'availments', date:'registered' };
             filtered.sort((a, b) => {
                 const va = a[map[key]], vb = b[map[key]];
                 if (typeof va === 'number') return (va - vb) * dir;
@@ -836,11 +653,10 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
             renderTable();
         }
 
-        // ── VIEW TOGGLE ───────────────────────────────────────────────────
         function setView(v) {
             currentView = v;
             document.getElementById('tableView').classList.toggle('hidden', v !== 'table');
-            document.getElementById('gridView').classList.toggle('hidden', v !== 'grid');
+            document.getElementById('gridView').classList.toggle('hidden',  v !== 'grid');
             document.getElementById('viewTable').className = v === 'table'
                 ? 'px-2.5 py-1.5 text-sm bg-navy-600 text-white transition-all'
                 : 'px-2.5 py-1.5 text-sm bg-white text-slate-500 hover:bg-slate-50 transition-all';
@@ -851,7 +667,6 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
             else renderTable();
         }
 
-        // ── BULK SELECT ───────────────────────────────────────────────────
         function toggleSelectAll(cb) {
             document.querySelectorAll('.row-cb').forEach(c => c.checked = cb.checked);
             updateBulk();
@@ -863,24 +678,21 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
             if (checked) document.getElementById('selectedCount').textContent = `${checked} selected`;
         }
 
-        // ── TOAST ─────────────────────────────────────────────────────────
         function showToast(msg) {
             document.getElementById('toastMsg').textContent = msg;
             const t = document.getElementById('toast');
-            t.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
-            t.classList.add('opacity-100', 'translate-y-0');
+            t.classList.remove('opacity-0','translate-y-4','pointer-events-none');
+            t.classList.add('opacity-100','translate-y-0');
             setTimeout(() => {
-                t.classList.add('opacity-0', 'translate-y-4');
-                t.classList.remove('opacity-100', 'translate-y-0');
+                t.classList.add('opacity-0','translate-y-4');
+                t.classList.remove('opacity-100','translate-y-0');
             }, 2800);
         }
 
         function showImport() { showToast('Import feature coming soon...'); }
         function showExport() { showToast('Exporting client list...'); }
 
-        // ── INIT ──────────────────────────────────────────────────────────
         renderTable();
     </script>
 </body>
-
 </html>

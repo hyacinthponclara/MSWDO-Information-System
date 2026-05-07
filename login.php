@@ -17,7 +17,7 @@ if (empty($username) || empty($password)) {
 $host    = 'localhost';
 $dbname  = 'CAPSTONE_DRAFT';
 $db_user = 'root';
-$db_pass = '';  // your MySQL password
+$db_pass = '';  
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $db_user, $db_pass);
