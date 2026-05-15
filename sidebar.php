@@ -165,9 +165,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <p class="text-white text-xs font-medium truncate">Juan Dela Cruz</p>
                 <p class="text-white/40 text-[10px]">Administrator</p>
             </div>
-            <a href="index.html" class="ml-auto text-white/30 hover:text-white/70 text-sm transition-colors" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-            </a>
+            <a href="logout.php" class="ml-auto text-white/50 hover:text-white text-[12px] font-medium transition-colors px-2 py-1 rounded hover:bg-white/10">Logout</a>
         </div>
     <?php endif; ?>
 
@@ -250,9 +248,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <p class="text-white text-xs font-medium truncate">Ma. Teresa C. Ponclara </p>
                 <p class="text-violet-300/60 text-[10px]">MSWDO Head</p>
             </div>
-            <a href="logout.php" class="ml-auto text-white/30 hover:text-white/70 text-sm transition-colors" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-            </a>
+            <a href="logout.php" class="ml-auto text-white/50 hover:text-white text-[12px] font-medium transition-colors px-2 py-1 rounded hover:bg-white/10">Logout</a>
         </div>
 
     <?php endif; ?>
@@ -317,9 +313,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <p class="text-white text-xs font-medium truncate">Ana Reyes</p>
                 <p class="text-white/40 text-[10px]">Staff</p>
             </div>
-            <a href="logout.php" class="ml-auto text-white/30 hover:text-white/70 text-sm transition-colors" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-            </a>
+            <a href="logout.php" class="ml-auto text-white/50 hover:text-white text-[12px] font-medium transition-colors px-2 py-1 rounded hover:bg-white/10">Logout</a>
         </div>
     <?php endif; ?>
 

@@ -629,7 +629,7 @@ foreach ($clients as $c) {
 
             // quick card buttons link to the real client
             document.getElementById('qcProfileBtn').href = `clientprofile.php?id=${c.client_id}`;
-            document.getElementById('qcAvailBtn').href   = `newavailment.php?client_id=${c.client_id}`;
+            document.getElementById('qcAvailBtn').href   = `programavailmentselection.php?client_id=${c.client_id}`;
 
             card.classList.remove('hidden');
         }
