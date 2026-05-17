@@ -49,7 +49,7 @@ $thisQuarter = ceil(date('n') / 3); // 1-4
 
 // AICS FBML: max 1/quarter, max 4/year
 // we count availments linked to the AICS FBML program only
-// AICS Educational has its own separate limit (max 2/year)
+
 $aicsStmt = $pdo->prepare("
     SELECT
         COUNT(*) AS total_year,
@@ -75,6 +75,7 @@ $aicsThisQuarter = intval($aicsCount['total_quarter'] ?? 0);
 $aicsThisYear    = intval($aicsCount['total_year']    ?? 0);
 
 // AICS Educational: max 2/year, separate budget
+// AICS Educational has its own separate limit (max 2/year)
 $aicsEdStmt = $pdo->prepare("
     SELECT COUNT(*) AS total_year
     FROM AVAILMENT a
@@ -131,7 +132,7 @@ foreach ($dbPrograms as $p) {
     $progByName[$p['program_name']] = $p;
 }
 
-// helper: compute pct used and bar color for a program row
+// compute percentage(pct) used and bar color for a program row
 function budgetMeta(array $p): array {
     $annual    = floatval($p['prog_annual_budget']    ?? 0);
     $remaining = floatval($p['prog_remaining_budget'] ?? 0);
