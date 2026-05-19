@@ -88,7 +88,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
-        <a href="#"
+        <a href="aics.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-capsules text-sm"></i> AICS
         </a>
@@ -202,7 +202,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
-        <a href="#"
+        <a href="aics.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                 class="fas fa-capsules text-sm"></i> AICS</a>
         <a href="#"
@@ -270,7 +270,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </a>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
-        <a href="#"
+        <a href="aics.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                 class="fas fa-capsules text-sm"></i> AICS</a>
         <a href="#"
