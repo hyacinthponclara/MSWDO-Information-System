@@ -472,7 +472,6 @@ requireRole('Staff');
         <footer
             class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
             <span>MSWDO San Enrique Information System</span>
-            <span>Developed by: Elupre, Macalino, Mana-ay, Ponclara</span>
         </footer>
     </div>
 
@@ -485,33 +484,38 @@ requireRole('Staff');
         }
     </script>
 
-    <script>
-        // Program quick access tiles
-        const programs = [
-            { icon: '<i class="fas fa-capsules text-blue-300"></i>', name: 'AICS', count: '32 this week', color: 'border-blue-200   hover:border-blue-400', bg: 'bg-blue-50', text: 'text-blue-700' },
-            { icon: '<i class="fas fa-home text-green-300"></i>', name: '4Ps', count: '18 active', color: 'border-green-200  hover:border-green-400', bg: 'bg-green-50', text: 'text-green-700' },
-            { icon: '<i class="fas fa-briefcase text-amber-300"></i>', name: 'SLP', count: '5 this month', color: 'border-amber-200  hover:border-amber-400', bg: 'bg-amber-50', text: 'text-amber-700' },
-            { icon: '<i class="fas fa-utensils text-lime-300"></i>', name: 'SFP', count: '24 enrolled', color: 'border-lime-200   hover:border-lime-400', bg: 'bg-lime-50', text: 'text-lime-700' },
-            { icon: '<i class="fas fa-school text-orange-300"></i>', name: 'Day Care', count: '3 centers', color: 'border-orange-200 hover:border-orange-400', bg: 'bg-orange-50', text: 'text-orange-700' },
-            { icon: '<i class="fas fa-user-friends text-yellow-300"></i>', name: 'Senior Citizen', count: '47 benefic.', color: 'border-yellow-200 hover:border-yellow-400', bg: 'bg-yellow-50', text: 'text-yellow-700' },
-            { icon: '<i class="fas fa-wheelchair text-indigo-300"></i>', name: 'PWD', count: '12 this week', color: 'border-indigo-200  hover:border-indigo-400', bg: 'bg-indigo-50', text: 'text-indigo-700' },
-            { icon: '<i class="fas fa-user text-teal-300"></i>', name: 'Solo Parent', count: '9 this month', color: 'border-teal-200   hover:border-teal-400', bg: 'bg-teal-50', text: 'text-teal-70₀' },
-        ];
+   <script>
+    const programs = [
+        { icon: '<i class="fas fa-capsules text-blue-300"></i>', name: 'AICS', count: '32 this week', color: 'border-blue-200 hover:border-blue-400', bg: 'bg-blue-50', text: 'text-blue-700', link: 'aics.php' },
+        { icon: '<i class="fas fa-home text-green-300"></i>', name: '4Ps', count: '18 active', color: 'border-green-200 hover:border-green-400', bg: 'bg-green-50', text: 'text-green-700', link: '4ps.php' },
+        { icon: '<i class="fas fa-briefcase text-amber-300"></i>', name: 'SLP', count: '5 this month', color: 'border-amber-200 hover:border-amber-400', bg: 'bg-amber-50', text: 'text-amber-700', link: 'slp.php' },
+        { icon: '<i class="fas fa-utensils text-lime-300"></i>', name: 'SFP', count: '24 enrolled', color: 'border-lime-200 hover:border-lime-400', bg: 'bg-lime-50', text: 'text-lime-700', link: 'sfp.php' },
+        { icon: '<i class="fas fa-school text-orange-300"></i>', name: 'Day Care', count: '3 centers', color: 'border-orange-200 hover:border-orange-400', bg: 'bg-orange-50', text: 'text-orange-700', link: 'daycare.php' },
+        { icon: '<i class="fas fa-user-friends text-yellow-300"></i>', name: 'Senior Citizen', count: '47 benefic.', color: 'border-yellow-200 hover:border-yellow-400', bg: 'bg-yellow-50', text: 'text-yellow-700', link: 'senior.php' },
+        { icon: '<i class="fas fa-wheelchair text-indigo-300"></i>', name: 'PWD', count: '12 this week', color: 'border-indigo-200 hover:border-indigo-400', bg: 'bg-indigo-50', text: 'text-indigo-700', link: 'pwd.php' },
+        { icon: '<i class="fas fa-user text-teal-300"></i>', name: 'Solo Parent', count: '9 this month', color: 'border-teal-200 hover:border-teal-400', bg: 'bg-teal-50', text: 'text-teal-700', link: 'soloparent.php' }
+    ];
 
-        const grid = document.getElementById('progGrid');
-        programs.forEach((p, i) => {
-            const div = document.createElement('div');
-            div.className = `prog-tile animate-fade-up-${(i % 8) + 1} bg-white border rounded-xl p-3.5 cursor-pointer flex items-center gap-3 ${p.color}`;
-            div.style.animationDelay = `${i * 40}ms`;
-            div.innerHTML = `
-        <div class="w-10 h-10 rounded-xl ${p.bg} flex items-center justify-center text-xl flex-shrink-0">${p.icon}</div>
-        <div class="min-w-0">
-          <p class="text-[12px] font-semibold ${p.text} truncate">${p.name}</p>
-          <p class="text-[10px] text-slate-400 mt-0.5">${p.count}</p>
-        </div>`;
-            grid.appendChild(div);
+    const grid = document.getElementById('progGrid');
+    programs.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = `prog-tile animate-fade-up-${(i % 8) + 1} bg-white border rounded-xl p-3.5 cursor-pointer flex items-center gap-3 ${p.color}`;
+        div.style.animationDelay = `${i * 40}ms`;
+        div.innerHTML = `
+            <div class="w-10 h-10 rounded-xl ${p.bg} flex items-center justify-center text-xl flex-shrink-0">${p.icon}</div>
+            <div class="min-w-0">
+                <p class="text-[12px] font-semibold ${p.text} truncate">${p.name}</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">${p.count}</p>
+            </div>
+        `;
+
+        div.addEventListener('click', () => {
+            window.location.href = p.link;   
         });
-    </script>
+
+        grid.appendChild(div);
+    });
+</script>
 </body>
 
 </html>
