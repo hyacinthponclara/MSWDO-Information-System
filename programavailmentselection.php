@@ -135,10 +135,10 @@ foreach ($dbPrograms as $p) {
 function budgetStatus(array $p): array {
     $annual    = floatval($p['prog_annual_budget']    ?? 0);
     $remaining = floatval($p['prog_remaining_budget'] ?? 0);
-    $pct       = ($annual > 0) ? round((($annual - $remaining) / $annual) * 100) : 0;
-    $remPct    = 100 - $pct;
+    $pct       = ($annual > 0) ? round((($annual - $remaining) / $annual) * 100) : 0; //percentage of budget used/spent
+    $remPct    = 100 - $pct;  //remaining percentage of budget
     return [
-        'pct'       => $pct,
+        'pct'       => $pct, 
         'rem_pct'   => $remPct,
         'bar_color' => $remPct < 15 ? 'bg-red-400' : ($remPct < 30 ? 'bg-amber-400' : 'bg-emerald-400'),
         'txt_color' => $remPct < 15 ? 'text-red-500': ($remPct < 30 ? 'text-amber-500': 'text-emerald-600'),
