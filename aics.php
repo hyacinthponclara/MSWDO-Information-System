@@ -319,7 +319,7 @@ require 'db_connect.php';
     <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
      <?php require 'sidebar.php'; ?>
 
-    <div class="ml-56 flex-1 flex flex-col min-h-screen">
+    <div class="ml-64 flex-1 flex flex-col min-h-screen">
         <header
             class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">

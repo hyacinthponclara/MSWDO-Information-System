@@ -387,8 +387,7 @@ foreach ($dbPrograms as $prog) {
       <div class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 overflow-hidden mb-6">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
           
-          <h2 class="text-[13px] font-semibold text-navy-600">Eligibility &amp; Limit Check — This Client</h2>
-          <span class="ml-auto text-[11px] text-slate-400">Live data from database</span>
+          <h2 class="text-[13px] font-semibold text-navy-600">Eligibility &amp; Limit Check</h2>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-5 divide-x divide-slate-100">
 
@@ -624,7 +623,7 @@ foreach ($dbPrograms as $prog) {
       <!-- shared budget note - only shown for AICS FBML subtypes -->
       <div id="mSharedNote" class="hidden bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 mb-4 text-[11px] text-blue-700 flex items-center gap-2">
         
-        <span>This availment shares the combined AICS FBML budget with Financial, Burial, Medical, and Livelihood types.</span>
+        <span>This availment shares the budget with Financial, Burial, Medical, and Livelihood.</span>
       </div>
 
       <!-- limits -->
