@@ -32,7 +32,7 @@ if (!$client) {
     exit;
 }
 
-// build display name and initials
+// build display name & initials
 $fullName = $client['cl_firstname'];
 if (!empty($client['cl_middlename'])) {
     $fullName .= ' ' . $client['cl_middlename'][0] . '.';
@@ -75,7 +75,6 @@ $aicsThisQuarter = intval($aicsCount['total_quarter'] ?? 0);
 $aicsThisYear    = intval($aicsCount['total_year']    ?? 0);
 
 // AICS Educational: max 2/year, separate budget
-// AICS Educational has its own separate limit (max 2/year)
 $aicsEdStmt = $pdo->prepare("
     SELECT COUNT(*) AS total_year
     FROM AVAILMENT a
@@ -110,7 +109,7 @@ $lastCaseStudy = $csStmt->fetch();
 $lastCsDate    = $lastCaseStudy ? date('M j, Y', strtotime($lastCaseStudy['interview_date'])) : 'Never';
 $caseStudyOld  = $lastCaseStudy && strtotime($lastCaseStudy['interview_date']) < strtotime('-6 months');
 
-// FETCH PROGRAMS FROM DB 
+// fetch programs from db
 
 $dbPrograms = $pdo->query("
     SELECT program_id, program_name, prog_category, prog_description,
@@ -132,8 +131,8 @@ foreach ($dbPrograms as $p) {
     $progByName[$p['program_name']] = $p;
 }
 
-// compute percentage(pct) used and bar color for a program row
-function budgetMeta(array $p): array {
+// compute percentage(pct) used and bar color for program row
+function budgetStatus(array $p): array {
     $annual    = floatval($p['prog_annual_budget']    ?? 0);
     $remaining = floatval($p['prog_remaining_budget'] ?? 0);
     $pct       = ($annual > 0) ? round((($annual - $remaining) / $annual) * 100) : 0;
@@ -148,7 +147,7 @@ function budgetMeta(array $p): array {
 
 //   AICS FBML row - split into 4 virtual cards (Financial, Burial, Medical, Livelihood)
 //                   They all share the same program_id and budget from AICS FBML
-//   AICS Educational - its own card, its own program_id, its own budget
+//   AICS Educational - has its own card, its own program_id, its own budget
 
 $cards = [];
 
@@ -156,7 +155,7 @@ foreach ($dbPrograms as $prog) {
 
     if ($prog['program_name'] === 'AICS FBML') {
         // We pass subtype= in the URL so the availment form knows which sub-form to show
-        $bm  = budgetMeta($prog);
+        $bm  = budgetStatus($prog);
         $remaining = floatval($prog['prog_remaining_budget'] ?? 0);
 
         $subtypes = [
@@ -225,7 +224,7 @@ foreach ($dbPrograms as $prog) {
         continue;
     }
 
-    $bm        = budgetMeta($prog);
+    $bm        = budgetStatus($prog);
     $remaining = floatval($prog['prog_remaining_budget'] ?? 0);
 
     // design per program
@@ -460,11 +459,11 @@ foreach ($dbPrograms as $prog) {
           $fbml = $progByName['AICS FBML'] ?? null;
           if ($fbml):
             $fbmlRemaining = floatval($fbml['prog_remaining_budget'] ?? 0);
-            $fbmlBm        = budgetMeta($fbml);
+            $fbmlBm        = budgetStatus($fbml);
         ?>
         <?php endif; ?>
 
-        <!-- 4 AICS FBML cards + 1 AICS Educational card -->
+        <!-- 4 AICS FBML & 1 AICS Educational cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <?php foreach ($cards as $card):
             if ($card['type'] !== 'aics_fbml_sub' && $card['label'] !== 'AICS Educational') continue;
@@ -525,7 +524,7 @@ foreach ($dbPrograms as $prog) {
         </div>
       </div>
 
-      <!-- ── ALL OTHER PROGRAMS ─────────────────────────────────────────── -->
+       <!-- Other programs -->
       <div>
         <p class="section-label mb-3">
           
@@ -533,7 +532,6 @@ foreach ($dbPrograms as $prog) {
         </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <?php foreach ($cards as $card):
-            // skip AICS cards - already shown above
             if ($card['type'] === 'aics_fbml_sub') continue;
             if ($card['label'] === 'AICS Educational') continue;
 
@@ -607,7 +605,7 @@ foreach ($dbPrograms as $prog) {
     </footer>
   </div>
 
-  <!-- ── CONFIRM MODAL ──────────────────────────────────────────────────── -->
+   <!-- confirm modal -->
   <div id="modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 hidden">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
       <div class="flex items-start justify-between mb-4">
