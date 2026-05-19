@@ -317,6 +317,7 @@ require 'db_connect.php';
 <body class="bg-slate2 min-h-screen flex">
 
     <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+     <?php require 'sidebar.php'; ?>
 
     <div class="ml-56 flex-1 flex flex-col min-h-screen">
         <header
