@@ -5,8 +5,8 @@ require 'db_connect.php';
 
 $client_id = intval($_GET['client_id'] ?? 0);
 if ($client_id === 0) {
-    header('Location: clientslist.php');
-    exit;
+  header('Location: clientslist.php');
+  exit;
 }
 
 
@@ -28,23 +28,24 @@ $stmt->execute([':id' => $client_id]);
 $client = $stmt->fetch();
 
 if (!$client) {
-    header('Location: clientslist.php');
-    exit;
+  header('Location: clientslist.php');
+  exit;
 }
 
 // build display name & initials
 $fullName = $client['cl_firstname'];
 if (!empty($client['cl_middlename'])) {
-    $fullName .= ' ' . $client['cl_middlename'][0] . '.';
+  $fullName .= ' ' . $client['cl_middlename'][0] . '.';
 }
-$fullName   .= ' ' . $client['cl_lastname'];
-$initials    = strtoupper(substr($client['cl_firstname'], 0, 1) . substr($client['cl_lastname'], 0, 1));
-$regYear     = date('Y', strtotime($client['cl_date_registered'] ?? 'now'));
+$fullName .= ' ' . $client['cl_lastname'];
+$initials = strtoupper(substr($client['cl_firstname'], 0, 1) . substr($client['cl_lastname'], 0, 1));
+$regYear = date('Y', strtotime($client['cl_date_registered'] ?? 'now'));
 $clientIdStr = 'CLT-' . $regYear . '-' . str_pad($client['client_id'], 5, '0', STR_PAD_LEFT);
 
-// ELIGIBILITY CHECKS
 
-$thisYear    = date('Y');
+// check eligibility
+
+$thisYear = date('Y');
 $thisQuarter = ceil(date('n') / 3); // 1-4
 
 // AICS FBML: max 1/quarter, max 4/year
@@ -65,14 +66,14 @@ $aicsStmt = $pdo->prepare("
       AND YEAR(av_date_applied) = :year2
 ");
 $aicsStmt->execute([
-    ':client_id' => $client_id,
-    ':quarter'   => $thisQuarter,
-    ':year'      => $thisYear,
-    ':year2'     => $thisYear,
+  ':client_id' => $client_id,
+  ':quarter' => $thisQuarter,
+  ':year' => $thisYear,
+  ':year2' => $thisYear,
 ]);
-$aicsCount       = $aicsStmt->fetch();
+$aicsCount = $aicsStmt->fetch();
 $aicsThisQuarter = intval($aicsCount['total_quarter'] ?? 0);
-$aicsThisYear    = intval($aicsCount['total_year']    ?? 0);
+$aicsThisYear = intval($aicsCount['total_year'] ?? 0);
 
 // AICS Educational: max 2/year, separate budget
 $aicsEdStmt = $pdo->prepare("
@@ -106,8 +107,8 @@ $csStmt = $pdo->prepare("
 ");
 $csStmt->execute([':id' => $client_id]);
 $lastCaseStudy = $csStmt->fetch();
-$lastCsDate    = $lastCaseStudy ? date('M j, Y', strtotime($lastCaseStudy['interview_date'])) : 'Never';
-$caseStudyOld  = $lastCaseStudy && strtotime($lastCaseStudy['interview_date']) < strtotime('-6 months');
+$lastCsDate = $lastCaseStudy ? date('M j, Y', strtotime($lastCaseStudy['interview_date'])) : 'Never';
+$caseStudyOld = $lastCaseStudy && strtotime($lastCaseStudy['interview_date']) < strtotime('-6 months');
 
 // fetch programs from db
 
@@ -128,213 +129,301 @@ $dbPrograms = $pdo->query("
 // index by program_name for easy lookup
 $progByName = [];
 foreach ($dbPrograms as $p) {
-    $progByName[$p['program_name']] = $p;
+  $progByName[$p['program_name']] = $p;
 }
 
 // compute percentage(pct) used and bar color for program row
-function budgetStatus(array $p): array {
-    $annual    = floatval($p['prog_annual_budget']    ?? 0);
-    $remaining = floatval($p['prog_remaining_budget'] ?? 0);
-    $pct       = ($annual > 0) ? round((($annual - $remaining) / $annual) * 100) : 0; //percentage of budget used/spent
-    $remPct    = 100 - $pct;  //remaining percentage of budget
-    return [
-        'pct'       => $pct, 
-        'rem_pct'   => $remPct,
-        'bar_color' => $remPct < 15 ? 'bg-red-400' : ($remPct < 30 ? 'bg-amber-400' : 'bg-emerald-400'),
-        'txt_color' => $remPct < 15 ? 'text-red-500': ($remPct < 30 ? 'text-amber-500': 'text-emerald-600'),
-    ];
+function budgetStatus(array $p): array
+{
+  $annual = floatval($p['prog_annual_budget'] ?? 0);
+  $remaining = floatval($p['prog_remaining_budget'] ?? 0);
+  $pct = ($annual > 0) ? round((($annual - $remaining) / $annual) * 100) : 0; //percentage of budget used/spent
+  $remPct = 100 - $pct;  //remaining percentage of budget
+  return [
+    'pct' => $pct,
+    'rem_pct' => $remPct,
+    'bar_color' => $remPct < 15 ? 'bg-red-400' : ($remPct < 30 ? 'bg-amber-400' : 'bg-emerald-400'),
+    'txt_color' => $remPct < 15 ? 'text-red-500' : ($remPct < 30 ? 'text-amber-500' : 'text-emerald-600'),
+  ];
 }
 
-//   AICS FBML row - split into 4 virtual cards (Financial, Burial, Medical, Livelihood)
-//                   They all share the same program_id and budget from AICS FBML
-//   AICS Educational - has its own card, its own program_id, its own budget
+//   AICS FBML row - split into 4 virtual cards (Financial, Burial, Medical, Livelihood) coz they share the same program_id and budget
+//   while AICS Educational has its own card, its own program_id, its own budget
 
 $cards = [];
 
 foreach ($dbPrograms as $prog) {
 
-    if ($prog['program_name'] === 'AICS FBML') {
-        // We pass subtype= in the URL so the availment form knows which sub-form to show
-        $bm  = budgetStatus($prog);
-        $remaining = floatval($prog['prog_remaining_budget'] ?? 0);
-
-        $subtypes = [
-            [
-                'subtype'   => 'Financial',
-                'label'     => 'AICS Financial',
-                'desc'      => 'Financial assistance for individuals and families in crisis situations.',
-                'icon_bg'   => 'bg-green-50',
-                'icon_text' => 'text-green-600',
-                'border'    => 'border-green-200',
-                'hover'     => 'hover:border-green-400',
-                'tag_bg'    => 'bg-green-100 text-green-700',
-            ],
-            [
-                'subtype'   => 'Burial',
-                'label'     => 'AICS Burial',
-                'desc'      => 'Burial assistance for indigent families who lost a member.',
-                'border'    => 'border-slate-200',
-                'hover'     => 'hover:border-slate-400',
-                'tag_bg'    => 'bg-slate-100 text-slate-600',
-            ],
-            [
-                'subtype'   => 'Medical',
-                'label'     => 'AICS Medical',
-                'desc'      => 'Medical assistance for hospitalization, medicines, and lab exams.',
-                'border'    => 'border-red-200',
-                'hover'     => 'hover:border-red-400',
-                'tag_bg'    => 'bg-red-100 text-red-700',
-            ],
-            [
-                'subtype'   => 'Livelihood',
-                'label'     => 'AICS Livelihood',
-                'desc'      => 'Livelihood assistance for small businesses and income-generating projects.',
-                'border'    => 'border-amber-200',
-                'hover'     => 'hover:border-amber-400',
-                'tag_bg'    => 'bg-amber-100 text-amber-700',
-            ],
-        ];
-
-        foreach ($subtypes as $sub) {
-            $cards[] = [
-                'type'        => 'aics_fbml_sub',
-                'program_id'  => $prog['program_id'],
-                'subtype'     => $sub['subtype'],
-                'label'       => $sub['label'],
-                'desc'        => $sub['desc'],
-                'border'      => $sub['border'],
-                'hover'       => $sub['hover'],
-                'tag_bg'      => $sub['tag_bg'],
-                // shared budget — all 4 show the same number
-                'remaining'   => $remaining,
-                'pct'         => $bm['pct'],
-                'bar_color'   => $bm['bar_color'],
-                'txt_color'   => $bm['txt_color'],
-                'budget_note' => 'Shared AICS FBML budget',
-                // limits from AICS FBML 
-                'max_quarter' => $prog['prog_max_per_quarter'],
-                'max_year'    => $prog['prog_max_per_year'],
-                'max_amount'  => $prog['prog_max_amount'],
-                'min_amount'  => $prog['prog_min_amount'],
-                // eligibility for the eligibility check labels
-                'eligible'    => ($aicsThisQuarter < 1 && $aicsThisYear < 4),
-                'restricted'  => false,
-            ];
-        }
-        continue;
-    }
-
-    $bm        = budgetStatus($prog);
+  if ($prog['program_name'] === 'AICS FBML') {
+    // We pass 'subtype=' in URL so the availment form knows which sub-form to show
+    $bs = budgetStatus($prog);
     $remaining = floatval($prog['prog_remaining_budget'] ?? 0);
 
-    // design per program
-    $design = match($prog['program_name']) {
-        'AICS Educational'          => ['border'=>'border-blue-200','hover'=>'hover:border-blue-400'],
-        '4Ps'                       => ['border'=>'border-purple-200','hover'=>'hover:border-purple-400'],
-        'SLP'                       => ['border'=>'border-orange-200','hover'=>'hover:border-orange-400'],
-        'SFP'                       => ['border'=>'border-lime-200',  'hover'=>'hover:border-lime-400'],
-        'Day Care Center Program'   => ['border'=>'border-yellow-200','hover'=>'hover:border-yellow-400'],
-        'Senior Citizen Program'    => ['border'=>'border-amber-200','hover'=>'hover:border-amber-400'],
-        'PWD Program'               => ['border'=>'border-indigo-200','hover'=>'hover:border-indigo-400'],
-        'Solo Parent Program'       => ['border'=>'border-teal-200','hover'=>'hover:border-teal-400'],
-        'Women and Child Protection'=> ['border'=>'border-violet-200','hover'=>'hover:border-violet-400'],
-        default                     => ['border'=>'border-slate-200','hover'=>'hover:border-navy-400'],
-    };
-
-    // Women and Child Protection is restricted to Social Worker / MSWDO Head
-    $restricted = ($prog['program_name'] === 'Women and Child Protection')
-                  && !in_array($_SESSION['user_role'] ?? '', ['Admin', 'Social Worker']);
-
-    $cards[] = [
-        'type'        => 'regular',
-        'program_id'  => $prog['program_id'],
-        'subtype'     => null,
-        'label'       => $prog['program_name'],
-        'desc'        => $prog['prog_description'],
-        'border'      => $design['border'],
-        'hover'       => $design['hover'],
-        'remaining'   => $remaining,
-        'pct'         => $bm['pct'],
-        'bar_color'   => $bm['bar_color'],
-        'txt_color'   => $bm['txt_color'],
-        'budget_note' => null,
-        'max_quarter' => $prog['prog_max_per_quarter'],
-        'max_year'    => $prog['prog_max_per_year'],
-        'max_amount'  => $prog['prog_max_amount'],
-        'min_amount'  => $prog['prog_min_amount'],
-        'eligible'    => true,
-        'restricted'  => $restricted,
+    $subtypes = [
+      [
+        'subtype' => 'Financial',
+        'label' => 'AICS Financial',
+        'desc' => 'Financial assistance for individuals and families in crisis situations.',
+        'icon_bg' => 'bg-green-50',
+        'icon_text' => 'text-green-600',
+        'border' => 'border-green-200',
+        'hover' => 'hover:border-green-400',
+        'tag_bg' => 'bg-green-100 text-green-700',
+      ],
+      [
+        'subtype' => 'Burial',
+        'label' => 'AICS Burial',
+        'desc' => 'Burial assistance for indigent families who lost a member.',
+        'border' => 'border-slate-200',
+        'hover' => 'hover:border-slate-400',
+        'tag_bg' => 'bg-slate-100 text-slate-600',
+      ],
+      [
+        'subtype' => 'Medical',
+        'label' => 'AICS Medical',
+        'desc' => 'Medical assistance for hospitalization, medicines, and lab exams.',
+        'border' => 'border-red-200',
+        'hover' => 'hover:border-red-400',
+        'tag_bg' => 'bg-red-100 text-red-700',
+      ],
+      [
+        'subtype' => 'Livelihood',
+        'label' => 'AICS Livelihood',
+        'desc' => 'Livelihood assistance for small businesses and income-generating projects.',
+        'border' => 'border-amber-200',
+        'hover' => 'hover:border-amber-400',
+        'tag_bg' => 'bg-amber-100 text-amber-700',
+      ],
     ];
+
+    foreach ($subtypes as $sub) {
+      $cards[] = [
+        'type' => 'aics_fbml_sub',
+        'program_id' => $prog['program_id'],
+        'subtype' => $sub['subtype'],
+        'label' => $sub['label'],
+        'desc' => $sub['desc'],
+        'border' => $sub['border'],
+        'hover' => $sub['hover'],
+        'tag_bg' => $sub['tag_bg'],
+        // shared budget  (all 4 show the same number)
+        'remaining' => $remaining,
+        'pct' => $bs['pct'],
+        'bar_color' => $bs['bar_color'],
+        'txt_color' => $bs['txt_color'],
+        'budget_note' => 'Shared AICS FBML budget',
+        // limits  
+        'max_quarter' => $prog['prog_max_per_quarter'],
+        'max_year' => $prog['prog_max_per_year'],
+        'max_amount' => $prog['prog_max_amount'],
+        'min_amount' => $prog['prog_min_amount'],
+        // eligibility for the eligibility check labels
+        'eligible' => ($aicsThisQuarter < 1 && $aicsThisYear < 4),
+        'restricted' => false,
+      ];
+    }
+    continue;
+  }
+
+  $bs = budgetStatus($prog);
+  $remaining = floatval($prog['prog_remaining_budget'] ?? 0);
+
+  // design per program
+  $design = match ($prog['program_name']) {
+    'AICS Educational' => ['border' => 'border-blue-200', 'hover' => 'hover:border-blue-400'],
+    '4Ps' => ['border' => 'border-purple-200', 'hover' => 'hover:border-purple-400'],
+    'SLP' => ['border' => 'border-orange-200', 'hover' => 'hover:border-orange-400'],
+    'SFP' => ['border' => 'border-lime-200', 'hover' => 'hover:border-lime-400'],
+    'Day Care Center Program' => ['border' => 'border-yellow-200', 'hover' => 'hover:border-yellow-400'],
+    'Senior Citizen Program' => ['border' => 'border-amber-200', 'hover' => 'hover:border-amber-400'],
+    'PWD Program' => ['border' => 'border-indigo-200', 'hover' => 'hover:border-indigo-400'],
+    'Solo Parent Program' => ['border' => 'border-teal-200', 'hover' => 'hover:border-teal-400'],
+    'Women and Child Protection' => ['border' => 'border-violet-200', 'hover' => 'hover:border-violet-400'],
+    default => ['border' => 'border-slate-200', 'hover' => 'hover:border-navy-400'],
+  };
+
+  // Women and Child Protection is restricted to Social Worker / MSWDO Head
+  $restricted = ($prog['program_name'] === 'Women and Child Protection')
+    && !in_array($_SESSION['user_role'] ?? '', ['Admin', 'Social Worker']);
+
+  $cards[] = [
+    'type' => 'regular',
+    'program_id' => $prog['program_id'],
+    'subtype' => null,
+    'label' => $prog['program_name'],
+    'desc' => $prog['prog_description'],
+    'border' => $design['border'],
+    'hover' => $design['hover'],
+    'remaining' => $remaining,
+    'pct' => $bs['pct'],
+    'bar_color' => $bs['bar_color'],
+    'txt_color' => $bs['txt_color'],
+    'budget_note' => null,
+    'max_quarter' => $prog['prog_max_per_quarter'],
+    'max_year' => $prog['prog_max_per_year'],
+    'max_amount' => $prog['prog_max_amount'],
+    'min_amount' => $prog['prog_min_amount'],
+    'eligible' => true,
+    'restricted' => $restricted,
+  ];
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Program Availment – MSWDO San Enrique</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
-  
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+    rel="stylesheet" />
+
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: { sans: ['DM Sans','sans-serif'], serif: ['DM Serif Display','serif'] },
+          fontFamily: { sans: ['DM Sans', 'sans-serif'], serif: ['DM Serif Display', 'serif'] },
           colors: {
-            navy: { DEFAULT:'#0B2545', 50:'#E8EDF5', 100:'#C5D1E6', 400:'#3A5F93', 500:'#163566', 600:'#0B2545', 700:'#091D38' },
-            gold: { DEFAULT:'#C49A2A', 400:'#C49A2A' },
+            navy: { DEFAULT: '#0B2545', 50: '#E8EDF5', 100: '#C5D1E6', 400: '#3A5F93', 500: '#163566', 600: '#0B2545', 700: '#091D38' },
+            gold: { DEFAULT: '#C49A2A', 400: '#C49A2A' },
             slate2: '#F4F7FC',
           },
           keyframes: {
-            fadeUp:  { '0%':{ opacity:'0', transform:'translateY(10px)' }, '100%':{ opacity:'1', transform:'translateY(0)' } },
-            scaleIn: { '0%':{ opacity:'0', transform:'scale(.96)' },       '100%':{ opacity:'1', transform:'scale(1)' } },
+            fadeUp: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+            scaleIn: { '0%': { opacity: '0', transform: 'scale(.96)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
           },
           animation: {
-            'fade-up':   'fadeUp 0.35s ease both',
+            'fade-up': 'fadeUp 0.35s ease both',
             'fade-up-1': 'fadeUp 0.35s 0.04s ease both',
             'fade-up-2': 'fadeUp 0.35s 0.08s ease both',
             'fade-up-3': 'fadeUp 0.35s 0.12s ease both',
-            'scale-in':  'scaleIn 0.25s ease both',
+            'scale-in': 'scaleIn 0.25s ease both',
           }
         }
       }
     }
   </script>
   <style>
-    body { font-family: 'DM Sans', sans-serif; }
-    .sidebar-item { transition: all .15s ease; }
-    .sidebar-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.95); }
-    .sidebar-item.active { background: rgba(29,111,164,.28); border-left-color: #C49A2A; color: #fff; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+    }
 
-    .prog-card { transition: all .2s cubic-bezier(.4,0,.2,1); cursor: pointer; }
-    .prog-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(11,37,69,.12); }
-    .prog-card:hover .prog-arrow { opacity:1; transform:translateX(0); }
-    .prog-card:active { transform: translateY(-1px) scale(.99); }
-    .prog-card.restricted { opacity:.65; cursor:not-allowed; }
-    .prog-card.restricted:hover { transform:none; box-shadow:none; }
+    .sidebar-item {
+      transition: all .15s ease;
+    }
 
-    .prog-arrow { opacity:0; transform:translateX(-4px); transition:all .2s ease; }
-    .elig-row   { transition: background .1s; }
-    .elig-row:hover { background: #F8FAFC; }
-    .prog-bar-fill  { transition: width 1s cubic-bezier(.4,0,.2,1); }
+    .sidebar-item:hover {
+      background: rgba(255, 255, 255, .07);
+      color: rgba(255, 255, 255, .95);
+    }
+
+    .sidebar-item.active {
+      background: rgba(29, 111, 164, .28);
+      border-left-color: #C49A2A;
+      color: #fff;
+    }
+
+    .prog-card {
+      transition: all .2s cubic-bezier(.4, 0, .2, 1);
+      cursor: pointer;
+    }
+
+    .prog-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(11, 37, 69, .12);
+    }
+
+    .prog-card:hover .prog-arrow {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .prog-card:active {
+      transform: translateY(-1px) scale(.99);
+    }
+
+    .prog-card.restricted {
+      opacity: .65;
+      cursor: not-allowed;
+    }
+
+    .prog-card.restricted:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    .prog-arrow {
+      opacity: 0;
+      transform: translateX(-4px);
+      transition: all .2s ease;
+    }
+
+    .elig-row {
+      transition: background .1s;
+    }
+
+    .elig-row:hover {
+      background: #F8FAFC;
+    }
+
+    .prog-bar-fill {
+      transition: width 1s cubic-bezier(.4, 0, .2, 1);
+    }
 
     /* AICS section divider label */
     .section-label {
-      font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .1em;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
       color: #64748b;
       padding: 0 2px 8px;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .section-label::after {
-      content: ''; flex: 1; height: 1px; background: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
-    @keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes scaleIn { from { opacity:0; transform:scale(.96); }       to { opacity:1; transform:scale(1); } }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e2e8f0;
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, .15);
+      border-radius: 2px;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(.96);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
   </style>
 </head>
 
@@ -363,7 +452,8 @@ foreach ($dbPrograms as $prog) {
 
       <!-- Client summary card -->
       <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-4 mb-6">
-        <div class="w-12 h-12 rounded-xl bg-navy-600 flex items-center justify-center text-white font-serif text-lg flex-shrink-0">
+        <div
+          class="w-12 h-12 rounded-xl bg-navy-600 flex items-center justify-center text-white font-serif text-lg flex-shrink-0">
           <?= htmlspecialchars($initials) ?>
         </div>
         <div class="flex-1 min-w-0">
@@ -375,18 +465,28 @@ foreach ($dbPrograms as $prog) {
           </p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <?php if ($client['cl_is_4ps']): ?><span class="bg-purple-100 text-purple-700 text-[10px] font-semibold px-2.5 py-1 rounded-full"> 4Ps</span><?php endif; ?>
-          <?php if ($client['cl_is_senior']): ?><span class="bg-amber-100 text-amber-700 text-[10px] font-semibold px-2.5 py-1 rounded-full"> Senior</span><?php endif; ?>
-          <?php if ($client['cl_is_pwd']): ?><span class="bg-blue-100 text-blue-700 text-[10px] font-semibold px-2.5 py-1 rounded-full"> PWD</span><?php endif; ?>
-          <?php if ($client['cl_is_soloparent']): ?><span class="bg-teal-100 text-teal-700 text-[10px] font-semibold px-2.5 py-1 rounded-full"> Solo Parent</span><?php endif; ?>
-          <?php if ($client['cl_is_indigent']): ?><span class="bg-emerald-100 text-emerald-700 text-[10px] font-semibold px-2.5 py-1 rounded-full"> Indigent</span><?php endif; ?>
+          <?php if ($client['cl_is_4ps']): ?><span
+              class="bg-purple-100 text-purple-700 text-[10px] font-semibold px-2.5 py-1 rounded-full">
+              4Ps</span><?php endif; ?>
+          <?php if ($client['cl_is_senior']): ?><span
+              class="bg-amber-100 text-amber-700 text-[10px] font-semibold px-2.5 py-1 rounded-full">
+              Senior</span><?php endif; ?>
+          <?php if ($client['cl_is_pwd']): ?><span
+              class="bg-blue-100 text-blue-700 text-[10px] font-semibold px-2.5 py-1 rounded-full">
+              PWD</span><?php endif; ?>
+          <?php if ($client['cl_is_soloparent']): ?><span
+              class="bg-teal-100 text-teal-700 text-[10px] font-semibold px-2.5 py-1 rounded-full"> Solo
+              Parent</span><?php endif; ?>
+          <?php if ($client['cl_is_indigent']): ?><span
+              class="bg-emerald-100 text-emerald-700 text-[10px] font-semibold px-2.5 py-1 rounded-full">
+              Indigent</span><?php endif; ?>
         </div>
       </div>
 
       <!-- Eligibility check panel -->
       <div class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 overflow-hidden mb-6">
         <div class="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2">
-          
+
           <h2 class="text-[13px] font-semibold text-navy-600">Eligibility &amp; Limit Check</h2>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-5 divide-x divide-slate-100">
@@ -396,7 +496,8 @@ foreach ($dbPrograms as $prog) {
             <p class="text-[14px] font-bold <?= $aicsThisQuarter >= 1 ? 'text-red-500' : 'text-emerald-600' ?>">
               <?= $aicsThisQuarter ?> / 1
             </p>
-            <p class="text-[10px] mt-0.5 font-medium <?= $aicsThisQuarter >= 1 ? 'text-red-500' : 'text-emerald-600' ?>">
+            <p
+              class="text-[10px] mt-0.5 font-medium <?= $aicsThisQuarter >= 1 ? 'text-red-500' : 'text-emerald-600' ?>">
               <?= $aicsThisQuarter >= 1 ? '✕ Limit reached' : '✓ Eligible' ?>
             </p>
           </div>
@@ -434,7 +535,8 @@ foreach ($dbPrograms as $prog) {
           <div class="elig-row px-5 py-3.5">
             <p class="text-[10px] text-slate-400 font-medium uppercase tracking-wide mb-1">Last Case Study</p>
             <p class="text-[14px] font-bold text-navy-600"><?= $lastCsDate ?></p>
-            <p class="text-[10px] mt-0.5 font-medium <?= $caseStudyOld ? 'text-amber-500' : ($lastCaseStudy ? 'text-emerald-600' : 'text-red-500') ?>">
+            <p
+              class="text-[10px] mt-0.5 font-medium <?= $caseStudyOld ? 'text-amber-500' : ($lastCaseStudy ? 'text-emerald-600' : 'text-red-500') ?>">
               <?= $caseStudyOld ? '⚠ Update recommended' : ($lastCaseStudy ? '✓ Recent' : '✕ No record yet') ?>
             </p>
           </div>
@@ -447,49 +549,52 @@ foreach ($dbPrograms as $prog) {
         <p class="text-[13px] text-slate-500 mt-1">Choose the program to begin a new availment for this client.</p>
       </div>
 
-      <!-- ── AICS GROUP ──────────────────────────────────────────────────── -->
+      <!-- AICS GROUP -->
       <div class="mb-6">
         <p class="section-label mb-3">
-          
+
           AICS — Assistance to Individuals in Crisis Situation
         </p>
 
         <?php
-          $fbml = $progByName['AICS FBML'] ?? null;
-          if ($fbml):
-            $fbmlRemaining = floatval($fbml['prog_remaining_budget'] ?? 0);
-            $fbmlBm        = budgetStatus($fbml);
-        ?>
+        $fbml = $progByName['AICS FBML'] ?? null;
+        if ($fbml):
+          $fbmlRemaining = floatval($fbml['prog_remaining_budget'] ?? 0);
+          $fbmlBm = budgetStatus($fbml);
+          ?>
         <?php endif; ?>
 
-        <!-- 4 AICS FBML & 1 AICS Educational cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <?php foreach ($cards as $card):
-            if ($card['type'] !== 'aics_fbml_sub' && $card['label'] !== 'AICS Educational') continue;
+            if ($card['type'] !== 'aics_fbml_sub' && $card['label'] !== 'AICS Educational')
+              continue;
             $isEd = ($card['label'] === 'AICS Educational');
-          ?>
+            ?>
             <div
               class="prog-card animate-fade-up bg-white rounded-2xl border-2 <?= $card['border'] ?> <?= $card['hover'] ?> p-4 flex flex-col gap-2.5 relative overflow-hidden <?= (!$card['eligible'] && !$isEd) ? 'opacity-60' : '' ?>"
-              onclick="<?= (!$card['eligible'] && !$isEd) ? 'showIneligible()' : 'openModal(' . $card['program_id'] . ', \'' . addslashes($card['subtype'] ?? '') . '\', \'' . addslashes($card['label']) . '\')' ?>"
-            >
+              onclick="<?= (!$card['eligible'] && !$isEd) ? 'showIneligible()' : 'openModal(' . $card['program_id'] . ', \'' . addslashes($card['subtype'] ?? '') . '\', \'' . addslashes($card['label']) . '\')' ?>">
               <!-- ineligible overlay badge -->
               <?php if (!$card['eligible'] && !$isEd): ?>
-                <div class="absolute top-2 right-2 bg-red-100 text-red-600 text-[9px] font-bold px-2 py-0.5 rounded-full">Limit reached</div>
+                <div class="absolute top-2 right-2 bg-red-100 text-red-600 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                  Limit reached</div>
               <?php endif; ?>
               <?php if ($isEd): ?>
-                <div class="absolute top-2 right-2 bg-blue-100 text-blue-600 text-[9px] font-bold px-2 py-0.5 rounded-full">Own budget</div>
+                <div class="absolute top-2 right-2 bg-blue-100 text-blue-600 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                  Own budget</div>
               <?php endif; ?>
 
               <div class="flex items-center gap-2.5">
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-1">
-                    <p class="text-[13px] font-semibold text-navy-600 truncate"><?= htmlspecialchars($card['label']) ?></p>
+                    <p class="text-[13px] font-semibold text-navy-600 truncate"><?= htmlspecialchars($card['label']) ?>
+                    </p>
                     <span class="prog-arrow text-navy-400 text-xs">→</span>
                   </div>
                 </div>
               </div>
 
-              <p class="text-[11px] text-slate-400 leading-relaxed line-clamp-2"><?= htmlspecialchars($card['desc']) ?></p>
+              <p class="text-[11px] text-slate-400 leading-relaxed line-clamp-2"><?= htmlspecialchars($card['desc']) ?>
+              </p>
 
               <!-- budget bar -->
               <?php if ($card['pct'] > 0 || $card['remaining'] > 0): ?>
@@ -499,8 +604,8 @@ foreach ($dbPrograms as $prog) {
                     <span class="font-semibold <?= $card['txt_color'] ?>"><?= $card['pct'] ?>%</span>
                   </div>
                   <div class="bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                    <div class="prog-bar-fill h-1.5 rounded-full <?= $card['bar_color'] ?>"
-                         style="width:0%" data-target="<?= $card['pct'] ?>%"></div>
+                    <div class="prog-bar-fill h-1.5 rounded-full <?= $card['bar_color'] ?>" style="width:0%"
+                      data-target="<?= $card['pct'] ?>%"></div>
                   </div>
                   <p class="text-[10px] <?= $card['txt_color'] ?> mt-0.5 font-medium">
                     ₱<?= number_format($card['remaining']) ?> left
@@ -511,11 +616,14 @@ foreach ($dbPrograms as $prog) {
               <!-- limits -->
               <div class="pt-1.5 border-t border-slate-100 text-[10px] text-slate-400">
                 <?php
-                  $limParts = [];
-                  if ($card['max_quarter']) $limParts[] = 'Max ' . $card['max_quarter'] . '/qtr';
-                  if ($card['max_year'])    $limParts[] = 'Max ' . $card['max_year'] . '/yr';
-                  if ($card['max_amount'])  $limParts[] = 'Up to ₱' . number_format($card['max_amount']);
-                  echo $limParts ? implode(' · ', $limParts) : 'No preset limit';
+                $limParts = [];
+                if ($card['max_quarter'])
+                  $limParts[] = 'Max ' . $card['max_quarter'] . '/qtr';
+                if ($card['max_year'])
+                  $limParts[] = 'Max ' . $card['max_year'] . '/yr';
+                if ($card['max_amount'])
+                  $limParts[] = 'Up to ₱' . number_format($card['max_amount']);
+                echo $limParts ? implode(' · ', $limParts) : 'No preset limit';
                 ?>
               </div>
             </div>
@@ -523,28 +631,30 @@ foreach ($dbPrograms as $prog) {
         </div>
       </div>
 
-       <!-- Other programs -->
+      <!-- Other programs -->
       <div>
         <p class="section-label mb-3">
-          
+
           Sectoral &amp; Core Programs
         </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <?php foreach ($cards as $card):
-            if ($card['type'] === 'aics_fbml_sub') continue;
-            if ($card['label'] === 'AICS Educational') continue;
+            if ($card['type'] === 'aics_fbml_sub')
+              continue;
+            if ($card['label'] === 'AICS Educational')
+              continue;
 
             $remaining = $card['remaining'];
             $budgetStr = $remaining > 0 ? '₱' . number_format($remaining) . ' remaining' : 'Budget not set';
-          ?>
+            ?>
             <div
               class="prog-card animate-fade-up bg-white rounded-2xl border-2 <?= $card['border'] ?> <?= $card['restricted'] ? '' : $card['hover'] ?> p-5 flex flex-col gap-3 relative overflow-hidden <?= $card['restricted'] ? 'restricted' : '' ?>"
-              onclick="<?= $card['restricted'] ? 'showRestricted()' : 'openModal(' . $card['program_id'] . ', null, \'' . addslashes($card['label']) . '\')' ?>"
-            >
+              onclick="<?= $card['restricted'] ? 'showRestricted()' : 'openModal(' . $card['program_id'] . ', null, \'' . addslashes($card['label']) . '\')' ?>">
               <!-- restricted badge -->
               <?php if ($card['restricted']): ?>
-                <div class="absolute top-3 right-3 bg-violet-100 text-violet-600 text-[9px] font-bold px-2 py-0.5 rounded-full">
-                   Restricted
+                <div
+                  class="absolute top-3 right-3 bg-violet-100 text-violet-600 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                  Restricted
                 </div>
               <?php endif; ?>
 
@@ -572,8 +682,8 @@ foreach ($dbPrograms as $prog) {
                     <span class="font-semibold <?= $card['txt_color'] ?>"><?= $card['pct'] ?>% used</span>
                   </div>
                   <div class="bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                    <div class="prog-bar-fill h-1.5 rounded-full <?= $card['bar_color'] ?>"
-                         style="width:0%" data-target="<?= $card['pct'] ?>%"></div>
+                    <div class="prog-bar-fill h-1.5 rounded-full <?= $card['bar_color'] ?>" style="width:0%"
+                      data-target="<?= $card['pct'] ?>%"></div>
                   </div>
                 </div>
               <?php endif; ?>
@@ -581,11 +691,14 @@ foreach ($dbPrograms as $prog) {
               <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <span class="text-[10px] text-slate-400 border border-slate-100 px-2 py-0.5 rounded-full">
                   <?php
-                    $limParts = [];
-                    if ($card['max_quarter']) $limParts[] = 'Max ' . $card['max_quarter'] . '/qtr';
-                    if ($card['max_year'])    $limParts[] = 'Max ' . $card['max_year'] . '/yr';
-                    if ($card['max_amount'])  $limParts[] = 'Up to ₱' . number_format($card['max_amount']);
-                    echo $limParts ? implode(' · ', $limParts) : 'No preset limit';
+                  $limParts = [];
+                  if ($card['max_quarter'])
+                    $limParts[] = 'Max ' . $card['max_quarter'] . '/qtr';
+                  if ($card['max_year'])
+                    $limParts[] = 'Max ' . $card['max_year'] . '/yr';
+                  if ($card['max_amount'])
+                    $limParts[] = 'Up to ₱' . number_format($card['max_amount']);
+                  echo $limParts ? implode(' · ', $limParts) : 'No preset limit';
                   ?>
                 </span>
                 <span class="text-[11px] font-semibold <?= $card['txt_color'] ?>">
@@ -599,30 +712,33 @@ foreach ($dbPrograms as $prog) {
 
     </main>
 
-    <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+    <footer
+      class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
       <span>MSWDO San Enrique Information System</span>
     </footer>
   </div>
 
-   <!-- confirm modal -->
-  <div id="modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 hidden">
+  <!-- confirm modal -->
+  <div id="modal"
+    class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 hidden">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
       <div class="flex items-start justify-between mb-4">
         <div class="flex items-center gap-3">
           <div>
             <h3 id="mTitle" class="text-[16px] font-semibold text-navy-600"></h3>
-            <p id="mSub"   class="text-[12px] text-slate-400 mt-0.5"></p>
+            <p id="mSub" class="text-[12px] text-slate-400 mt-0.5"></p>
           </div>
         </div>
-        <button onclick="closeModal()" class="text-slate-300 hover:text-slate-500 text-xl leading-none mt-0.5">✕</button>
+        <button onclick="closeModal()"
+          class="text-slate-300 hover:text-slate-500 text-xl leading-none mt-0.5">✕</button>
       </div>
 
       <!-- budget info -->
       <div id="mBudget" class="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4 text-[12px]"></div>
 
-      <!-- shared budget note - only shown for AICS FBML subtypes -->
-      <div id="mSharedNote" class="hidden bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 mb-4 text-[11px] text-blue-700 flex items-center gap-2">
-        
+      <div id="mSharedNote"
+        class="hidden bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 mb-4 text-[11px] text-blue-700 flex items-center gap-2">
+
         <span>This availment shares the budget with Financial, Burial, Medical, and Livelihood.</span>
       </div>
 
@@ -653,18 +769,18 @@ foreach ($dbPrograms as $prog) {
     });
 
     function openModal(programId, subtype, label) {
-      const key  = `${programId}|${subtype || ''}`;
+      const key = `${programId}|${subtype || ''}`;
       const card = CARD_MAP[key];
       if (!card) return;
 
       document.getElementById('mTitle').textContent = card.label;
-      document.getElementById('mSub').textContent   = subtype
+      document.getElementById('mSub').textContent = subtype
         ? 'AICS FBML — ' + subtype + ' Assistance'
         : card.label;
 
       // budget section
       const remaining = parseFloat(card.remaining || 0);
-      const pct       = card.pct || 0;
+      const pct = card.pct || 0;
       document.getElementById('mBudget').innerHTML = remaining > 0 ? `
         <div class="flex gap-4 flex-wrap">
           <div class="flex-1 min-w-0">
@@ -693,9 +809,9 @@ foreach ($dbPrograms as $prog) {
       // limits
       let lims = [];
       if (card.max_quarter) lims.push(`Max per quarter: <strong>${card.max_quarter}</strong>`);
-      if (card.max_year)    lims.push(`Max per year: <strong>${card.max_year}</strong>`);
-      if (card.max_amount)  lims.push(`Max amount: <strong>₱${parseFloat(card.max_amount).toLocaleString()}</strong>`);
-      if (card.min_amount)  lims.push(`Min amount: <strong>₱${parseFloat(card.min_amount).toLocaleString()}</strong>`);
+      if (card.max_year) lims.push(`Max per year: <strong>${card.max_year}</strong>`);
+      if (card.max_amount) lims.push(`Max amount: <strong>₱${parseFloat(card.max_amount).toLocaleString()}</strong>`);
+      if (card.min_amount) lims.push(`Min amount: <strong>₱${parseFloat(card.min_amount).toLocaleString()}</strong>`);
       document.getElementById('mLimits').innerHTML = lims.length
         ? lims.join(' &nbsp;·&nbsp; ')
         : 'No preset limits for this program.';
@@ -722,7 +838,7 @@ foreach ($dbPrograms as $prog) {
     }
 
     // close on backdrop click
-    document.getElementById('modal').addEventListener('click', function(e) {
+    document.getElementById('modal').addEventListener('click', function (e) {
       if (e.target === this) closeModal();
     });
 
@@ -736,4 +852,5 @@ foreach ($dbPrograms as $prog) {
     });
   </script>
 </body>
+
 </html>
