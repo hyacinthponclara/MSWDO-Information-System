@@ -385,10 +385,10 @@ requireRole('Admin');
         </div>
       </div>
 
-      <!-- ── RECENT ACTIVITY + PENDING TASKS ── -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <!-- ── RECENT ACTIVITY + PENDING TASKS ── 
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5"> -->
 
-        <!-- Recent Activity Feed -->
+      <!-- Recent Activity Feed 
         <div class="animate-fade-up lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
           <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <h2 class="text-[13px] font-semibold text-navy-600">Recent Activity</h2>
@@ -480,9 +480,9 @@ requireRole('Admin');
                 class="text-[10px] font-medium text-navy-600 bg-navy-50 px-2 py-0.5 rounded-full flex-shrink-0">Admin</span>
             </div>
           </div>
-        </div>
+        </div> -->
 
-        <!-- Pending Tasks -->
+      <!-- Pending Tasks 
         <div class="flex flex-col gap-4">
           <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
             <h2 class="text-[13px] font-semibold text-navy-600 mb-4">Pending Tasks</h2>
@@ -520,9 +520,9 @@ requireRole('Admin');
                 </div>
               </div>
             </div>
-          </div>
+          </div> -->
 
-          <!-- Program Summary -->
+      <!-- Program Summary 
           <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
             <h2 class="text-[13px] font-semibold text-navy-600 mb-3">Top Programs This Month</h2>
             <div class="space-y-2.5">
@@ -550,7 +550,9 @@ requireRole('Admin');
             </div>
           </div>
         </div>
+        
       </div>
+        -->
 
     </main>
 
@@ -558,7 +560,6 @@ requireRole('Admin');
     <footer
       class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
       <span>MSWDO San Enrique Information System</span>
-      <span>Developed by: Elupre, Macalino, Mana-ay, Ponclara</span>
     </footer>
   </div>
 
