@@ -30,9 +30,9 @@ $clients = $pdo->query("
 ")->fetchAll();
 
 
-$totalClients    = count($clients);
-$thisMonth       = 0;
-$thisMonthYear   = date('Y-m');
+$totalClients = count($clients);
+$thisMonth = 0;
+$thisMonthYear = date('Y-m');
 
 foreach ($clients as $c) {
     // check if registered this month
@@ -56,18 +56,23 @@ foreach ($clients as $c) {
 
     // build sectors array based on boolean columns
     $sectors = [];
-    if ($c['cl_is_4ps'])        $sectors[] = '4ps';
-    if ($c['cl_is_pwd'])        $sectors[] = 'pwd';
-    if ($c['cl_is_senior'])     $sectors[] = 'senior';
-    if ($c['cl_is_soloparent']) $sectors[] = 'solo';
-    if ($c['cl_is_indigent'])   $sectors[] = 'indigent';
+    if ($c['cl_is_4ps'])
+        $sectors[] = '4ps';
+    if ($c['cl_is_pwd'])
+        $sectors[] = 'pwd';
+    if ($c['cl_is_senior'])
+        $sectors[] = 'senior';
+    if ($c['cl_is_soloparent'])
+        $sectors[] = 'solo';
+    if ($c['cl_is_indigent'])
+        $sectors[] = 'indigent';
 
     // format the client ID like CLT-2024-00101
-    $year   = date('Y', strtotime($c['cl_date_registered'] ?? 'now'));
-    $idStr  = 'CLT-' . $year . '-' . str_pad($c['client_id'], 5, '0', STR_PAD_LEFT);
+    $year = date('Y', strtotime($c['cl_date_registered'] ?? 'now'));
+    $idStr = 'CLT-' . $year . '-' . str_pad($c['client_id'], 5, '0', STR_PAD_LEFT);
 
     // format dates for display
-    $registered  = $c['cl_date_registered']
+    $registered = $c['cl_date_registered']
         ? date('M j, Y', strtotime($c['cl_date_registered']))
         : '—';
     $lastAvailed = $c['last_availment']
@@ -75,16 +80,16 @@ foreach ($clients as $c) {
         : 'None yet';
 
     $jsClients[] = [
-        'id'         => $idStr,
-        'client_id'  => $c['client_id'],  // real DB id for links
-        'name'       => $name,
-        'sex'        => $c['cl_sex'] ?? '—',
-        'age'        => (int)($c['cl_age'] ?? 0),
-        'barangay'   => $c['barangay_name'] ?? 'Unknown',
-        'contact'    => $c['cl_contact_num'] ?? '—',
-        'sectors'    => $sectors,
-        'availments' => (int)$c['total_availments'],
-        'last'       => $lastAvailed,
+        'id' => $idStr,
+        'client_id' => $c['client_id'],  // real DB id for links
+        'name' => $name,
+        'sex' => $c['cl_sex'] ?? '—',
+        'age' => (int) ($c['cl_age'] ?? 0),
+        'barangay' => $c['barangay_name'] ?? 'Unknown',
+        'contact' => $c['cl_contact_num'] ?? '—',
+        'sectors' => $sectors,
+        'availments' => (int) $c['total_availments'],
+        'last' => $lastAvailed,
         'registered' => $registered,
     ];
 }
@@ -97,7 +102,9 @@ foreach ($clients as $c) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Clients – MSWDO San Enrique</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+        rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
         tailwind.config = {
@@ -114,70 +121,216 @@ foreach ($clients as $c) {
                         fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
                     },
                     animation: {
-                        'fade-up':   'fadeUp 0.35s ease both',
+                        'fade-up': 'fadeUp 0.35s ease both',
                         'fade-up-1': 'fadeUp 0.35s 0.05s ease both',
                         'fade-up-2': 'fadeUp 0.35s 0.10s ease both',
                         'fade-up-3': 'fadeUp 0.35s 0.15s ease both',
                         'fade-up-4': 'fadeUp 0.35s 0.20s ease both',
-                        'fade-in':   'fadeIn 0.2s ease both',
+                        'fade-in': 'fadeIn 0.2s ease both',
                     }
                 }
             }
         }
     </script>
     <style>
-        body { font-family: 'DM Sans', sans-serif; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+        }
 
-        .sidebar-item { transition: all .15s; }
-        .sidebar-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.95); }
-        .sidebar-item.active { background: rgba(29,111,164,.28); border-left-color: #C49A2A; color: #fff; }
+        .sidebar-item {
+            transition: all .15s;
+        }
 
-        #mainSearch:focus { box-shadow: 0 0 0 4px rgba(58,95,147,.15); }
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, .07);
+            color: rgba(255, 255, 255, .95);
+        }
 
-        .client-row { transition: all .15s ease; cursor: pointer; }
-        .client-row:hover { background: #F0F4FA; }
-        .client-row:hover .row-arrow { opacity: 1; transform: translateX(0); }
-        .row-arrow { opacity: 0; transform: translateX(-4px); transition: all .15s ease; }
+        .sidebar-item.active {
+            background: rgba(29, 111, 164, .28);
+            border-left-color: #C49A2A;
+            color: #fff;
+        }
 
-        .filter-chip { transition: all .15s ease; cursor: pointer; user-select: none; }
-        .filter-chip:hover { border-color: #3A5F93; color: #0B2545; }
-        .filter-chip.active { background: #0B2545; color: #fff; border-color: #0B2545; }
-        .filter-chip.active .chip-count { background: rgba(255,255,255,.2); color: #fff; }
+        #mainSearch:focus {
+            box-shadow: 0 0 0 4px rgba(58, 95, 147, .15);
+        }
 
-        .badge-4ps      { background: #EDE9FE; color: #5B21B6; }
-        .badge-pwd      { background: #DBEAFE; color: #1E40AF; }
-        .badge-senior   { background: #FEF3C7; color: #92400E; }
-        .badge-solo     { background: #CCFBF1; color: #0F766E; }
-        .badge-indigent { background: #DCFCE7; color: #15803D; }
+        .client-row {
+            transition: all .15s ease;
+            cursor: pointer;
+        }
 
-        .sort-btn { transition: color .12s; }
-        .sort-btn:hover { color: #0B2545; }
-        .sort-btn.asc::after  { content: ' ↑'; font-size: 10px; }
-        .sort-btn.desc::after { content: ' ↓'; font-size: 10px; }
+        .client-row:hover {
+            background: #F0F4FA;
+        }
 
-        .av-0 { background: #0B2545; } .av-1 { background: #1D6FA4; }
-        .av-2 { background: #0F766E; } .av-3 { background: #92400E; }
-        .av-4 { background: #6D28D9; } .av-5 { background: #065F46; }
-        .av-6 { background: #9D174D; } .av-7 { background: #1D4ED8; }
+        .client-row:hover .row-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
 
-        .empty-state { animation: fadeUp 0.4s ease both; }
-        #quickCard { transition: all .2s ease; }
+        .row-arrow {
+            opacity: 0;
+            transform: translateX(-4px);
+            transition: all .15s ease;
+        }
 
-        .pg-btn { transition: all .15s; }
-        .pg-btn:hover:not(:disabled) { border-color: #3A5F93; color: #0B2545; background: #EBF4FB; }
-        .pg-btn.active { background: #0B2545; color: #fff; border-color: #0B2545; }
-        .pg-btn:disabled { opacity: .4; cursor: not-allowed; }
+        .filter-chip {
+            transition: all .15s ease;
+            cursor: pointer;
+            user-select: none;
+        }
 
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
+        .filter-chip:hover {
+            border-color: #3A5F93;
+            color: #0B2545;
+        }
+
+        .filter-chip.active {
+            background: #0B2545;
+            color: #fff;
+            border-color: #0B2545;
+        }
+
+        .filter-chip.active .chip-count {
+            background: rgba(255, 255, 255, .2);
+            color: #fff;
+        }
+
+        .badge-4ps {
+            background: #EDE9FE;
+            color: #5B21B6;
+        }
+
+        .badge-pwd {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .badge-senior {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .badge-solo {
+            background: #CCFBF1;
+            color: #0F766E;
+        }
+
+        .badge-indigent {
+            background: #DCFCE7;
+            color: #15803D;
+        }
+
+        .sort-btn {
+            transition: color .12s;
+        }
+
+        .sort-btn:hover {
+            color: #0B2545;
+        }
+
+        .sort-btn.asc::after {
+            content: ' ↑';
+            font-size: 10px;
+        }
+
+        .sort-btn.desc::after {
+            content: ' ↓';
+            font-size: 10px;
+        }
+
+        .av-0 {
+            background: #0B2545;
+        }
+
+        .av-1 {
+            background: #1D6FA4;
+        }
+
+        .av-2 {
+            background: #0F766E;
+        }
+
+        .av-3 {
+            background: #92400E;
+        }
+
+        .av-4 {
+            background: #6D28D9;
+        }
+
+        .av-5 {
+            background: #065F46;
+        }
+
+        .av-6 {
+            background: #9D174D;
+        }
+
+        .av-7 {
+            background: #1D4ED8;
+        }
+
+        .empty-state {
+            animation: fadeUp 0.4s ease both;
+        }
+
+        #quickCard {
+            transition: all .2s ease;
+        }
+
+        .pg-btn {
+            transition: all .15s;
+        }
+
+        .pg-btn:hover:not(:disabled) {
+            border-color: #3A5F93;
+            color: #0B2545;
+            background: #EBF4FB;
+        }
+
+        .pg-btn.active {
+            background: #0B2545;
+            color: #fff;
+            border-color: #0B2545;
+        }
+
+        .pg-btn:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .15);
+            border-radius: 2px;
+        }
 
         @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to   { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
+
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to   { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -189,7 +342,8 @@ foreach ($clients as $c) {
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <!-- Topbar -->
-        <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 animate-fade-up">
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 animate-fade-up">
             <div class="flex items-center gap-2 text-[13px]">
                 <span class="text-navy-600 font-semibold">Clients</span>
             </div>
@@ -214,7 +368,8 @@ foreach ($clients as $c) {
             <!-- Page header -->
             <div class="animate-fade-up">
                 <h1 class="text-xl font-serif text-navy-600">Client Registry</h1>
-                <p class="text-[13px] text-slate-500 mt-0.5">Search, filter, and manage all registered clients across programs.</p>
+                <p class="text-[13px] text-slate-500 mt-0.5">Search, filter, and manage all registered clients across
+                    programs.</p>
             </div>
 
             <div class="animate-fade-up-1 grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -223,7 +378,8 @@ foreach ($clients as $c) {
                         <i class="fas fa-users"></i>
                     </div>
                     <div>
-                        <p class="text-[20px] font-bold text-navy-600 leading-none"><?= number_format($totalClients) ?></p>
+                        <p class="text-[20px] font-bold text-navy-600 leading-none"><?= number_format($totalClients) ?>
+                        </p>
                         <p class="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">Total Clients</p>
                     </div>
                 </div>
@@ -237,7 +393,8 @@ foreach ($clients as $c) {
                     </div>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200 px-4 py-3 flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-base flex-shrink-0">
+                    <div
+                        class="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-base flex-shrink-0">
                         <i class="fas fa-database"></i>
                     </div>
                     <div>
@@ -253,7 +410,9 @@ foreach ($clients as $c) {
             <!-- Search + Filters -->
             <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
                 <div class="relative mb-4">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none"><i class="fas fa-search"></i></span>
+                    <span
+                        class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none"><i
+                            class="fas fa-search"></i></span>
                     <input id="mainSearch" type="text"
                         placeholder="Search by name, Client ID, barangay, contact number..."
                         class="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-[13px] text-slate-800 outline-none transition-all focus:border-navy-400 focus:bg-white"
@@ -265,19 +424,24 @@ foreach ($clients as $c) {
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mr-1">Filter:</span>
 
-                    <button onclick="toggleChip(this,'4ps')" class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
+                    <button onclick="toggleChip(this,'4ps')"
+                        class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
                         <i class="fas fa-home"></i> 4Ps
                     </button>
-                    <button onclick="toggleChip(this,'pwd')" class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
+                    <button onclick="toggleChip(this,'pwd')"
+                        class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
                         <i class="fas fa-wheelchair"></i> PWD
                     </button>
-                    <button onclick="toggleChip(this,'senior')" class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
+                    <button onclick="toggleChip(this,'senior')"
+                        class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
                         <i class="fas fa-user-friends"></i> Senior
                     </button>
-                    <button onclick="toggleChip(this,'solo')" class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
+                    <button onclick="toggleChip(this,'solo')"
+                        class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
                         <i class="fas fa-user"></i> Solo Parent
                     </button>
-                    <button onclick="toggleChip(this,'indigent')" class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
+                    <button onclick="toggleChip(this,'indigent')"
+                        class="filter-chip flex items-center gap-1.5 border border-slate-200 rounded-full px-3 py-1 text-[11px] font-medium text-slate-600">
                         <i class="fas fa-list"></i> Indigent
                     </button>
 
@@ -320,20 +484,25 @@ foreach ($clients as $c) {
                     <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
                         <div class="flex items-center gap-3">
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="w-4 h-4 accent-navy-600 rounded">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"
+                                    class="w-4 h-4 accent-navy-600 rounded">
                                 <span class="text-[11px] text-slate-400">Select all</span>
                             </label>
                             <div id="bulkActions" class="hidden flex items-center gap-2 animate-fade-in">
                                 <span class="text-[11px] font-medium text-navy-600" id="selectedCount">0 selected</span>
-                                <button class="text-[11px] font-medium text-blue-600 border border-blue-200 bg-blue-50 rounded-lg px-2.5 py-1 hover:bg-blue-100 transition-all">Export selected</button>
+                                <button
+                                    class="text-[11px] font-medium text-blue-600 border border-blue-200 bg-blue-50 rounded-lg px-2.5 py-1 hover:bg-blue-100 transition-all">Export
+                                    selected</button>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <div class="flex border border-slate-200 rounded-lg overflow-hidden">
-                                <button id="viewTable" onclick="setView('table')" class="px-2.5 py-1.5 text-sm bg-navy-600 text-white transition-all">
+                                <button id="viewTable" onclick="setView('table')"
+                                    class="px-2.5 py-1.5 text-sm bg-navy-600 text-white transition-all">
                                     <i class="fas fa-list"></i>
                                 </button>
-                                <button id="viewGrid" onclick="setView('grid')" class="px-2.5 py-1.5 text-sm bg-white text-slate-500 hover:bg-slate-50 transition-all">
+                                <button id="viewGrid" onclick="setView('grid')"
+                                    class="px-2.5 py-1.5 text-sm bg-white text-slate-500 hover:bg-slate-50 transition-all">
                                     <i class="fas fa-th"></i>
                                 </button>
                             </div>
@@ -347,25 +516,37 @@ foreach ($clients as $c) {
                                 <tr class="border-b border-slate-100 bg-slate-50/40">
                                     <th class="w-8 px-4 py-3"></th>
                                     <th class="px-4 py-3 text-left">
-                                        <button class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400" onclick="sortBy('name',this)">Client</button>
+                                        <button
+                                            class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                                            onclick="sortBy('name',this)">Client</button>
                                     </th>
                                     <th class="px-4 py-3 text-left">
-                                        <button class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400" onclick="sortBy('id',this)">Client ID</button>
+                                        <button
+                                            class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                                            onclick="sortBy('id',this)">Client ID</button>
                                     </th>
                                     <th class="px-4 py-3 text-left">
-                                        <button class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400" onclick="sortBy('barangay',this)">Barangay</button>
+                                        <button
+                                            class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                                            onclick="sortBy('barangay',this)">Barangay</button>
                                     </th>
                                     <th class="px-4 py-3 text-left hidden sm:table-cell">
-                                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sectors</span>
+                                        <span
+                                            class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sectors</span>
                                     </th>
                                     <th class="px-4 py-3 text-left hidden md:table-cell">
-                                        <button class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400" onclick="sortBy('availments',this)">Availments</button>
+                                        <button
+                                            class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                                            onclick="sortBy('availments',this)">Availments</button>
                                     </th>
                                     <th class="px-4 py-3 text-left hidden lg:table-cell">
-                                        <button class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400" onclick="sortBy('date',this)">Registered</button>
+                                        <button
+                                            class="sort-btn text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                                            onclick="sortBy('date',this)">Registered</button>
                                     </th>
                                     <th class="px-4 py-3 text-left">
-                                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Action</span>
+                                        <span
+                                            class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Action</span>
                                     </th>
                                 </tr>
                             </thead>
@@ -373,11 +554,16 @@ foreach ($clients as $c) {
                         </table>
 
                         <!-- empty state - shows when search/filter returns nothing -->
-                        <div id="emptyState" class="hidden empty-state flex flex-col items-center justify-center py-16 text-center">
-                            <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl mb-4">🔍</div>
+                        <div id="emptyState"
+                            class="hidden empty-state flex flex-col items-center justify-center py-16 text-center">
+                            <div
+                                class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl mb-4">
+                                🔍</div>
                             <p class="text-[14px] font-semibold text-slate-600">No clients found</p>
                             <p class="text-[12px] text-slate-400 mt-1">Try adjusting your search or filters</p>
-                            <button onclick="clearAllFilters()" class="mt-4 text-[12px] font-medium text-navy-600 border border-navy-200 rounded-lg px-4 py-2 hover:bg-navy-50 transition-all">Clear filters</button>
+                            <button onclick="clearAllFilters()"
+                                class="mt-4 text-[12px] font-medium text-navy-600 border border-navy-200 rounded-lg px-4 py-2 hover:bg-navy-50 transition-all">Clear
+                                filters</button>
                         </div>
                     </div>
 
@@ -388,25 +574,37 @@ foreach ($clients as $c) {
                 </div>
 
                 <!-- Quick view card -->
-                <div id="quickCard" class="hidden w-64 flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden animate-fade-in sticky top-20">
+                <div id="quickCard"
+                    class="hidden w-64 flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden animate-fade-in sticky top-20">
                     <div class="p-4">
                         <div class="flex items-center justify-between mb-3">
                             <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Quick View</p>
-                            <button onclick="closeQuick()" class="text-slate-300 hover:text-slate-500 text-lg leading-none">✕</button>
+                            <button onclick="closeQuick()"
+                                class="text-slate-300 hover:text-slate-500 text-lg leading-none">✕</button>
                         </div>
                         <div class="flex items-center gap-3 mb-4">
-                            <div id="qcAvatar" class="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"></div>
+                            <div id="qcAvatar"
+                                class="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                            </div>
                             <div>
                                 <p id="qcName" class="text-[13px] font-semibold text-navy-600"></p>
                                 <p id="qcId" class="text-[10px] text-slate-400 mt-0.5"></p>
                             </div>
                         </div>
                         <div class="space-y-2 mb-4">
-                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Barangay</span><span id="qcBrgy" class="font-medium text-slate-700"></span></div>
-                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Age / Sex</span><span id="qcAge" class="font-medium text-slate-700"></span></div>
-                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Contact</span><span id="qcContact" class="font-medium text-slate-700"></span></div>
-                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Total Availments</span><span id="qcAvails" class="font-semibold text-navy-600"></span></div>
-                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Last Availed</span><span id="qcLast" class="font-medium text-slate-700"></span></div>
+                            <div class="flex justify-between text-[11px]"><span
+                                    class="text-slate-400">Barangay</span><span id="qcBrgy"
+                                    class="font-medium text-slate-700"></span></div>
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Age /
+                                    Sex</span><span id="qcAge" class="font-medium text-slate-700"></span></div>
+                            <div class="flex justify-between text-[11px]"><span
+                                    class="text-slate-400">Contact</span><span id="qcContact"
+                                    class="font-medium text-slate-700"></span></div>
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Total
+                                    Availments</span><span id="qcAvails" class="font-semibold text-navy-600"></span>
+                            </div>
+                            <div class="flex justify-between text-[11px]"><span class="text-slate-400">Last
+                                    Availed</span><span id="qcLast" class="font-medium text-slate-700"></span></div>
                         </div>
                         <div id="qcBadges" class="flex flex-wrap gap-1.5 mb-4"></div>
                         <div class="space-y-2">
@@ -414,6 +612,11 @@ foreach ($clients as $c) {
                                 class="block w-full py-2.5 bg-navy-600 text-white text-[12px] font-semibold rounded-xl hover:bg-navy-500 transition-all text-center">
                                 View Full Profile →
                             </a>
+                            <a id="qcCaseStudyBtn" href="casestudy.php"
+                                class="block w-full py-2.5 bg-navy-600 text-white text-[12px] font-semibold rounded-xl hover:bg-navy-500 transition-all text-center">
+                                Case Study →
+                            </a>
+
                             <a id="qcAvailBtn" href="#"
                                 class="block w-full py-2.5 border border-navy-200 bg-navy-50 text-navy-700 text-[12px] font-medium rounded-xl hover:bg-navy-100 transition-all text-center">
                                 + New Availment
@@ -426,12 +629,14 @@ foreach ($clients as $c) {
 
         </main>
 
-        <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+        <footer
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
             <span>MSWDO San Enrique Information System</span>
         </footer>
     </div>
 
-    <div id="toast" class="fixed bottom-6 right-6 bg-navy-600 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
+    <div id="toast"
+        class="fixed bottom-6 right-6 bg-navy-600 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
         <span class="text-emerald-400 text-base">✓</span>
         <span id="toastMsg">Done!</span>
     </div>
@@ -440,15 +645,15 @@ foreach ($clients as $c) {
         const ALL_CLIENTS = <?= json_encode($jsClients, JSON_HEX_TAG | JSON_HEX_APOS) ?>;
 
         const SECTOR_META = {
-            '4ps':     { label: '4Ps',        cls: 'badge-4ps' },
-            'pwd':     { label: 'PWD',         cls: 'badge-pwd' },
-            'senior':  { label: 'Senior',      cls: 'badge-senior' },
-            'solo':    { label: 'Solo Parent', cls: 'badge-solo' },
-            'indigent':{ label: 'Indigent',    cls: 'badge-indigent' },
+            '4ps': { label: '4Ps', cls: 'badge-4ps' },
+            'pwd': { label: 'PWD', cls: 'badge-pwd' },
+            'senior': { label: 'Senior', cls: 'badge-senior' },
+            'solo': { label: 'Solo Parent', cls: 'badge-solo' },
+            'indigent': { label: 'Indigent', cls: 'badge-indigent' },
         };
-        const AV_COLORS = ['av-0','av-1','av-2','av-3','av-4','av-5','av-6','av-7'];
+        const AV_COLORS = ['av-0', 'av-1', 'av-2', 'av-3', 'av-4', 'av-5', 'av-6', 'av-7'];
 
-        let filtered    = [...ALL_CLIENTS];
+        let filtered = [...ALL_CLIENTS];
         let activeChips = new Set();
         let currentView = 'table';
         let searchQuery = '';
@@ -471,8 +676,8 @@ foreach ($clients as $c) {
             empty.classList.add('hidden');
 
             tbody.innerHTML = filtered.map((c, i) => {
-                const av     = AV_COLORS[i % AV_COLORS.length];
-                const ini    = initials(c.name);
+                const av = AV_COLORS[i % AV_COLORS.length];
+                const ini = initials(c.name);
                 const badges = c.sectors.map(s => {
                     const m = SECTOR_META[s];
                     return `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.cls}">${m.label}</span>`;
@@ -527,8 +732,8 @@ foreach ($clients as $c) {
         function renderGrid() {
             const grid = document.getElementById('clientGridBody');
             grid.innerHTML = filtered.map((c, i) => {
-                const av     = AV_COLORS[i % AV_COLORS.length];
-                const ini    = initials(c.name);
+                const av = AV_COLORS[i % AV_COLORS.length];
+                const ini = initials(c.name);
                 const badges = c.sectors.slice(0, 2).map(s => {
                     const m = SECTOR_META[s];
                     return `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${m.cls}">${m.label}</span>`;
@@ -577,21 +782,21 @@ foreach ($clients as $c) {
         }
 
         function filterBarangay(val) { applyFilters(); }
-        function filterSex(val)      { applyFilters(); }
+        function filterSex(val) { applyFilters(); }
 
         function applyFilters() {
             const brgy = document.querySelector('select').value;
-            const sex  = document.querySelectorAll('select')[1].value;
+            const sex = document.querySelectorAll('select')[1].value;
 
             filtered = ALL_CLIENTS.filter(c => {
-                const matchSearch  = !searchQuery ||
+                const matchSearch = !searchQuery ||
                     c.name.toLowerCase().includes(searchQuery) ||
                     c.id.toLowerCase().includes(searchQuery) ||
                     c.barangay.toLowerCase().includes(searchQuery) ||
                     c.contact.includes(searchQuery);
                 const matchSectors = activeChips.size === 0 || [...activeChips].every(s => c.sectors.includes(s));
-                const matchBrgy    = !brgy || c.barangay === brgy;
-                const matchSex     = !sex  || c.sex === sex;
+                const matchBrgy = !brgy || c.barangay === brgy;
+                const matchSex = !sex || c.sex === sex;
                 return matchSearch && matchSectors && matchBrgy && matchSex;
             });
 
@@ -609,27 +814,29 @@ foreach ($clients as $c) {
         }
 
         function openQuick(idx) {
-            const c    = filtered[idx];
+            const c = filtered[idx];
             const card = document.getElementById('quickCard');
-            const av   = AV_COLORS[idx % AV_COLORS.length];
+            const av = AV_COLORS[idx % AV_COLORS.length];
 
             document.getElementById('qcAvatar').className = `w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${av}`;
             document.getElementById('qcAvatar').textContent = initials(c.name);
-            document.getElementById('qcName').textContent    = c.name;
-            document.getElementById('qcId').textContent      = c.id;
-            document.getElementById('qcBrgy').textContent    = c.barangay;
-            document.getElementById('qcAge').textContent     = `${c.age} yrs · ${c.sex}`;
+            document.getElementById('qcName').textContent = c.name;
+            document.getElementById('qcId').textContent = c.id;
+            document.getElementById('qcBrgy').textContent = c.barangay;
+            document.getElementById('qcAge').textContent = `${c.age} yrs · ${c.sex}`;
             document.getElementById('qcContact').textContent = c.contact;
-            document.getElementById('qcAvails').textContent  = c.availments + ' records';
-            document.getElementById('qcLast').textContent    = c.last;
-            document.getElementById('qcBadges').innerHTML    = c.sectors.map(s => {
+            document.getElementById('qcAvails').textContent = c.availments + ' records';
+            document.getElementById('qcLast').textContent = c.last;
+            document.getElementById('qcBadges').innerHTML = c.sectors.map(s => {
                 const m = SECTOR_META[s];
                 return `<span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${m.cls}">${m.label}</span>`;
             }).join('');
 
             // quick card buttons link to the real client
             document.getElementById('qcProfileBtn').href = `clientprofile.php?id=${c.client_id}`;
-            document.getElementById('qcAvailBtn').href   = `programavailmentselection.php?client_id=${c.client_id}`;
+            document.getElementById('qcAvailBtn').href = `programavailmentselection.php?client_id=${c.client_id}`;
+            document.getElementById('qcCaseStudyBtn').href = `casestudy.php?client_id=${c.client_id}`;
+
 
             card.classList.remove('hidden');
         }
@@ -640,11 +847,11 @@ foreach ($clients as $c) {
 
         let sortDir = {};
         function sortBy(key, btn) {
-            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('asc','desc'));
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('asc', 'desc'));
             sortDir[key] = sortDir[key] === 'asc' ? 'desc' : 'asc';
             btn.classList.add(sortDir[key]);
             const dir = sortDir[key] === 'asc' ? 1 : -1;
-            const map = { name:'name', id:'id', barangay:'barangay', availments:'availments', date:'registered' };
+            const map = { name: 'name', id: 'id', barangay: 'barangay', availments: 'availments', date: 'registered' };
             filtered.sort((a, b) => {
                 const va = a[map[key]], vb = b[map[key]];
                 if (typeof va === 'number') return (va - vb) * dir;
@@ -656,7 +863,7 @@ foreach ($clients as $c) {
         function setView(v) {
             currentView = v;
             document.getElementById('tableView').classList.toggle('hidden', v !== 'table');
-            document.getElementById('gridView').classList.toggle('hidden',  v !== 'grid');
+            document.getElementById('gridView').classList.toggle('hidden', v !== 'grid');
             document.getElementById('viewTable').className = v === 'table'
                 ? 'px-2.5 py-1.5 text-sm bg-navy-600 text-white transition-all'
                 : 'px-2.5 py-1.5 text-sm bg-white text-slate-500 hover:bg-slate-50 transition-all';
@@ -681,11 +888,11 @@ foreach ($clients as $c) {
         function showToast(msg) {
             document.getElementById('toastMsg').textContent = msg;
             const t = document.getElementById('toast');
-            t.classList.remove('opacity-0','translate-y-4','pointer-events-none');
-            t.classList.add('opacity-100','translate-y-0');
+            t.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+            t.classList.add('opacity-100', 'translate-y-0');
             setTimeout(() => {
-                t.classList.add('opacity-0','translate-y-4');
-                t.classList.remove('opacity-100','translate-y-0');
+                t.classList.add('opacity-0', 'translate-y-4');
+                t.classList.remove('opacity-100', 'translate-y-0');
             }, 2800);
         }
 
@@ -695,4 +902,5 @@ foreach ($clients as $c) {
         renderTable();
     </script>
 </body>
+
 </html>

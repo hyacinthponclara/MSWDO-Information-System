@@ -1,7 +1,90 @@
 <?php
 require 'auth.php';
 requireRole(['Social Worker']);
+require 'db_connect.php';
+
+$client_id = (int) ($_GET['client_id'] ?? 0);
+
+if ($client_id <= 0) {
+    header('Location: clientslist.php');
+    exit;
+}
+
+$stmt = $pdo->prepare("SELECT * FROM CLIENT WHERE client_id = ? LIMIT 1");
+$stmt->execute([$client_id]);
+$client = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$client) {
+    header("Location: clientslist.php");
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $user_id = $_SESSION['user_id'];
+    $client_id = (int) ($_GET['client_id'] ?? 0);
+    $interview_date = trim($_POST['interview_date'] ?? '');
+    $type_of_case_study = trim($_POST['type_of_case_study'] ?? '');
+    $patient_name = trim($_POST['patient_name'] ?? '');
+    $patient_relatioship = trim($_POST['patient_relationship'] ?? '');
+    $combined_income = trim((float) $_POST['combined_income'] ?? '0');
+    $monthly_expenses = trim((float) $_POST['monthly_expenses'] ?? '0');
+    $emergency_fund_available = isset($_POST['emergency_fund_available']) ? 1 : 0;
+    $crises_severity = trim($_POST['crises_severity'] ?? '') ?: null;
+    $crises_experienced = trim($_POST['crises_experienced'] ?? '') ?: null;
+    $problem_presented = trim($_POST['problem_presented'] ?? '');
+    $home_condition = trim($_POST['home_conditoin'] ?? '') ?: null;
+    $indigency_assessment = trim($_POST['indigency_assessment'] ?? '') ?: null;
+    $recommendation = trim($_POST['recommendation'] ?? '') ?: null;
+    $previous_dswd_assistance = isset($_POST['[previous_dswd_assistance']) ? 1 : 0;
+    $previous_assistance_details = trim($_POST['previous_assistance_details'] ?? '') ?: null;
+    $previous_assisstance_date = trim($_POST['previous_assistance_date'] ?? '') ?: null;
+    $insurance_coverage = trim($_POST['insurance_coverage'] ?? '') ?: null;
+    $savings = trim((float) $_POST['savings'] ?? '0');
+
+    $family_members = [];
+    foreach ($family_members as $f => $family) {
+        $family_members[] = [
+            'name' => trim($family),
+            'relationship' => trim($family_relationships[$f] ?? ''),
+            'age' => (int) ($family_age[$f] ?? 0),
+            'sex' => trim($family_sex[$f] ?? ''),
+            'civil_status' => trim($family_civil_status[$f] ?? ''),
+            'education' => trim($family_education[$f] ?? ''),
+            'occupation' => trim($family_occupation[$f] ?? ''),
+            'income' => (float) ($family_income[$f] ?? 0),
+        ];
+    }
+    $family_composition_json = json_encode($family_members);
+
+    $stmt = $pdo->prepare("INSERT INTO CASE_STUDY (client_id, user_id, interview_date, type_of_case_study, patient_name, patient_relationship, family_composition_json, combined_income, monthly_expenses, emergency_fund_available, crisis_severity, crises_experienced, problem_presented, home_condition, indigency_assessment, recommendation, previous_dswd_assistance, previous_assistance_details, previous_assistance_date, insurance_coverage, savings)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$client_id, $user_id, $interview_date, $type_of_case_study, $patient_name, $patient_relatioship, $family_composition_json, $combined_income, $monthly_expenses, $emergency_fund_available, $crises_severity, $crises_experienced, $problem_presented, $home_condition, $indigency_assessment, $recommendation, $previous_dswd_assistance, $previous_assistance_details, $previous_assisstance_date, $insurance_coverage, $savings]);
+
+    header("Location: clientslist.php?id={client_id}");
+    exit;
+
+}
+
+
+$initials = strtoupper(
+    substr($client['cl_firstname'], 0, 1) . substr($client['cl_lastname'], 0, 1)
+);
+
+
+$full_name = htmlspecialchars(
+    $client['cl_firstname'] . ' ' . ($client['cl_middlename'] ? $client['cl_middlename'][0] . '. ' : '') . $client['cl_lastname']
+);
+
+
+$barangay = htmlspecialchars($client['barangay_name'] ?? 'Unknown Barangay');
+$age = $client['cl_age'] ?? '—';
+$sex = htmlspecialchars($client['cl_sex'] ?? '');
+$civilStat = htmlspecialchars($client['cl_civil_status'] ?? '');
+$subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {$civilStat}";
+
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -401,18 +484,17 @@ requireRole(['Social Worker']);
 
 <body class="bg-slate2 min-h-screen flex">
 
-    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
     <?php include 'sidebar.php'; ?>
-    <!-- ═══════════════════ MAIN ═══════════════════ -->
+
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
-        <!-- Topbar -->
         <header
             class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
-                <a href="#" class="text-slate-400 hover:text-navy-600 transition-colors">Clients</a>
+                <a href="clientslist.php" class="text-slate-400 hover:text-navy-600 transition-colors">Clients</a>
                 <span class="text-slate-300">/</span>
-                <a href="#" class="text-slate-400 hover:text-navy-600 transition-colors">Maria Santos</a>
+                <a href="clientprofile.php?id=<?= $client_id ?>"
+                    class="text-slate-400 hover:text-navy-600 transition-colors"><?= $full_name ?></a>
                 <span class="text-slate-300">/</span>
                 <span class="text-navy-600 font-semibold">Case Study</span>
             </div>
@@ -423,49 +505,22 @@ requireRole(['Social Worker']);
         <main class="flex-1 p-6">
             <div class="max-w-4xl mx-auto">
 
-                <!-- Page header -->
                 <div class="animate-fade-up mb-6">
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <h1 class="text-xl font-serif text-navy-600">Case Study / Social Case Summary</h1>
-                            <p class="text-[13px] text-slate-500 mt-1">Structured interview record. This data generates
-                                the official Social Case Summary PDF.</p>
-                        </div>
-                        <!-- Progress indicator -->
-                        <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5">
-                            <div class="flex items-center gap-1" id="stepDots"></div>
-                            <span class="text-[11px] text-slate-400 ml-1" id="stepLabel">Section 1 of 7</span>
-                        </div>
-                    </div>
+                    <h1 class="text-xl font-serif text-navy-600">Case Study / Social Case Summary</h1>
                 </div>
 
-                <!-- ── FORM AREA ── -->
-                <div id="formArea">
+                <form method="POST" action="casestudy.php?client_id=<?= $client_id ?>">
 
-                    <!-- Client mini banner -->
                     <div
                         class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-4 mb-5">
-                        <div
-                            class="w-11 h-11 rounded-xl bg-navy-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                            MS</div>
                         <div class="flex-1">
-                            <p class="text-[14px] font-semibold text-navy-600">Maria R. Santos</p>
-                            <p class="text-[11px] text-slate-400">CLT-2024-00142 · Poblacion · 62 yrs, Female · Widowed
-                            </p>
-                        </div>
-                        <div class="flex gap-2">
-                            <span class="bg-amber-100 text-amber-700 text-[10px] font-bold px-2.5 py-1 rounded-full"><i class ="fas fa-user-friends"></i>
-                                Senior</span>
-                            <span
-                                class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full"><i class="fas fa-list"></i>
-                                Indigent</span>
-                            <span
-                                class="bg-purple-100 text-purple-700 text-[10px] font-bold px-2.5 py-1 rounded-full"><i class="fas fa-home"></i>
-                                4Ps</span>
+                            <p class="text-[14px] font-semibold text-navy-600"><?= $full_name ?></p>
+                            <p class="text-[11px] text-slate-400"><?= htmlspecialchars($subtitle) ?></p>
                         </div>
                     </div>
 
-                    <!-- ── SECTION 1: Interview Details ── -->
+                    <!-- name="interview_date"      = $_POST['interview_date']      -->
+                    <!-- name="type_of_case_study"  = $_POST['type_of_case_study']  -->
                     <div class="section-card animate-fade-up-1">
                         <div class="section-head">
                             <div class="section-num">1</div>
@@ -476,34 +531,29 @@ requireRole(['Social Worker']);
                             </div>
                         </div>
                         <div class="section-body">
-                            <div class="grid grid-cols-3 gap-4">
+                            <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="field-label req">Interview Date</label>
-                                    <input type="date" class="field" id="interviewDate">
+                                    <input type="date" class="field" name="interview_date" required>
                                 </div>
                                 <div>
                                     <label class="field-label req">Type of Case Study</label>
-                                    <select class="field" id="caseType">
+                                    <select class="field" name="type_of_case_study" required>
                                         <option value="">Select type</option>
-                                        <option>Medical</option>
-                                        <option>Financial</option>
-                                        <option>Educational</option>
-                                        <option>Livelihood</option>
-                                        <option>Burial</option>
-                                        <option>PWD</option>
-                                        <option>Senior Citizen</option>
-                                        <option>Solo Parent</option>
-                                        <option>Others</option>
+                                        <option value="Medical">Medical</option>
+                                        <option value="Financial">Financial</option>
+                                        <option value="Educational">Educational</option>
+                                        <option value="Livelihood">Livelihood</option>
+                                        <option value="Burial">Burial</option>
+                                        <option value="PWD">PWD</option>
+                                        <option value="Senior Citizen">Senior Citizen</option>
+                                        <option value="Solo Parent">Solo Parent</option>
+                                        <option value="Others">Others</option>
                                     </select>
-                                </div>
-                                <div>
-                                    <label class="field-label">Case Study Number</label>
-                                    <input type="text" class="field"
-                                        placeholder="Auto-generated">
                                 </div>
                             </div>
 
-                            <!-- Patient different toggle -->
+                            <!-- if patient is different -->
                             <div
                                 class="mt-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between">
                                 <div>
@@ -523,37 +573,22 @@ requireRole(['Social Worker']);
                                 </label>
                             </div>
 
-                            <!-- Patient info (hidden by default) -->
-                            <div id="patientInfoFields" class="hidden mt-4 grid grid-cols-4 gap-4">
-                                <div class="col-span-2">
-                                    <label class="field-label req">Patient Name</label>
-                                    <input type="text" class="field" placeholder="Full name of patient">
+                            <!-- name="patient_name"         = $_POST['patient_name']         -->
+                            <!-- name="patient_relationship" = $_POST['patient_relationship']  -->
+                            <div id="patientInfoFields" class="hidden mt-4 grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="field-label">Patient Name</label>
+                                    <input type="text" class="field" name="patient_name">
                                 </div>
                                 <div>
-                                    <label class="field-label">Age</label>
-                                    <input type="number" class="field" placeholder="Age" min="0">
-                                </div>
-                                <div>
-                                    <label class="field-label">Birthdate</label>
-                                    <input type="date" class="field">
-                                </div>
-                                <div>
-                                    <label class="field-label">Sex</label>
-                                    <select class="field">
-                                        <option>Select</option>
-                                        <option>Male</option>
-                                        <option>Female</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="field-label req">Relationship to Client</label>
-                                    <input type="text" class="field" placeholder="e.g. Child, Spouse, Parent">
+                                    <label class="field-label">Relationship to Client</label>
+                                    <input type="text" class="field" name="patient_relationship"
+                                        placeholder="e.g. Child, Spouse, Parent">
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ── SECTION 2: Family Composition ── -->
                     <div class="section-card animate-fade-up-2">
                         <div class="section-head">
                             <div class="section-num">2</div>
@@ -601,77 +636,94 @@ requireRole(['Social Worker']);
                                     <tbody id="famBody">
                                         <tr class="fam-row border-b border-slate-100">
                                             <td class="px-3 py-2 text-slate-400 font-medium">1</td>
-                                            <td class="px-3 py-2"><input class="fam-input" type="text"
-                                                    value="Maria R. Santos" placeholder="Full name"></td>
-                                            <td class="px-3 py-2"><input class="fam-input" type="text" value="Self"
-                                                    placeholder="Relationship"></td>
-                                            <td class="px-3 py-2"><input class="fam-input" type="number" value="62"
-                                                    placeholder="Age"></td>
-                                            <td class="px-3 py-2"><select class="fam-select">
-                                                    <option>F</option>
-                                                    <option>M</option>
-                                                </select></td>
-                                            <td class="px-3 py-2"><select class="fam-select">
-                                                    <option>Widowed</option>
-                                                    <option>Single</option>
-                                                    <option>Married</option>
-                                                    <option>Separated</option>
-                                                </select></td>
-                                            <td class="px-3 py-2"><input class="fam-input" type="text"
-                                                    value="Elementary" placeholder="Education"></td>
-                                            <td class="px-3 py-2"><input class="fam-input" type="text" value="Vendor"
-                                                    placeholder="Occupation"></td>
-                                            <td class="px-3 py-2"><input class="fam-input" type="number" value="2500"
-                                                    placeholder="0"></td>
-                                            <td class="px-3 py-2 text-center"><button
-                                                    onclick="this.closest('tr').remove();renumber()"
+                                            <td class="px-3 py-2">
+                                                <input class="fam-input" type="text" name="family_names[]"
+                                                    placeholder="Full name">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input class="fam-input" type="text" name="family_relationships[]"
+                                                    placeholder="e.g. Self, Child">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input class="fam-input" type="number" name="family_ages[]"
+                                                    placeholder="Age" min="0">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <select class="fam-select" name="family_sexes[]">
+                                                    <option value="F">F</option>
+                                                    <option value="M">M</option>
+                                                </select>
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <select class="fam-select" name="family_civil_status[]">
+                                                    <option value="Single">Single</option>
+                                                    <option value="Married">Married</option>
+                                                    <option value="Widowed">Widowed</option>
+                                                    <option value="Separated">Separated</option>
+                                                </select>
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input class="fam-input" type="text" name="family_educations[]"
+                                                    placeholder="High School">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input class="fam-input" type="text" name="family_occupations[]"
+                                                    placeholder="Occupation">
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <input class="fam-input" type="number" name="family_incomes[]"
+                                                    placeholder="0" oninput="income()">
+                                            </td>
+                                            <td class="px-3 py-2 text-center">
+                                                <button type="button"
+                                                    onclick="this.closest('tr').remove();renumber();income()"
                                                     class="text-slate-300 hover:text-red-400 transition-colors">✕</button>
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
+
                             <div class="flex items-center justify-between">
-                                <button onclick="addFamRow()"
-                                    class="flex items-center gap-2 text-[12px] font-medium text-navy-600 border-2 border-dashed border-navy-200 rounded-xl px-4 py-2 hover:border-navy-400 hover:bg-navy-50 transition-all">
-                                    <i class="fas fa-plus"></i> Add Family Member
+                                <button type="button" onclick="addFamRow()"
+                                    class="text-[12px] font-medium text-navy-600 border-2 border-dashed border-navy-200 rounded-xl px-4 py-2 hover:border-navy-400 hover:bg-navy-50 transition-all">
+                                    + Add Family Member
                                 </button>
                                 <div class="flex items-center gap-4 text-[12px]">
                                     <span class="text-slate-400">Combined monthly income:</span>
-                                    <span id="totalIncome" class="font-bold text-navy-600 text-[14px]">₱10,500</span>
+                                    <span id="totalIncome" class="font-bold text-navy-600 text-[14px]">₱0</span>
                                 </div>
                             </div>
+
+                            <input type="hidden" name="combined_income" id="hiddenIncome" value="0">
+                            <input type="hidden" name="monthly_expenses" id="hiddenExpenses" value="0">
                         </div>
                     </div>
 
-                    <!-- ── SECTION 3: Income & Expenses ── -->
                     <div class="section-card animate-fade-up-3">
                         <div class="section-head">
                             <div class="section-num">3</div>
                             <div>
-                                <h2 class="text-[14px] font-semibold text-navy-600">Income &amp; Financial Resources
-                                </h2>
+                                <h2 class="text-[14px] font-semibold text-navy-600">Income & Financial Resources</h2>
                                 <p class="text-[11px] text-slate-400">Monthly financial picture — used for indigency
-                                    assessment and recommendation</p>
+                                    assessment</p>
                             </div>
                         </div>
                         <div class="section-body">
                             <div class="grid grid-cols-2 gap-6">
+
                                 <!-- Income side -->
                                 <div>
-                                    <p
-                                        class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 mb-3 flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Income
-                                        Sources
-                                    </p>
-                                    <div class="space-y-0">
+                                    <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 mb-3">
+                                        Income Sources</p>
+                                    <div>
                                         <div class="calc-row">
                                             <span class="calc-label">Combined family income</span>
                                             <div class="relative calc-input">
                                                 <span
                                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[12px]">₱</span>
                                                 <input type="number" class="field pl-6 text-[12px] py-2" placeholder="0"
-                                                    value="10500" oninput="calcNet()">
+                                                    oninput="calcNet()">
                                             </div>
                                         </div>
                                         <div class="calc-row">
@@ -702,21 +754,35 @@ requireRole(['Social Worker']);
                                             </div>
                                         </div>
                                     </div>
+
                                     <div class="mt-4 space-y-3">
                                         <div>
+                                            <!-- name="insurance_coverage" = $_POST['insurance_coverage'] -->
                                             <label class="field-label">Insurance / PhilHealth / SSS / GSIS</label>
-                                            <input type="text" class="field" placeholder="e.g. PhilHealth only, None">
+                                            <input type="text" class="field" name="insurance_coverage"
+                                                placeholder="e.g. PhilHealth only, None">
+                                        </div>
+                                        <div>
+                                            <label class="field-label">Savings</label>
+                                            <div class="relative">
+                                                <span
+                                                    class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[12px]">₱</span>
+                                                <!-- name="savings" = $_POST['savings'] -->
+                                                <input type="number" class="field pl-6" name="savings" placeholder="0">
+                                            </div>
                                         </div>
                                         <div>
                                             <label class="field-label">Emergency Fund Available</label>
                                             <div class="flex gap-2 mt-0.5">
                                                 <label
                                                     class="flex-1 flex items-center justify-center gap-2 border-2 border-slate-200 rounded-xl py-2 cursor-pointer hover:border-navy-400 transition-all text-[12px] font-medium text-slate-600 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
-                                                    <input type="radio" name="efund" class="hidden"> <i class="fas fa-check"></i> Yes
+                                                    <input type="radio" name="emergency_fund_available" value="1"
+                                                        class="hidden"> Yes
                                                 </label>
                                                 <label
                                                     class="flex-1 flex items-center justify-center gap-2 border-2 border-red-100 rounded-xl py-2 cursor-pointer hover:border-red-300 transition-all text-[12px] font-medium text-slate-600 has-[:checked]:border-red-500 has-[:checked]:bg-red-50 has-[:checked]:text-red-700">
-                                                    <input type="radio" name="efund" class="hidden" checked> <i class="fas fa-times"></i> None
+                                                    <input type="radio" name="emergency_fund_available" value="0"
+                                                        class="hidden" checked> None
                                                 </label>
                                             </div>
                                         </div>
@@ -725,28 +791,25 @@ requireRole(['Social Worker']);
 
                                 <!-- Expenses side -->
                                 <div>
-                                    <p
-                                        class="text-[11px] font-bold uppercase tracking-wider text-red-500 mb-3 flex items-center gap-1.5">
-                                        <span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span> Monthly
-                                        Expenses
-                                    </p>
-                                    <div class="space-y-0">
+                                    <p class="text-[11px] font-bold uppercase tracking-wider text-red-500 mb-3">Monthly
+                                        Expenses</p>
+                                    <div>
                                         <div class="calc-row">
                                             <span class="calc-label">Utilities (electric, water)</span>
                                             <div class="relative calc-input">
                                                 <span
                                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[12px]">₱</span>
                                                 <input type="number" class="field pl-6 text-[12px] py-2" placeholder="0"
-                                                    value="1200" oninput="calcNet()">
+                                                    oninput="calcNet()">
                                             </div>
                                         </div>
                                         <div class="calc-row">
-                                            <span class="calc-label">Food &amp; daily needs</span>
+                                            <span class="calc-label">Food & daily needs</span>
                                             <div class="relative calc-input">
                                                 <span
                                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[12px]">₱</span>
                                                 <input type="number" class="field pl-6 text-[12px] py-2" placeholder="0"
-                                                    value="4000" oninput="calcNet()">
+                                                    oninput="calcNet()">
                                             </div>
                                         </div>
                                         <div class="calc-row">
@@ -764,7 +827,7 @@ requireRole(['Social Worker']);
                                                 <span
                                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[12px]">₱</span>
                                                 <input type="number" class="field pl-6 text-[12px] py-2" placeholder="0"
-                                                    value="2500" oninput="calcNet()">
+                                                    oninput="calcNet()">
                                             </div>
                                         </div>
                                         <div class="calc-row">
@@ -773,35 +836,34 @@ requireRole(['Social Worker']);
                                                 <span
                                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[12px]">₱</span>
                                                 <input type="number" class="field pl-6 text-[12px] py-2" placeholder="0"
-                                                    value="2100" oninput="calcNet()">
+                                                    oninput="calcNet()">
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Net summary -->
+                            <!-- Net summary display -->
                             <div class="mt-5 grid grid-cols-3 gap-3">
                                 <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
                                     <p class="text-[10px] uppercase tracking-wide text-emerald-600 font-semibold mb-1">
                                         Total Income</p>
-                                    <p id="totalIncomeSum" class="text-[18px] font-bold text-emerald-700">₱10,500</p>
+                                    <p id="totalIncomeSum" class="text-[18px] font-bold text-emerald-700">₱0</p>
                                 </div>
                                 <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
                                     <p class="text-[10px] uppercase tracking-wide text-red-500 font-semibold mb-1">Total
                                         Expenses</p>
-                                    <p id="totalExpenses" class="text-[18px] font-bold text-red-600">₱9,800</p>
+                                    <p id="totalExpenses" class="text-[18px] font-bold text-red-600">₱0</p>
                                 </div>
                                 <div class="bg-navy-50 border border-navy-100 rounded-xl px-4 py-3 text-center">
                                     <p class="text-[10px] uppercase tracking-wide text-navy-500 font-semibold mb-1">Net
                                         Monthly</p>
-                                    <p id="netMonthly" class="text-[18px] font-bold text-navy-600">₱700</p>
+                                    <p id="netMonthly" class="text-[18px] font-bold text-navy-600">₱0</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ── SECTION 4: Crisis Assessment ── -->
                     <div class="section-card animate-fade-up-4">
                         <div class="section-head">
                             <div class="section-num">4</div>
@@ -813,34 +875,31 @@ requireRole(['Social Worker']);
                         </div>
                         <div class="section-body space-y-5">
 
-                            <!-- Severity -->
+                            <input type="hidden" name="crisis_severity" id="severityValue" value="">
+
                             <div>
                                 <label class="field-label req">Severity of Crisis</label>
                                 <div class="grid grid-cols-4 gap-3 mt-2" id="sevSelector">
-                                    <div onclick="setSev(this,'recently')"
-                                        class="sev-opt sel border-2 border-navy-600 bg-navy-50 rounded-xl p-3 text-center">
-                                        <div class="text-xl mb-1.5"><i class="fas fa-exclamation-triangle"></i></div>
-                                        <p class="text-[12px] font-semibold text-navy-700 leading-tight">Recently
+                                    <div onclick="setSev(this,'Recently diagnosed (≤3 months)')"
+                                        class="sev-opt border-2 border-slate-200 rounded-xl p-3 text-center">
+                                        <p class="text-[12px] font-semibold text-slate-600 leading-tight">Recently
                                             Diagnosed</p>
                                         <p class="text-[10px] text-slate-400 mt-1">≤ 3 months</p>
                                     </div>
-                                    <div onclick="setSev(this,'ongoing')"
+                                    <div onclick="setSev(this,'3 months to 1 year')"
                                         class="sev-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                        <div class="text-xl mb-1.5"><i class="fas fa-exclamation-circle"></i></div>
                                         <p class="text-[12px] font-semibold text-slate-600 leading-tight">3 Months – 1
                                             Year</p>
                                         <p class="text-[10px] text-slate-400 mt-1">Ongoing</p>
                                     </div>
-                                    <div onclick="setSev(this,'chronic')"
+                                    <div onclick="setSev(this,'Chronic/lifelong')"
                                         class="sev-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                        <div class="text-xl mb-1.5"><i class="fas fa-sync-alt"></i></div>
                                         <p class="text-[12px] font-semibold text-slate-600 leading-tight">Chronic /
                                             Lifelong</p>
                                         <p class="text-[10px] text-slate-400 mt-1">Permanent condition</p>
                                     </div>
-                                    <div onclick="setSev(this,'na')"
+                                    <div onclick="setSev(this,'Not applicable')"
                                         class="sev-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                        <div class="text-xl mb-1.5"><i class="fas fa-times"></i></div>
                                         <p class="text-[12px] font-semibold text-slate-600 leading-tight">Not Applicable
                                         </p>
                                         <p class="text-[10px] text-slate-400 mt-1">Financial / other type</p>
@@ -848,90 +907,90 @@ requireRole(['Social Worker']);
                                 </div>
                             </div>
 
-                            <!-- Crises in past 3 months -->
                             <div>
                                 <label class="field-label">Crises Experienced in the Past 3 Months</label>
-                                <p class="text-[11px] text-slate-400 mb-3">Check all that apply to the household during
-                                    the past 3 months</p>
+                                <p class="text-[11px] text-slate-400 mb-3">Check all that apply to the household</p>
+                                <input type="hidden" name="crises_experienced" id="crisesValue" value="">
                                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                     <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0">
-                                        <div><span class="text-[12px] text-slate-700 block"><i class="fas fa-hospital"></i>
-                                                Hospitalization</span><span class="text-[10px] text-slate-400">Hospital
-                                                admission</span></div>
+                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
+                                        onclick="updateCrises()">
+                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
+                                            value="Hospitalization">
+                                        <span class="text-[12px] text-slate-700">Hospitalization</span>
                                     </label>
                                     <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0">
-                                        <div><span class="text-[12px] text-slate-700 block"><i class="fas fa-skull"></i> Death in
-                                                family</span><span class="text-[10px] text-slate-400">Loss of a
-                                                member</span></div>
+                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
+                                        onclick="updateCrises()">
+                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
+                                            value="Death in family">
+                                        <span class="text-[12px] text-slate-700">Death in family</span>
                                     </label>
                                     <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0">
-                                        <div><span class="text-[12px] text-slate-700 block"><i class="fas fa-wind"></i> Catastrophic
-                                                event</span><span class="text-[10px] text-slate-400">Disaster, fire,
-                                                flood</span></div>
+                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
+                                        onclick="updateCrises()">
+                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
+                                            value="Catastrophic event">
+                                        <span class="text-[12px] text-slate-700">Catastrophic event</span>
                                     </label>
                                     <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0">
-                                        <div><span class="text-[12px] text-slate-700 block"><i class="fas fa-wheelchair"></i> Disablement</span><span
-                                                class="text-[10px] text-slate-400">Acquired disability</span></div>
+                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
+                                        onclick="updateCrises()">
+                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
+                                            value="Disablement">
+                                        <span class="text-[12px] text-slate-700">Disablement</span>
                                     </label>
                                     <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0">
-                                        <div><span class="text-[12px] text-slate-700 block"><i class="fas fa-briefcase"></i> Loss of
-                                                livelihood</span><span class="text-[10px] text-slate-400">Job loss,
-                                                closure</span></div>
+                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
+                                        onclick="updateCrises()">
+                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
+                                            value="Loss of livelihood">
+                                        <span class="text-[12px] text-slate-700">Loss of livelihood</span>
                                     </label>
                                     <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0">
-                                        <div><span class="text-[12px] text-slate-700 block"><i class="fas fa-edit"></i> Others</span><span
-                                                class="text-[10px] text-slate-400">Specify in notes</span></div>
+                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
+                                        onclick="updateCrises()">
+                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
+                                            value="Others">
+                                        <span class="text-[12px] text-slate-700">Others</span>
                                     </label>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ── SECTION 5: Problem Presented ── -->
+                    <!-- SECTION 5: Problem & Home Condition -->
+                    <!-- name="problem_presented" - $_POST['problem_presented'] -->
+                    <!-- name="home_condition"    - $_POST['home_condition']    -->
                     <div class="section-card animate-fade-up-5">
                         <div class="section-head">
                             <div class="section-num">5</div>
                             <div>
-                                <h2 class="text-[14px] font-semibold text-navy-600">Problem Presented &amp; Home
-                                    Condition</h2>
+                                <h2 class="text-[14px] font-semibold text-navy-600">Problem Presented & Home Condition
+                                </h2>
                                 <p class="text-[11px] text-slate-400">Narrative details as stated by the client and
                                     observed by the social worker</p>
                             </div>
                         </div>
                         <div class="section-body space-y-4">
                             <div>
-                                <label class="field-label req">Problem Presented <span
-                                        class="text-[10px] font-normal text-slate-400 ml-1 lowercase">(client's own
-                                        words)</span></label>
-                                <textarea class="field" rows="4" id="problemText" maxlength="1000"
-                                    oninput="countChars('problemText','problemCount',1000)"
-                                    placeholder="Record the problem as described by the client during the interview. Use first person or verbatim where possible. e.g., 'The client presented herself seeking financial assistance for her ongoing medical treatment for Type 2 Diabetes Mellitus...'">The client, a 62-year-old widow, presented herself at this office seeking financial assistance for her ongoing medical treatment. She was recently diagnosed with Type 2 Diabetes Mellitus and requires regular medication and laboratory monitoring. She stated: "Wala na ko laing mabuligan, amo lang kamo ang amon paglaum para makapadayon ang akon pagtratar."</textarea>
-                                <div class="char-counter" id="problemCount">843 / 1000 characters</div>
+                                <label class="field-label req">Problem Presented</label>
+                                <textarea class="field" rows="4" name="problem_presented" id="problemText"
+                                    maxlength="1000" oninput="countChars('problemText','problemCount',1000)"
+                                    required></textarea>
+                                <div class="char-counter" id="problemCount">0 / 1000 characters</div>
                             </div>
-
                             <div>
-                                <label class="field-label req">Home &amp; Economic Condition</label>
-                                <textarea class="field" rows="3" id="homeText" maxlength="800"
-                                    oninput="countChars('homeText','homeCount',800)"
-                                    placeholder="Describe the living situation: type of dwelling, water source, toilet facility, number of rooms, general condition of the home...">The client lives in a semi-permanent house owned by her son in Purok 2, Poblacion. The house is shared with three other family members. Water source is from the community water system. The household has a proper toilet facility. Overall living condition is below average.</textarea>
-                                <div class="char-counter" id="homeCount">304 / 800 characters</div>
+                                <label class="field-label">Home & Economic Condition</label>
+                                <textarea class="field" rows="3" name="home_condition" id="homeText" maxlength="800"
+                                    oninput="countChars('homeText','homeCount',800)"></textarea>
+                                <div class="char-counter" id="homeCount">0 / 800 characters</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ── SECTION 6: Indigency Assessment ── -->
+                    <!--  SECTION 6: Indigency Assessment  -->
+                    <!-- 'Indigent' 'Near Poor' 'Not Indigent' 'Not Assessed' -->
                     <div class="section-card animate-fade-up-6">
                         <div class="section-head">
                             <div class="section-num">6</div>
@@ -941,419 +1000,127 @@ requireRole(['Social Worker']);
                             </div>
                         </div>
                         <div class="section-body">
-                            <div class="grid grid-cols-4 gap-3 mb-5" id="indigSelector">
-                                <div onclick="setIndig(this,'indigent','sel-indigent')"
-                                    class="indig-opt sel-indigent border-2 border-red-500 bg-red-50 rounded-2xl p-4 text-center">
-                                    <div class="text-2xl mb-2"><i class="fas fa-list"></i></div>
-                                    <p class="text-[13px] font-semibold text-red-700">Indigent</p>
-                                    <p class="text-[10px] text-slate-500 mt-1">Below poverty threshold · No adequate
-                                        resources</p>
-                                </div>
-                                <div onclick="setIndig(this,'nearpoor','sel-nearpoor')"
-                                    class="indig-opt border-2 border-slate-200 rounded-2xl p-4 text-center">
-                                    <div class="text-2xl mb-2"><i class="fas fa-chart-bar"></i></div>
-                                    <p class="text-[13px] font-semibold text-slate-600">Near Poor</p>
-                                    <p class="text-[10px] text-slate-500 mt-1">Slightly above threshold · Vulnerable to
-                                        poverty</p>
-                                </div>
-                                <div onclick="setIndig(this,'notindigent','sel-notindigent')"
-                                    class="indig-opt border-2 border-slate-200 rounded-2xl p-4 text-center">
-                                    <div class="text-2xl mb-2"><i class="fas fa-check-circle"></i></div>
-                                    <p class="text-[13px] font-semibold text-slate-600">Not Indigent</p>
-                                    <p class="text-[10px] text-slate-500 mt-1">Above threshold · Has adequate resources
-                                    </p>
-                                </div>
-                                <div onclick="setIndig(this,'notassessed','sel-notassessed')"
-                                    class="indig-opt border-2 border-slate-200 rounded-2xl p-4 text-center">
-                                    <div class="text-2xl mb-2"><i class="fas fa-times"></i></div>
-                                    <p class="text-[13px] font-semibold text-slate-600">Not Assessed</p>
-                                    <p class="text-[10px] text-slate-500 mt-1">Unable to assess at this time</p>
-                                </div>
-                            </div>
+                            <input type="hidden" name="indigency_assessment" id="indigValue" value="">
 
-                            <!-- Supporting docs upload -->
-                            <div class="mt-2">
-                                <label class="field-label">Supporting Documents <span
-                                        class="text-[10px] font-normal text-slate-400 ml-1 lowercase">(medical records,
-                                        photos, etc.)</span></label>
-                                <label class="upload-zone" id="uz-case-docs">
-                                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple
-                                        onchange="fileSelected(this,'uz-case-docs')">
-                                    <div class="upload-content">
-                                        <p class="text-2xl mb-1"><i class="fas fa-paperclip"></i></p>
-                                        <p class="text-[12px] font-medium text-slate-600">Click to attach supporting
-                                            documents</p>
-                                        <p class="text-[11px] text-slate-400 mt-0.5">PDF, JPG, PNG — multiple files
-                                            accepted</p>
-                                    </div>
-                                </label>
+                            <div class="grid grid-cols-4 gap-3" id="indigSelector">
+                                <div onclick="setIndig(this,'Indigent','sel-indigent')"
+                                    class="indig-opt border-2 border-slate-200 rounded-2xl p-4 text-center">
+                                    <p class="text-[13px] font-semibold text-slate-600">Indigent</p>
+                                    <p class="text-[10px] text-slate-500 mt-1">Below poverty threshold</p>
+                                </div>
+                                <div onclick="setIndig(this,'Near Poor','sel-nearpoor')"
+                                    class="indig-opt border-2 border-slate-200 rounded-2xl p-4 text-center">
+                                    <p class="text-[13px] font-semibold text-slate-600">Near Poor</p>
+                                    <p class="text-[10px] text-slate-500 mt-1">Slightly above threshold</p>
+                                </div>
+                                <div onclick="setIndig(this,'Not Indigent','sel-notindigent')"
+                                    class="indig-opt border-2 border-slate-200 rounded-2xl p-4 text-center">
+                                    <p class="text-[13px] font-semibold text-slate-600">Not Indigent</p>
+                                    <p class="text-[10px] text-slate-500 mt-1">Above threshold</p>
+                                </div>
+                                <div onclick="setIndig(this,'Not Assessed','sel-notassessed')"
+                                    class="indig-opt border-2 border-slate-200 rounded-2xl p-4 text-center">
+                                    <p class="text-[13px] font-semibold text-slate-600">Not Assessed</p>
+                                    <p class="text-[10px] text-slate-500 mt-1">Unable to assess</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- ── SECTION 7: Recommendation ── -->
-                    <div class="section-card animate-fade-up-7">
+                    <!--  SECTION 7: Previous DSWD Assistance  -->
+                    <div class="section-card animate-fade-up-6">
                         <div class="section-head">
                             <div class="section-num">7</div>
                             <div>
-                                <h2 class="text-[14px] font-semibold text-navy-600">Evaluation &amp; Recommendation</h2>
+                                <h2 class="text-[14px] font-semibold text-navy-600">Previous DSWD Assistance</h2>
+                                <p class="text-[11px] text-slate-400">Any prior assistance received from DSWD or MSWDO
+                                </p>
+                            </div>
+                        </div>
+                        <div class="section-body space-y-4">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="prevDSWD" name="previous_dswd_assistance" value="1"
+                                    class="w-4 h-4 accent-navy-600" onchange="togglePrevDSWD()">
+                                <label for="prevDSWD" class="text-[13px] font-medium text-slate-700 cursor-pointer">
+                                    Client has received previous assistance from DSWD / MSWDO
+                                </label>
+                            </div>
+                            <div id="prevDSWDFields" class="hidden grid grid-cols-2 gap-4">
+                                <div class="col-span-2">
+                                    <!-- name="previous_assistance_details" - $_POST['previous_assistance_details'] -->
+                                    <label class="field-label">Details of Previous Assistance</label>
+                                    <textarea class="field" rows="2" name="previous_assistance_details"
+                                        placeholder="Type of assistance, amount, program..."></textarea>
+                                </div>
+                                <div>
+                                    <!-- name="previous_assistance_date" - $_POST['previous_assistance_date'] -->
+                                    <label class="field-label">Date of Previous Assistance</label>
+                                    <input type="date" class="field" name="previous_assistance_date">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!--  SECTION 8: Recommendation  -->
+                    <!-- name="recommendation" - $_POST['recommendation'] -->
+                    <div class="section-card animate-fade-up-7">
+                        <div class="section-head">
+                            <div class="section-num">8</div>
+                            <div>
+                                <h2 class="text-[14px] font-semibold text-navy-600">Evaluation & Recommendation</h2>
                                 <p class="text-[11px] text-slate-400">Social worker's professional assessment and formal
                                     recommendation</p>
                             </div>
                         </div>
                         <div class="section-body space-y-4">
-                            <!-- Quick-fill templates -->
                             <div>
                                 <label class="field-label">Quick Templates</label>
                                 <div class="flex flex-wrap gap-2 mt-1">
-                                    <button onclick="fillTemplate('medical')"
-                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">
-                                        Medical</button>
-                                    <button onclick="fillTemplate('financial')"
-                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">
-                                        Financial</button>
-                                    <button onclick="fillTemplate('educational')"
-                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">
-                                        Educational</button>
-                                    <button onclick="fillTemplate('burial')"
-                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">
-                                        Burial</button>
-                                    <button onclick="fillTemplate('livelihood')"
-                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">
-                                        Livelihood</button>
+                                    <button type="button" onclick="fillTemplate('medical')"
+                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">Medical</button>
+                                    <button type="button" onclick="fillTemplate('financial')"
+                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">Financial</button>
+                                    <button type="button" onclick="fillTemplate('educational')"
+                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">Educational</button>
+                                    <button type="button" onclick="fillTemplate('burial')"
+                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">Burial</button>
+                                    <button type="button" onclick="fillTemplate('livelihood')"
+                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">Livelihood</button>
                                 </div>
                             </div>
-
                             <div>
-                                <label class="field-label req">Recommendation <span
-                                        class="text-[10px] font-normal text-slate-400 ml-1 lowercase">(formal
-                                        endorsement)</span></label>
-                                <textarea class="field" rows="5" id="recoText" maxlength="1200"
+                                <label class="field-label req">Recommendation</label>
+                                <textarea class="field" rows="5" name="recommendation" id="recoText" maxlength="1200"
                                     oninput="countChars('recoText','recoCount',1200)"
-                                    placeholder="e.g. Based on the conducted case study and assessment, the client is classified as Indigent under the DOH/DSWD Assessment Tool. It is therefore respectfully recommended that the client be granted AICS [type] Assistance in the amount of...">Based on the conducted case study and social assessment, the client is classified as INDIGENT under the DOH/DSWD Assessment Tool. Her medical condition is genuine and her financial resources are insufficient to sustain ongoing treatment. It is therefore respectfully recommended that the client be granted AICS Medical Assistance in the amount of THREE THOUSAND FIVE HUNDRED PESOS (₱3,500.00) to help defray the cost of her ongoing medical treatment and medication for Type 2 Diabetes Mellitus.</textarea>
-                                <div class="char-counter" id="recoCount">562 / 1200 characters</div>
-                            </div>
-
-                            <!-- Prepared by -->
-                            <div class="grid grid-cols-2 gap-4 pt-2">
-                                <div>
-                                    <label class="field-label req">Prepared By (Social Worker)</label>
-                                    <input type="text" class="field" value="MA. TERESA C. PONCLARA, RSW"
-                                        placeholder="Full name and credentials">
-                                </div>
-                                <div>
-                                    <label class="field-label">License No.</label>
-                                    <input type="text" class="field" value="0011198" placeholder="PRC License Number">
-                                </div>
+                                    placeholder="Based on the conducted case study and assessment, the client is classified as..."></textarea>
+                                <div class="char-counter" id="recoCount">0 / 1200 characters</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Action buttons -->
-                    <div class="flex items-center justify-between mt-2 no-print">
-                        <button onclick="saveDraft()"
-                            class="text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">Save
-                            as Draft</button>
-                        <div class="flex gap-3">
-                            <button onclick="togglePDF()"
-                                class="flex items-center gap-2 text-[13px] font-medium text-emerald-700 border border-emerald-300 bg-emerald-50 rounded-xl px-5 py-2.5 hover:bg-emerald-100 transition-all">
-                                <i class="fas fa-file-pdf"></i> Generate Case Summary PDF
-                            </button>
-                            <button onclick="saveCase()"
-                                class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">
-                                Save Case Study <i class="fas fa-save"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                </div><!-- end formArea -->
-
-                <!-- ══════════════ PDF PREVIEW ══════════════ -->
-                <div id="pdfPreview">
-                    <!-- Back button -->
-                    <div class="flex items-center justify-between mb-5 no-print">
-                        <button onclick="togglePDF()"
-                            class="flex items-center gap-2 text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">
-                            <i class="fas fa-arrow-left"></i> Back to Form
+                    <div class="flex items-center justify-end gap-3 mt-2 no-print">
+                        <a href="clientprofile.php?id=<?= $client_id ?>"
+                            class="text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">
+                            Cancel
+                        </a>
+                        <button type="submit"
+                            class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">
+                            Save Case Study
                         </button>
-                        <div class="flex gap-3">
-                            <button onclick="window.print()"
-                                class="flex items-center gap-2 text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-5 py-2.5 hover:bg-navy-500 transition-all">
-                                    <i class="fas fa-print"></i> Print Document
-                            </button>
-                        </div>
                     </div>
 
-                    <!-- The actual printable document -->
-                    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm" id="printDoc"
-                        style="font-family:'DM Sans',sans-serif;">
-                        <!-- Accent bar -->
-                        <div class="h-1.5 bg-gradient-to-r from-navy-600 via-blue-500 to-navy-600"></div>
+                </form>
 
-                        <div class="px-12 py-10">
-                            <!-- Republic header -->
-                            <div class="text-center mb-1">
-                                <p class="text-[10px] uppercase tracking-widest text-slate-500 font-medium">Republic of
-                                    the Philippines</p>
-                                <p class="text-[10px] text-slate-400">Province of Negros Occidental · Municipality of
-                                    San Enrique</p>
-                            </div>
-
-                            <!-- Logo + office name -->
-                            <div class="flex items-center justify-center gap-6 my-4">
-                                <div
-                                    class="w-14 h-14 rounded-full bg-navy-600 flex items-center justify-center text-white text-2xl font-serif font-bold flex-shrink-0">
-                                    M</div>
-                                <div class="text-center">
-                                    <p class="text-[16px] font-bold text-navy-700"
-                                        style="font-family:'DM Serif Display',serif;">Municipal Social Welfare and
-                                        Development Office</p>
-                                    <p class="text-[12px] text-slate-500 mt-0.5">San Enrique, Negros Occidental</p>
-                                    <p class="text-[11px] text-slate-400">Tel: (034) 123-4567 &nbsp;·&nbsp;
-                                        mswdo@sanenrique.gov.ph</p>
-                                </div>
-                                <div
-                                    class="w-14 h-14 rounded-full bg-gold-400 flex items-center justify-center text-navy-700 text-2xl flex-shrink-0">
-                                    ⚖️</div>
-                            </div>
-
-                            <div class="border-t-2 border-navy-600 mt-2 mb-1"></div>
-                            <div class="border-t border-slate-300 mb-5"></div>
-
-                            <h2 class="text-center text-[15px] font-bold uppercase tracking-widest text-navy-700 mb-6"
-                                style="font-family:'DM Serif Display',serif;">Social Case Summary</h2>
-
-                            <!-- Meta row -->
-                            <div class="flex justify-between text-[11px] mb-6 pb-3 border-b border-slate-200">
-                                <div><span class="text-slate-400">Case No.: </span><strong>SCS-2026-00142</strong></div>
-                                <div><span class="text-slate-400">Date of Interview: </span><strong>April 14,
-                                        2026</strong></div>
-                                <div><span class="text-slate-400">Type: </span><strong>Medical Assistance</strong></div>
-                            </div>
-
-                            <!-- Section I: Identifying Data -->
-                            <div class="mb-5">
-                                <div
-                                    class="bg-navy-600 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-t-lg">
-                                    I. Identifying Data</div>
-                                <div class="border border-slate-200 border-t-0 rounded-b-lg p-4">
-                                    <div class="grid grid-cols-3 gap-x-6 gap-y-2 text-[12px]">
-                                        <div><span class="text-slate-400 block text-[10px] uppercase tracking-wide">Full
-                                                Name</span><strong>Santos, Maria R.</strong></div>
-                                        <div><span class="text-slate-400 block text-[10px] uppercase tracking-wide">Age
-                                                / Sex</span><strong>62 years old / Female</strong></div>
-                                        <div><span
-                                                class="text-slate-400 block text-[10px] uppercase tracking-wide">Birthdate</span><strong>March
-                                                15, 1963</strong></div>
-                                        <div><span
-                                                class="text-slate-400 block text-[10px] uppercase tracking-wide">Civil
-                                                Status</span><strong>Widowed</strong></div>
-                                        <div><span
-                                                class="text-slate-400 block text-[10px] uppercase tracking-wide">Address</span><strong>Purok
-                                                2, Poblacion, San Enrique</strong></div>
-                                        <div><span
-                                                class="text-slate-400 block text-[10px] uppercase tracking-wide">Contact</span><strong>0917-234-5678</strong>
-                                        </div>
-                                        <div><span
-                                                class="text-slate-400 block text-[10px] uppercase tracking-wide">Occupation</span><strong>Vendor</strong>
-                                        </div>
-                                        <div><span
-                                                class="text-slate-400 block text-[10px] uppercase tracking-wide">Monthly
-                                                Income</span><strong>₱2,500.00</strong></div>
-                                        <div><span
-                                                class="text-slate-400 block text-[10px] uppercase tracking-wide">Nearest
-                                                Kin</span><strong>Roberto Santos Jr. — Son</strong></div>
-                                    </div>
-                                    <div
-                                        class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3 text-[11px]">
-                                        <span class="text-slate-400">Indigency Class:</span>
-                                        <span
-                                            class="bg-red-100 text-red-700 font-bold px-3 py-0.5 rounded-full text-[10px]">Indigent</span>
-                                        <span class="text-slate-400 ml-3">Sectoral:</span>
-                                        <span
-                                            class="bg-amber-100 text-amber-700 font-semibold px-2.5 py-0.5 rounded-full text-[10px]">Senior
-                                            Citizen</span>
-                                        <span
-                                            class="bg-purple-100 text-purple-700 font-semibold px-2.5 py-0.5 rounded-full text-[10px]">4Ps</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Section II: Family Composition -->
-                            <div class="mb-5">
-                                <div
-                                    class="bg-navy-600 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-t-lg">
-                                    II. Family Composition</div>
-                                <table
-                                    class="w-full border border-slate-200 border-t-0 rounded-b-lg overflow-hidden text-[11px]">
-                                    <thead>
-                                        <tr class="bg-slate-50 border-b border-slate-200">
-                                            <th
-                                                class="text-left px-3 py-2 text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
-                                                Name</th>
-                                            <th
-                                                class="text-left px-3 py-2 text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
-                                                Relationship</th>
-                                            <th
-                                                class="text-center px-3 py-2 text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
-                                                Age</th>
-                                            <th
-                                                class="text-left px-3 py-2 text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
-                                                Civil Status</th>
-                                            <th
-                                                class="text-left px-3 py-2 text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
-                                                Education</th>
-                                            <th
-                                                class="text-left px-3 py-2 text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
-                                                Occupation</th>
-                                            <th
-                                                class="text-right px-3 py-2 text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
-                                                Income/mo</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                        <tr>
-                                            <td class="px-3 py-2 font-semibold">Maria R. Santos</td>
-                                            <td class="px-3 py-2">Self</td>
-                                            <td class="px-3 py-2 text-center">62</td>
-                                            <td class="px-3 py-2">Widowed</td>
-                                            <td class="px-3 py-2">Elementary</td>
-                                            <td class="px-3 py-2">Vendor</td>
-                                            <td class="px-3 py-2 text-right">₱2,500</td>
-                                        </tr>
-                                        <tr class="bg-slate-50/50">
-                                            <td class="px-3 py-2">Roberto Santos Jr.</td>
-                                            <td class="px-3 py-2">Son</td>
-                                            <td class="px-3 py-2 text-center">38</td>
-                                            <td class="px-3 py-2">Married</td>
-                                            <td class="px-3 py-2">High School</td>
-                                            <td class="px-3 py-2">Jeepney Driver</td>
-                                            <td class="px-3 py-2 text-right">₱8,000</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="px-3 py-2">Liza Santos</td>
-                                            <td class="px-3 py-2">Daughter-in-law</td>
-                                            <td class="px-3 py-2 text-center">34</td>
-                                            <td class="px-3 py-2">Married</td>
-                                            <td class="px-3 py-2">High School</td>
-                                            <td class="px-3 py-2">Housewife</td>
-                                            <td class="px-3 py-2 text-right">—</td>
-                                        </tr>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="bg-slate-50 border-t border-slate-200">
-                                            <td colspan="6"
-                                                class="px-3 py-2 text-right text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
-                                                Combined Monthly Income</td>
-                                            <td class="px-3 py-2 text-right font-bold text-navy-700">₱10,500</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-
-                            <!-- Section III: Problem Presented -->
-                            <div class="mb-5">
-                                <div
-                                    class="bg-navy-600 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-t-lg">
-                                    III. Problem Presented</div>
-                                <div
-                                    class="border border-slate-200 border-t-0 rounded-b-lg p-4 text-[12px] leading-relaxed text-slate-700">
-                                    The client, a 62-year-old widow, presented herself at this office seeking financial
-                                    assistance for her ongoing medical treatment. She was recently diagnosed with Type 2
-                                    Diabetes Mellitus and requires regular medication and laboratory monitoring. She
-                                    stated: <em>"Wala na ko laing mabuligan, amo lang kamo ang amon paglaum para
-                                        makapadayon ang akon pagtratar."</em>
-                                </div>
-                            </div>
-
-                            <!-- Section IV: Home Condition -->
-                            <div class="mb-5">
-                                <div
-                                    class="bg-navy-600 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-t-lg">
-                                    IV. Home and Economic Condition</div>
-                                <div
-                                    class="border border-slate-200 border-t-0 rounded-b-lg p-4 text-[12px] leading-relaxed text-slate-700">
-                                    The client lives in a semi-permanent house owned by her son in Purok 2, Poblacion.
-                                    The house is shared with three other family members. Water source is from the
-                                    community water system. The household has a proper toilet facility. Overall living
-                                    condition is below average, consistent with the household's limited income and the
-                                    client's ongoing medical needs.
-                                </div>
-                            </div>
-
-                            <!-- Section V: Assessment -->
-                            <div class="mb-5">
-                                <div
-                                    class="bg-navy-600 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-t-lg">
-                                    V. Assessment of Crisis</div>
-                                <div class="border border-slate-200 border-t-0 rounded-b-lg p-4 text-[12px]">
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <div><span
-                                                class="text-slate-400 text-[10px] uppercase tracking-wide block mb-1">Severity</span><strong>Recently
-                                                Diagnosed (≤ 3 months)</strong></div>
-                                        <div><span
-                                                class="text-slate-400 text-[10px] uppercase tracking-wide block mb-1">Crises
-                                                in Past 3 Months</span><strong>Death in family · Loss of
-                                                livelihood</strong></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Section VI: Recommendation -->
-                            <div class="mb-8">
-                                <div
-                                    class="bg-navy-600 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-t-lg">
-                                    VI. Evaluation and Recommendation</div>
-                                <div
-                                    class="border border-slate-200 border-t-0 rounded-b-lg p-4 text-[12px] leading-relaxed text-slate-700">
-                                    Based on the conducted case study and social assessment, the client is classified as
-                                    <strong>INDIGENT</strong> under the DOH/DSWD Assessment Tool. Her medical condition
-                                    is genuine and her financial resources are insufficient to sustain ongoing
-                                    treatment. It is therefore respectfully recommended that the client be granted
-                                    <strong>AICS Medical Assistance in the amount of THREE THOUSAND FIVE HUNDRED PESOS
-                                        (₱3,500.00)</strong> to help defray the cost of her ongoing medical treatment
-                                    and medication for Type 2 Diabetes Mellitus.
-                                </div>
-                            </div>
-
-                            <!-- Signature block -->
-                            <div class="grid grid-cols-2 gap-16 mt-4">
-                                <div class="text-center">
-                                    <div class="border-b border-slate-800 mb-2 h-10"></div>
-                                    <p class="text-[12px] font-bold text-slate-800">ROSA T. VILLANUEVA, RSW</p>
-                                    <p class="text-[10px] text-slate-500">Social Welfare Officer · PRC Lic. No. 0009871
-                                    </p>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Prepared by</p>
-                                </div>
-                                <div class="text-center">
-                                    <div class="border-b border-slate-800 mb-2 h-10"></div>
-                                    <p class="text-[12px] font-bold text-slate-800">MUNICIPAL SOCIAL WELFARE HEAD</p>
-                                    <p class="text-[10px] text-slate-500">Municipal Social Welfare and Development
-                                        Office</p>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Approved by</p>
-                                </div>
-                            </div>
-
-                            <!-- QR + footer -->
-                            <div class="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between">
-                                <p class="text-[10px] text-slate-400">Generated by MSWDO San Enrique Information System
-                                    · Version 1.0.0</p>
-                            </div>
-
-                        </div><!-- end px-12 py-10 -->
-                    </div><!-- end printDoc -->
-                </div><!-- end pdfPreview -->
-
-            </div><!-- end max-w-4xl -->
+            </div>
         </main>
 
         <footer
-            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400 no-print">
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center text-[11px] text-slate-400 no-print">
             <span>MSWDO San Enrique Information System</span>
         </footer>
     </div>
 
-    <!-- Toast -->
+    <!-- notification  -->
     <div id="toast"
         class="fixed bottom-6 right-6 bg-navy-600 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
         <span class="text-emerald-400 text-base">✓</span>
@@ -1361,30 +1128,7 @@ requireRole(['Social Worker']);
     </div>
 
     <script>
-        // ── Step dots (7 sections)
-        const TOTAL_STEPS = 7;
-        const dots = document.getElementById('stepDots');
-        for (let i = 1; i <= TOTAL_STEPS; i++) {
-            const d = document.createElement('div');
-            d.className = `step-dot w-2 h-2 rounded-full ${i === 1 ? 'bg-navy-600 w-3' : 'bg-slate-200'}`;
-            dots.appendChild(d);
-        }
-        // Update dots on scroll
-        function updateDots() {
-            const sections = document.querySelectorAll('.section-card');
-            let active = 0;
-            sections.forEach((s, i) => {
-                const rect = s.getBoundingClientRect();
-                if (rect.top < window.innerHeight * 0.6) active = i;
-            });
-            dots.querySelectorAll('.step-dot').forEach((d, i) => {
-                d.className = `step-dot rounded-full transition-all ${i === active ? 'w-3 h-2 bg-navy-600' : 'w-2 h-2 bg-slate-200'}`;
-            });
-            document.getElementById('stepLabel').textContent = `Section ${active + 1} of ${TOTAL_STEPS}`;
-        }
-        document.querySelector('main').addEventListener('scroll', updateDots);
-
-        // ── Patient toggle
+        //  Patient toggle 
         let patientOn = false;
         function togglePatient() {
             patientOn = !patientOn;
@@ -1392,129 +1136,123 @@ requireRole(['Social Worker']);
             document.getElementById('ptTrack').classList.toggle('bg-slate-200', !patientOn);
             document.getElementById('ptThumb').style.transform = patientOn ? 'translateX(20px)' : '';
             document.getElementById('ptLabel').textContent = patientOn ? 'Yes' : 'No';
-            document.getElementById('ptLabel').className = patientOn ? 'text-[12px] font-medium text-navy-600' : 'text-[12px] font-medium text-slate-500';
             document.getElementById('patientInfoFields').classList.toggle('hidden', !patientOn);
         }
 
-        // ── Severity selector
-        function setSev(el, type) {
+
+        function setSev(el, enumValue) {
             document.querySelectorAll('#sevSelector .sev-opt').forEach(e => {
                 e.className = 'sev-opt border-2 border-slate-200 rounded-xl p-3 text-center';
                 e.querySelector('p').className = 'text-[12px] font-semibold text-slate-600 leading-tight';
             });
             el.classList.add('sel', 'border-navy-600', 'bg-navy-50');
             el.querySelector('p').className = 'text-[12px] font-semibold text-navy-700 leading-tight';
+            document.getElementById('severityValue').value = enumValue;
         }
 
-        // ── Indigency selector
-        function setIndig(el, type, cls) {
+
+        function setIndig(el, enumValue, cssClass) {
             document.querySelectorAll('#indigSelector .indig-opt').forEach(e => {
                 e.className = 'indig-opt border-2 border-slate-200 rounded-2xl p-4 text-center';
                 e.querySelector('p').className = 'text-[13px] font-semibold text-slate-600';
             });
-            el.classList.add(cls);
+            el.classList.add(cssClass);
+            document.getElementById('indigValue').value = enumValue;
         }
 
-        // ── Family table
-        let famCount = 2;
+
+        function updateCrises() {
+            const checked = document.querySelectorAll('.crisis-check input:checked');
+            const values = Array.from(checked).map(cb => cb.value).join(', ');
+            document.getElementById('crisesValue').value = values;
+        }
+
+
+        let famCount = 1;
         function addFamRow() {
             famCount++;
             const tr = document.createElement('tr');
             tr.className = 'fam-row border-b border-slate-100';
             tr.innerHTML = `
-      <td class="px-3 py-2 text-slate-400 font-medium">${famCount}</td>
-      <td class="px-3 py-2"><input class="fam-input" type="text" placeholder="Full name"></td>
-      <td class="px-3 py-2"><input class="fam-input" type="text" placeholder="e.g. Child"></td>
-      <td class="px-3 py-2"><input class="fam-input" type="number" placeholder="Age"></td>
-      <td class="px-3 py-2"><select class="fam-select"><option>F</option><option>M</option></select></td>
-      <td class="px-3 py-2"><select class="fam-select"><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></td>
-      <td class="px-3 py-2"><input class="fam-input" type="text" placeholder="Education"></td>
-      <td class="px-3 py-2"><input class="fam-input" type="text" placeholder="Occupation"></td>
-      <td class="px-3 py-2"><input class="fam-input" type="number" placeholder="0" oninput="calcIncome()"></td>
-      <td class="px-3 py-2 text-center"><button onclick="this.closest('tr').remove();renumber();calcIncome()" class="text-slate-300 hover:text-red-400 transition-colors">✕</button></td>`;
+                <td class="px-3 py-2 text-slate-400 font-medium">${famCount}</td>
+                <td class="px-3 py-2"><input class="fam-input" type="text" name="family_names[]" placeholder="Full name"></td>
+                <td class="px-3 py-2"><input class="fam-input" type="text" name="family_relationships[]" placeholder="e.g. Child"></td>
+                <td class="px-3 py-2"><input class="fam-input" type="number" name="family_ages[]" placeholder="Age" min="0"></td>
+                <td class="px-3 py-2"><select class="fam-select" name="family_sexes[]"><option value="F">F</option><option value="M">M</option></select></td>
+                <td class="px-3 py-2"><select class="fam-select" name="family_civil_status[]"><option value="Single">Single</option><option value="Married">Married</option><option value="Widowed">Widowed</option><option value="Separated">Separated</option></select></td>
+                <td class="px-3 py-2"><input class="fam-input" type="text" name="family_educations[]" placeholder="Education"></td>
+                <td class="px-3 py-2"><input class="fam-input" type="text" name="family_occupations[]" placeholder="Occupation"></td>
+                <td class="px-3 py-2"><input class="fam-input" type="number" name="family_incomes[]" placeholder="0" oninput="calcIncome()"></td>
+                <td class="px-3 py-2 text-center"><button type="button" onclick="this.closest('tr').remove();renumber();calcIncome()" class="text-slate-300 hover:text-red-400 transition-colors">✕</button></td>
+            `;
             document.getElementById('famBody').appendChild(tr);
         }
+
         function renumber() {
-            document.querySelectorAll('#famBody tr').forEach((tr, i) => { tr.querySelector('td').textContent = i + 1; });
+            document.querySelectorAll('#famBody tr').forEach((tr, i) => {
+                tr.querySelector('td').textContent = i + 1;
+            });
             famCount = document.querySelectorAll('#famBody tr').length;
         }
+
         function calcIncome() {
             let total = 0;
-            document.querySelectorAll('#famBody input[type=number]').forEach(inp => { total += parseFloat(inp.value) || 0; });
+            document.querySelectorAll('#famBody input[type=number]').forEach(inp => {
+                total += parseFloat(inp.value) || 0;
+            });
             document.getElementById('totalIncome').textContent = '₱' + total.toLocaleString();
         }
 
-        // ── Income/expense calculator
+
         function calcNet() {
-            const incInputs = document.querySelectorAll('#formArea .calc-row input');
+            const allInputs = document.querySelectorAll('.calc-row input[type=number]');
             let inc = 0, exp = 0;
-            incInputs.forEach((inp, i) => {
+            allInputs.forEach((inp, i) => {
                 const val = parseFloat(inp.value) || 0;
                 if (i < 4) inc += val; else exp += val;
             });
+
             document.getElementById('totalIncomeSum').textContent = '₱' + inc.toLocaleString();
             document.getElementById('totalExpenses').textContent = '₱' + exp.toLocaleString();
             const net = inc - exp;
             const netEl = document.getElementById('netMonthly');
             netEl.textContent = (net < 0 ? '-₱' : '₱') + Math.abs(net).toLocaleString();
             netEl.className = `text-[18px] font-bold ${net < 0 ? 'text-red-600' : net < 500 ? 'text-amber-600' : 'text-navy-600'}`;
-        }
-        // Init calc
-        setTimeout(calcNet, 100);
 
-        // ── Character counter
+            document.getElementById('hiddenIncome').value = inc;
+            document.getElementById('hiddenExpenses').value = exp;
+        }
+
+
         function countChars(id, countId, max) {
             const len = document.getElementById(id).value.length;
             const el = document.getElementById(countId);
             el.textContent = `${len} / ${max} characters`;
             el.className = `char-counter ${len > max * .9 ? 'limit' : len > max * .75 ? 'warn' : ''}`;
         }
-        // Init counters
-        ['problemText', 'homeText', 'recoText'].forEach(id => {
-            const el = document.getElementById(id);
-            const countId = id.replace('Text', 'Count');
-            const max = id === 'recoText' ? 1200 : id === 'homeText' ? 800 : 1000;
-            countChars(id, countId, max);
-        });
 
-        // ── Recommendation templates
+
+        function togglePrevDSWD() {
+            const checked = document.getElementById('prevDSWD').checked;
+            document.getElementById('prevDSWDFields').classList.toggle('hidden', !checked);
+        }
+
+
+        //  Recommendation templates 
         const templates = {
             medical: 'Based on the conducted case study and assessment, the client is classified as INDIGENT under the DOH/DSWD Assessment Tool. It is therefore respectfully recommended that the client be granted AICS Medical Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to help defray the cost of ongoing medical treatment.',
-            financial: 'Based on the conducted case study, the client is classified as INDIGENT. It is respectfully recommended that the client be provided Financial Assistance amounting to [AMOUNT IN WORDS] (₱____.__)  to address the immediate financial crisis of the household.',
-            educational: 'Based on the case study conducted, the client is classified as INDIGENT. It is recommended that the client\'s dependent be granted AICS Educational Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to cover [tuition / school supplies / miscellaneous fees] for the [semester/school year].',
-            burial: 'Based on the conducted case study, the bereaved family is classified as INDIGENT. It is respectfully recommended that the client be granted AICS Burial Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to help defray the funeral and burial expenses of the deceased.',
-            livelihood: 'Based on the case study, the client is classified as INDIGENT. It is recommended that the client be granted AICS Livelihood Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) as seed capital for the proposed [business type], which aims to provide a sustainable source of income for the household.',
+            financial: 'Based on the conducted case study, the client is classified as INDIGENT. It is respectfully recommended that the client be provided Financial Assistance amounting to [AMOUNT IN WORDS] (₱____.__) to address the immediate financial crisis of the household.',
+            educational: "Based on the case study conducted, the client is classified as INDIGENT. It is recommended that the client's dependent be granted AICS Educational Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to cover school fees for the school year.",
+            burial: 'Based on the conducted case study, the bereaved family is classified as INDIGENT. It is respectfully recommended that the client be granted AICS Burial Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to help defray funeral and burial expenses.',
+            livelihood: 'Based on the case study, the client is classified as INDIGENT. It is recommended that the client be granted AICS Livelihood Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) as seed capital for the proposed [business type].',
         };
         function fillTemplate(type) {
             document.getElementById('recoText').value = templates[type];
             countChars('recoText', 'recoCount', 1200);
-            showToast('Template applied — edit as needed');
         }
 
-        // ── File upload
-        function fileSelected(input, zoneId) {
-            if (!input.files || !input.files[0]) return;
-            const zone = document.getElementById(zoneId);
-            const count = input.files.length;
-            zone.classList.add('has-file');
-            zone.querySelector('.upload-content').innerHTML = `
-      <p class="text-2xl mb-1">✅</p>
-      <p class="text-[12px] font-semibold text-emerald-700">${count} file${count > 1 ? 's' : ''} attached</p>
-      <p class="text-[10px] text-emerald-500 mt-0.5">${Array.from(input.files).map(f => f.name).join(', ').slice(0, 60)}${count > 1 ? '...' : ''}</p>`;
-        }
 
-        // ── PDF preview toggle
-        let pdfVisible = false;
-        function togglePDF() {
-            pdfVisible = !pdfVisible;
-            document.getElementById('formArea').classList.toggle('hidden', pdfVisible);
-            document.getElementById('pdfPreview').classList.toggle('show', pdfVisible);
-            document.getElementById('pdfToggleBtn').textContent = pdfVisible ? '← Back to Form' : '🖨 Preview Case Summary';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            if (pdfVisible) showToast('Case Summary preview ready — click Print to print');
-        }
-
-        // ── Toast
+        //  Toast notification 
         function showToast(msg) {
             document.getElementById('toastMsg').textContent = msg;
             const t = document.getElementById('toast');
@@ -1526,8 +1264,6 @@ requireRole(['Social Worker']);
             }, 3000);
         }
 
-        function saveDraft() { showToast('Case study draft saved!'); }
-        function saveCase() { showToast('Case study saved successfully ✓'); }
     </script>
 </body>
 

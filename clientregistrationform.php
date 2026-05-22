@@ -281,7 +281,7 @@ try {
 
       <div class="mb-6">
         <h1 class="text-xl font-serif text-navy-600">New Client Registration</h1>
-        <p class="text-[13px] text-slate-500 mt-1">Complete all required fields to create a permanent client profile.</p>
+        <p class="text-[13px] text-slate-500 mt-1">Complete all required fields.</p>
       </div>
 
       <?php if ($success): ?>
@@ -327,7 +327,6 @@ try {
               <div class="grid grid-cols-12 gap-4">
                 <div class="col-span-4">
                   <label class="field-label required-dot">Last Name</label>
-                  <!-- name matches CLIENT.cl_lastname -->
                   <input type="text" name="cl_lastname"
                     class="field <?= in_array('Last name is required.', $errors) ? 'is-error' : '' ?>"
                     placeholder="e.g. Mana-ay"
@@ -427,7 +426,7 @@ try {
             <div class="p-6 space-y-5">
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="field-label">Street / House No.</label>
+                  <label class="field-label">Purok/Street</label>
                   <!-- CLIENT.cl_street -->
                   <input type="text" name="cl_street" class="field" placeholder="e.g. 123 Rizal St."
                     value="<?= htmlspecialchars($_POST['cl_street'] ?? '') ?>">
@@ -461,7 +460,7 @@ try {
                 </div>
                 <div>
                   <label class="field-label">Region</label>
-                  <input type="text" class="field bg-slate-100 cursor-not-allowed" value="VI" readonly>
+                  <input type="text" class="field bg-slate-100 cursor-not-allowed" value="NIR" readonly>
                 </div>
               </div>
 
@@ -503,7 +502,7 @@ try {
                   <!-- CLIENT.cl_educ_attain - VARCHAR so any value is fine -->
                   <select name="cl_educ_attain" class="field">
                     <option value="">Select</option>
-                    <?php foreach (['No Formal Education','Elementary','High School','Vocational','College','Graduate'] as $edu): ?>
+                    <?php foreach (['No Formal Education','Elementary','High School','Vocational','College','Post Graduate'] as $edu): ?>
                       <option <?= ($_POST['cl_educ_attain'] ?? '') === $edu ? 'selected' : '' ?>><?= $edu ?></option>
                     <?php endforeach; ?>
                   </select>
