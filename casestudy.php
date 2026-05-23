@@ -25,17 +25,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $interview_date = trim($_POST['interview_date'] ?? '');
     $type_of_case_study = trim($_POST['type_of_case_study'] ?? '');
     $patient_name = trim($_POST['patient_name'] ?? '');
-    $patient_relatioship = trim($_POST['patient_relationship'] ?? '');
+    $patient_relationship = trim($_POST['patient_relationship'] ?? '');
     $combined_income = trim((float) $_POST['combined_income'] ?? '0');
     $monthly_expenses = trim((float) $_POST['monthly_expenses'] ?? '0');
     $emergency_fund_available = isset($_POST['emergency_fund_available']) ? 1 : 0;
     $crises_severity = trim($_POST['crises_severity'] ?? '') ?: null;
     $crises_experienced = trim($_POST['crises_experienced'] ?? '') ?: null;
     $problem_presented = trim($_POST['problem_presented'] ?? '');
-    $home_condition = trim($_POST['home_conditoin'] ?? '') ?: null;
+    $home_condition = trim($_POST['home_condition'] ?? '') ?: null;
     $indigency_assessment = trim($_POST['indigency_assessment'] ?? '') ?: null;
     $recommendation = trim($_POST['recommendation'] ?? '') ?: null;
-    $previous_dswd_assistance = isset($_POST['[previous_dswd_assistance']) ? 1 : 0;
+    $previous_dswd_assistance = isset($_POST['previous_dswd_assistance']) ? 1 : 0;
     $previous_assistance_details = trim($_POST['previous_assistance_details'] ?? '') ?: null;
     $previous_assisstance_date = trim($_POST['previous_assistance_date'] ?? '') ?: null;
     $insurance_coverage = trim($_POST['insurance_coverage'] ?? '') ?: null;
@@ -58,9 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt = $pdo->prepare("INSERT INTO CASE_STUDY (client_id, user_id, interview_date, type_of_case_study, patient_name, patient_relationship, family_composition_json, combined_income, monthly_expenses, emergency_fund_available, crisis_severity, crises_experienced, problem_presented, home_condition, indigency_assessment, recommendation, previous_dswd_assistance, previous_assistance_details, previous_assistance_date, insurance_coverage, savings)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$client_id, $user_id, $interview_date, $type_of_case_study, $patient_name, $patient_relatioship, $family_composition_json, $combined_income, $monthly_expenses, $emergency_fund_available, $crises_severity, $crises_experienced, $problem_presented, $home_condition, $indigency_assessment, $recommendation, $previous_dswd_assistance, $previous_assistance_details, $previous_assisstance_date, $insurance_coverage, $savings]);
+    $stmt->execute([$client_id, $user_id, $interview_date, $type_of_case_study, $patient_name, $patient_relationship, $family_composition_json, $combined_income, $monthly_expenses, $emergency_fund_available, $crises_severity, $crises_experienced, $problem_presented, $home_condition, $indigency_assessment, $recommendation, $previous_dswd_assistance, $previous_assistance_details, $previous_assisstance_date, $insurance_coverage, $savings]);
 
-    header("Location: clientslist.php?id={client_id}");
+    header("Location: clientslist.php?id={$client_id}");
     exit;
 
 }
