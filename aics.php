@@ -193,8 +193,8 @@ require 'db_connect.php';
         }
 
         .upload-zone.has-file {
-            border-color: #10B981;
-            background: #F0FDF4;
+            border-color: #0B2545;
+            background: #E8EDF5;
             border-style: solid;
         }
 
@@ -235,7 +235,7 @@ require 'db_connect.php';
         }
 
         .upload-zone.has-file .upload-title {
-            color: #059669;
+            color: #0B2545;
             font-weight: 600;
             font-size: 12px;
             word-break: break-all;
@@ -243,7 +243,7 @@ require 'db_connect.php';
         }
 
         .upload-zone.has-file .upload-hint {
-            color: #10B981;
+            color: #3A5F93;
             font-size: 10px;
         }
 
@@ -317,7 +317,7 @@ require 'db_connect.php';
 <body class="bg-slate2 min-h-screen flex">
 
     <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
-     <?php require 'sidebar.php'; ?>
+    <?php require 'sidebar.php'; ?>
 
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
         <header
@@ -402,7 +402,8 @@ require 'db_connect.php';
                                     class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
                                     <div
                                         class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
-                                        <i class="fas fa-capsules text-navy-500"></i></div>
+                                        <i class="fas fa-capsules text-navy-500"></i>
+                                    </div>
                                     <p class="text-[13px] font-semibold text-slate-700">Medical</p>
                                     <p class="text-[10px] text-slate-400 mt-1">9 documents</p>
                                 </div>
@@ -410,7 +411,8 @@ require 'db_connect.php';
                                     class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
                                     <div
                                         class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
-                                        <i class="fas fa-coins text-navy-600"></i></div>
+                                        <i class="fas fa-coins text-navy-600"></i>
+                                    </div>
                                     <p class="text-[13px] font-semibold text-slate-700">Financial</p>
                                     <p class="text-[10px] text-slate-400 mt-1">4 documents</p>
                                 </div>
@@ -418,7 +420,8 @@ require 'db_connect.php';
                                     class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
                                     <div
                                         class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
-                                        <i class="fas fa-graduation-cap text-navy-600"></i></div>
+                                        <i class="fas fa-graduation-cap text-navy-600"></i>
+                                    </div>
                                     <p class="text-[13px] font-semibold text-slate-700">Educational</p>
                                     <p class="text-[10px] text-slate-400 mt-1">6 documents</p>
                                 </div>
@@ -426,7 +429,8 @@ require 'db_connect.php';
                                     class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
                                     <div
                                         class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
-                                        <i class="fas fa-briefcase text-navy-600"></i></div>
+                                        <i class="fas fa-briefcase text-navy-600"></i>
+                                    </div>
                                     <p class="text-[13px] font-semibold text-slate-700">Livelihood</p>
                                     <p class="text-[10px] text-slate-400 mt-1">6 documents</p>
                                 </div>
@@ -434,7 +438,8 @@ require 'db_connect.php';
                                     class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
                                     <div
                                         class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
-                                        <i class="fas fa-dove text-navy-600"></i></div>
+                                        <i class="fas fa-dove text-navy-600"></i>
+                                    </div>
                                     <p class="text-[13px] font-semibold text-slate-700">Burial</p>
                                     <p class="text-[10px] text-slate-400 mt-1">5 documents</p>
                                 </div>
@@ -531,8 +536,8 @@ require 'db_connect.php';
                 <div class="screen-panel" id="panel-medical">
                     <div class="max-w-3xl mx-auto space-y-5">
                         <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1"><span
-                                    class="text-[12px] text-slate-400">AICS Medical Requirements</span></div>
+                            <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS
+                                    Medical Requirements</span></div>
                             <h1 class="text-xl font-serif text-navy-600">Medical Assistance — Requirements</h1>
                             <p class="text-[13px] text-slate-500 mt-1">Upload all required documents. Copy counts follow
                                 DSWD guidelines.</p>
@@ -661,9 +666,9 @@ require 'db_connect.php';
                                 </div>
                                 <div>
                                     <div class="field-label flex items-center flex-wrap gap-1">Medical Protocol (Chemo)
-                                        <span class="opt-badge">Optional</span></div><label class="upload-zone"
-                                        id="uz-chemo"><input type="file" accept=".pdf,.jpg,.jpeg,.png"
-                                            onchange="fileSelected(this,'uz-chemo')">
+                                        <span class="opt-badge">Optional</span>
+                                    </div><label class="upload-zone" id="uz-chemo"><input type="file"
+                                            accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-chemo')">
                                         <div class="upload-content"><i class="fas fa-flask upload-icon"></i><span
                                                 class="upload-title">Click to upload</span><span
                                                 class="upload-hint">PDF, JPG, PNG</span></div>
@@ -693,8 +698,8 @@ require 'db_connect.php';
                 <div class="screen-panel" id="panel-financial">
                     <div class="max-w-3xl mx-auto space-y-5">
                         <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1"><span
-                                    class="text-[12px] text-slate-400">AICS Financial Requirements</span></div>
+                            <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS
+                                    Financial Requirements</span></div>
                             <h1 class="text-xl font-serif text-navy-600">Financial Assistance — Requirements</h1>
                             <p class="text-[13px] text-slate-500 mt-1">Upload the Mayor's approval and any supporting
                                 documents for this financial assistance request.</p>
@@ -748,8 +753,8 @@ require 'db_connect.php';
                                 </div>
                                 <div class="col-span-2">
                                     <div class="field-label flex items-center flex-wrap gap-1">Supporting Documents
-                                        <span class="opt-badge">Multiple files allowed</span></div><label
-                                        class="upload-zone" id="uz-fin-support"><input type="file"
+                                        <span class="opt-badge">Multiple files allowed</span>
+                                    </div><label class="upload-zone" id="uz-fin-support"><input type="file"
                                             accept=".pdf,.jpg,.jpeg,.png" multiple
                                             onchange="fileSelected(this,'uz-fin-support')">
                                         <div class="upload-content"><i class="fas fa-folder-open upload-icon"></i><span
@@ -785,8 +790,8 @@ require 'db_connect.php';
                 <div class="screen-panel" id="panel-educational">
                     <div class="max-w-3xl mx-auto space-y-5">
                         <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1"><span
-                                    class="text-[12px] text-slate-400">AICS Educational Requirements</span></div>
+                            <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS
+                                    Educational Requirements</span></div>
                             <h1 class="text-xl font-serif text-navy-600">Educational Assistance — Requirements</h1>
                             <p class="text-[13px] text-slate-500 mt-1">Maximum twice per school year · Max ₱20,000 per
                                 year total.</p>
@@ -853,8 +858,8 @@ require 'db_connect.php';
                             <div class="p-6 grid grid-cols-2 gap-4">
                                 <div>
                                     <div class="field-label flex items-center flex-wrap gap-1">Report Card / Grades
-                                        <span class="copy-badge">1 orig + 2 copies</span></div><label
-                                        class="upload-zone" id="uz-edu-card"><input type="file"
+                                        <span class="copy-badge">1 orig + 2 copies</span>
+                                    </div><label class="upload-zone" id="uz-edu-card"><input type="file"
                                             onchange="fileSelected(this,'uz-edu-card')">
                                         <div class="upload-content"><i class="fas fa-chart-line upload-icon"></i><span
                                                 class="upload-title">Click to upload</span><span
@@ -863,8 +868,8 @@ require 'db_connect.php';
                                 </div>
                                 <div>
                                     <div class="field-label flex items-center flex-wrap gap-1">Certificate of Enrollment
-                                        <span class="copy-badge">1 orig + 2 copies</span></div><label
-                                        class="upload-zone" id="uz-edu-enroll"><input type="file"
+                                        <span class="copy-badge">1 orig + 2 copies</span>
+                                    </div><label class="upload-zone" id="uz-edu-enroll"><input type="file"
                                             onchange="fileSelected(this,'uz-edu-enroll')">
                                         <div class="upload-content"><i
                                                 class="fas fa-graduation-cap upload-icon"></i><span
@@ -874,8 +879,8 @@ require 'db_connect.php';
                                 </div>
                                 <div>
                                     <div class="field-label flex items-center flex-wrap gap-1">Certificate of Indigency
-                                        <span class="copy-badge">1 orig + 2 copies</span></div><label
-                                        class="upload-zone" id="uz-edu-indigency"><input type="file"
+                                        <span class="copy-badge">1 orig + 2 copies</span>
+                                    </div><label class="upload-zone" id="uz-edu-indigency"><input type="file"
                                             onchange="fileSelected(this,'uz-edu-indigency')">
                                         <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span
                                                 class="upload-title">Click to upload</span><span
@@ -884,8 +889,8 @@ require 'db_connect.php';
                                 </div>
                                 <div>
                                     <div class="field-label flex items-center flex-wrap gap-1">Certificate of Residency
-                                        <span class="copy-badge">1 orig + 2 copies</span></div><label
-                                        class="upload-zone" id="uz-edu-residency"><input type="file"
+                                        <span class="copy-badge">1 orig + 2 copies</span>
+                                    </div><label class="upload-zone" id="uz-edu-residency"><input type="file"
                                             onchange="fileSelected(this,'uz-edu-residency')">
                                         <div class="upload-content"><i class="fas fa-home upload-icon"></i><span
                                                 class="upload-title">Click to upload</span><span
@@ -926,8 +931,8 @@ require 'db_connect.php';
                 <div class="screen-panel" id="panel-livelihood">
                     <div class="max-w-3xl mx-auto space-y-5">
                         <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1"><span
-                                    class="text-[12px] text-slate-400">AICS Livelihood Requirements</span></div>
+                            <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS
+                                    Livelihood Requirements</span></div>
                             <h1 class="text-xl font-serif text-navy-600">Livelihood Assistance — Requirements</h1>
                             <p class="text-[13px] text-slate-500 mt-1">Provide business details and upload all required
                                 documents for livelihood assistance.</p>
@@ -1011,8 +1016,8 @@ require 'db_connect.php';
                                 </div>
                                 <div>
                                     <div class="field-label flex items-center flex-wrap gap-1">Certificate of Indigency
-                                        <span class="copy-badge">1 orig + 2 copies</span></div><label
-                                        class="upload-zone" id="uz-liv-indigency"><input type="file"
+                                        <span class="copy-badge">1 orig + 2 copies</span>
+                                    </div><label class="upload-zone" id="uz-liv-indigency"><input type="file"
                                             onchange="fileSelected(this,'uz-liv-indigency')">
                                         <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span
                                                 class="upload-title">Click to upload</span><span
@@ -1021,8 +1026,8 @@ require 'db_connect.php';
                                 </div>
                                 <div>
                                     <div class="field-label flex items-center flex-wrap gap-1">Certificate of Residency
-                                        <span class="copy-badge">1 orig + 2 copies</span></div><label
-                                        class="upload-zone" id="uz-liv-residency"><input type="file"
+                                        <span class="copy-badge">1 orig + 2 copies</span>
+                                    </div><label class="upload-zone" id="uz-liv-residency"><input type="file"
                                             onchange="fileSelected(this,'uz-liv-residency')">
                                         <div class="upload-content"><i class="fas fa-home upload-icon"></i><span
                                                 class="upload-title">Click to upload</span><span
@@ -1031,8 +1036,8 @@ require 'db_connect.php';
                                 </div>
                                 <div>
                                     <div class="field-label flex items-center flex-wrap gap-1">Training Certificate
-                                        <span class="opt-badge">If completed</span></div><label class="upload-zone"
-                                        id="uz-liv-training"><input type="file"
+                                        <span class="opt-badge">If completed</span>
+                                    </div><label class="upload-zone" id="uz-liv-training"><input type="file"
                                             onchange="fileSelected(this,'uz-liv-training')">
                                         <div class="upload-content"><i class="fas fa-certificate upload-icon"></i><span
                                                 class="upload-title">Click to upload</span><span
@@ -1053,8 +1058,8 @@ require 'db_connect.php';
                 <div class="screen-panel" id="panel-burial">
                     <div class="max-w-3xl mx-auto space-y-5">
                         <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1"><span
-                                    class="text-[12px] text-navy-400">AICS Burial Requirements</span></div>
+                            <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-navy-400">AICS
+                                    Burial Requirements</span></div>
                             <h1 class="text-xl font-serif text-navy-600">Burial Assistance — Requirements</h1>
                             <p class="text-[13px] text-navy-500 mt-1">Documents for burial assistance require <strong>1
                                     original + 1 photocopy</strong> only (not 2).</p>
@@ -1139,8 +1144,9 @@ require 'db_connect.php';
                                 </div>
                                 <div>
                                     <div class="field-label flex items-center flex-wrap gap-1">Valid ID of Claimant
-                                        <span class="copy-badge">1 orig + 1 copy</span></div><label class="upload-zone"
-                                        id="uz-bur-id"><input type="file" onchange="fileSelected(this,'uz-bur-id')">
+                                        <span class="copy-badge">1 orig + 1 copy</span>
+                                    </div><label class="upload-zone" id="uz-bur-id"><input type="file"
+                                            onchange="fileSelected(this,'uz-bur-id')">
                                         <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span
                                                 class="upload-title">Click to upload</span><span
                                                 class="upload-hint">PDF, JPG, PNG</span></div>
@@ -1263,6 +1269,29 @@ require 'db_connect.php';
                 t.classList.remove('opacity-100', 'translate-y-0');
             }, 3000);
         }
+
+        // Ensure Date Released cannot be before Date Applied
+        document.getElementById('dateApplied').addEventListener('change', function () {
+            const appliedVal = this.value;
+            const releasedInput = document.getElementById('dateReleased');
+
+            // Set the minimum allowed date for release to the application date
+            releasedInput.min = appliedVal;
+
+            // If a release date was already selected and it's now before the new application date, clear it
+            if (releasedInput.value && releasedInput.value < appliedVal) {
+                releasedInput.value = '';
+                showToast('Date Released was cleared because it cannot be before Date Applied.');
+            }
+        });
+
+        // Optional: also trigger on page load if a date is pre-filled
+        window.addEventListener('load', function () {
+            const applied = document.getElementById('dateApplied').value;
+            if (applied) {
+                document.getElementById('dateReleased').min = applied;
+            }
+        });
 
         function saveDraft() { showToast('Draft saved successfully!'); }
         function saveComplete() { showToast('Availment saved & completed ✓'); }
