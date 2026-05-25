@@ -244,7 +244,7 @@ require 'db_connect.php';
             <div class="flex items-center gap-2 text-[13px]">
                 <a href="#" class="text-slate-400 hover:text-navy-600">Clients</a>
                 <span class="text-slate-300">/</span>
-                <a href="#" class="text-slate-400 hover:text-navy-600">Maria Santos</a>
+                <a href="#" class="text-slate-400 hover:text-navy-600">Program Availments</a>
                 <span class="text-slate-300">/</span>
                 <span class="text-navy-600 font-semibold">SLP Availment</span>
             </div>
