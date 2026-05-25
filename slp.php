@@ -269,12 +269,15 @@ require 'db_connect.php';
 
                 <!-- Warning -->
                 <div
-                    class="animate-fade-up-1 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                    <i class="fas fa-exclamation-triangle text-red-500 text-lg mt-0.5"></i>
-                    <div class="text-[12px] text-red-800"> <strong class="font-semibold block mb-0.5">Conditional
-                            Re‑application</strong> A client may re‑apply for SLP only if the previous livelihood
-                        project was successful (profitable / income‑generating). Otherwise, the system will block new
-                        applications. </div>
+                    class="animate-fade-up-1 bg-navy-50 border border-navy-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                    <i class="fas fa-exclamation-triangle text-navy-500 text-lg mt-0.5"></i>
+                    <div class="text-[12px] text-navy-800">
+                        <strong class="font-semibold block mb-0.5">No New Project · Additional Funding Only</strong>
+                        A client who has already availed SLP <strong>cannot apply for a new livelihood project</strong>.
+                        They may only request additional funds for the same project, and only if the previous
+                        project was successful (profitable / income‑generating). Otherwise, the system will block
+                        further assistance.
+                    </div>
                 </div>
 
                 <!-- Transaction Details -->
