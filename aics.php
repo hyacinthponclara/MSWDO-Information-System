@@ -325,19 +325,9 @@ require 'db_connect.php';
             <div class="flex items-center gap-2 text-[13px]">
                 <a href="#" class="text-slate-400 hover:text-navy-600">Clients</a>
                 <span class="text-slate-300">/</span>
-                <a href="#" class="text-slate-400 hover:text-navy-600">Maria Santos</a>
-                <span class="text-slate-300">/</span>
                 <a href="#" class="text-slate-400 hover:text-navy-600">Program Selection</a>
                 <span class="text-slate-300">/</span>
                 <span class="text-navy-600 font-semibold" id="breadcrumbLast">AICS Availment</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <button onclick="saveDraft()"
-                    class="text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-3 py-1.5 hover:bg-navy-100 transition-all">Save
-                    Draft</button>
-                <button onclick="saveComplete()"
-                    class="text-[12px] font-semibold text-white bg-navy-600 rounded-lg px-4 py-1.5 hover:bg-navy-500 transition-all">Save
-                    & Complete ✓</button>
             </div>
         </header>
 
@@ -392,6 +382,85 @@ require 'db_connect.php';
                             </div>
                         </div>
 
+                        <!-- Transaction Details -->
+                        <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                <div
+                                    class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold">
+                                    1</div>
+                                <div>
+                                    <h2 class="text-[14px] font-semibold text-navy-600">Transaction Details</h2>
+                                    <p class="text-[11px] text-slate-400">Amount, dates, and limit verification</p>
+                                </div>
+                            </div>
+                            <div class="p-6 space-y-5">
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="field-label req">Amount (₱)</label>
+                                        <div class="relative"><span
+                                                class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[13px]">₱</span><input
+                                                type="number" min="500" max="5000" class="field pl-7"
+                                                placeholder="500 – 5,000" oninput="checkAmount(this)" id="amountField">
+                                        </div>
+                                        <p class="text-[10px] text-slate-400 mt-1.5">Min ₱500 · Max ₱5,000</p>
+                                    </div>
+                                    <div><label class="field-label req">Date Applied</label><input type="date"
+                                            class="field" id="dateApplied"></div>
+                                    <div><label class="field-label">Date Released</label><input type="date"
+                                            class="field" id="dateReleased"></div>
+                                </div>
+
+                                <!-- Limit Check Panel -->
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden"
+                                    id="limitPanel">
+                                    <div
+                                        class="px-4 py-2.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                                        <p class="text-[11px] font-semibold text-navy-600">Automatic Limit Check — Maria
+                                            Santos · AICS</p>
+                                        <button onclick="runLimitCheck()"
+                                            class="text-[11px] text-blue-600 font-medium hover:underline">Recheck</button>
+                                    </div>
+                                    <div id="limitRows" class="divide-y divide-slate-100">
+                                        <div class="limit-row flex items-center justify-between px-4 py-2.5">
+                                            <div class="flex items-center gap-2"><i
+                                                    class="fas fa-calendar-alt text-slate-500 text-sm"></i><span
+                                                    class="text-[12px] text-slate-600">Availments this quarter</span>
+                                            </div><span
+                                                class="text-[12px] font-semibold text-emerald-600 flex items-center gap-1">✓
+                                                0 of 1 — eligible</span>
+                                        </div>
+                                        <div class="limit-row flex items-center justify-between px-4 py-2.5">
+                                            <div class="flex items-center gap-2"><i
+                                                    class="fas fa-calendar-week text-slate-500 text-sm"></i><span
+                                                    class="text-[12px] text-slate-600">Availments this year</span></div>
+                                            <span
+                                                class="text-[12px] font-semibold text-emerald-600 flex items-center gap-1">✓
+                                                2 of 4 — 2 remaining</span>
+                                        </div>
+                                        <div class="limit-row flex items-center justify-between px-4 py-2.5">
+                                            <div class="flex items-center gap-2"><i
+                                                    class="fas fa-chart-line text-slate-500 text-sm"></i><span
+                                                    class="text-[12px] text-slate-600">Budget sufficient</span></div>
+                                            <span class="text-[12px] font-semibold text-emerald-600">✓ ₱28,400
+                                                available</span>
+                                        </div>
+                                        <div class="limit-row flex items-center justify-between px-4 py-2.5"
+                                            id="amountCheck">
+                                            <div class="flex items-center gap-2"><i
+                                                    class="fas fa-dollar-sign text-slate-500 text-sm"></i><span
+                                                    class="text-[12px] text-slate-600">Amount within range</span></div>
+                                            <span class="text-[12px] font-semibold text-slate-400">— Enter amount
+                                                above</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div><label class="field-label">Remarks</label><textarea class="field resize-none"
+                                        rows="3" placeholder="Optional notes about this transaction..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Assistance Type Selection Cards -->
                         <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-6">
                             <h2 class="text-[14px] font-semibold text-navy-600 mb-1">Select Assistance Type</h2>
@@ -442,84 +511,6 @@ require 'db_connect.php';
                                     </div>
                                     <p class="text-[13px] font-semibold text-slate-700">Burial</p>
                                     <p class="text-[10px] text-slate-400 mt-1">5 documents</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Transaction Details -->
-                        <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div
-                                    class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold">
-                                    1</div>
-                                <div>
-                                    <h2 class="text-[14px] font-semibold text-navy-600">Transaction Details</h2>
-                                    <p class="text-[11px] text-slate-400">Amount, dates, and limit verification</p>
-                                </div>
-                            </div>
-                            <div class="p-6 space-y-5">
-                                <div class="grid grid-cols-3 gap-4">
-                                    <div>
-                                        <label class="field-label req">Amount (₱)</label>
-                                        <div class="relative"><span
-                                                class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[13px]">₱</span><input
-                                                type="number" min="500" max="5000" class="field pl-7"
-                                                placeholder="500 – 5,000" oninput="checkAmount(this)"></div>
-                                        <p class="text-[10px] text-slate-400 mt-1.5">Min ₱500 · Max ₱5,000</p>
-                                    </div>
-                                    <div><label class="field-label req">Date Applied</label><input type="date"
-                                            class="field"></div>
-                                    <div><label class="field-label">Date Released</label><input type="date"
-                                            class="field"></div>
-                                </div>
-
-                                <!-- Limit Check Panel -->
-                                <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden"
-                                    id="limitPanel">
-                                    <div
-                                        class="px-4 py-2.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
-                                        <p class="text-[11px] font-semibold text-navy-600">Automatic Limit Check — Maria
-                                            Santos · AICS</p>
-                                        <button onclick="runLimitCheck()"
-                                            class="text-[11px] text-blue-600 font-medium hover:underline">Recheck</button>
-                                    </div>
-                                    <div id="limitRows" class="divide-y divide-slate-100">
-                                        <div class="limit-row flex items-center justify-between px-4 py-2.5">
-                                            <div class="flex items-center gap-2"><i
-                                                    class="fas fa-calendar-alt text-slate-500 text-sm"></i><span
-                                                    class="text-[12px] text-slate-600">Availments this quarter</span>
-                                            </div><span
-                                                class="text-[12px] font-semibold text-emerald-600 flex items-center gap-1">✓
-                                                0 of 1 — eligible</span>
-                                        </div>
-                                        <div class="limit-row flex items-center justify-between px-4 py-2.5">
-                                            <div class="flex items-center gap-2"><i
-                                                    class="fas fa-calendar-week text-slate-500 text-sm"></i><span
-                                                    class="text-[12px] text-slate-600">Availments this year</span></div>
-                                            <span
-                                                class="text-[12px] font-semibold text-emerald-600 flex items-center gap-1">✓
-                                                2 of 4 — 2 remaining</span>
-                                        </div>
-                                        <div class="limit-row flex items-center justify-between px-4 py-2.5">
-                                            <div class="flex items-center gap-2"><i
-                                                    class="fas fa-chart-line text-slate-500 text-sm"></i><span
-                                                    class="text-[12px] text-slate-600">Budget sufficient</span></div>
-                                            <span class="text-[12px] font-semibold text-emerald-600">✓ ₱28,400
-                                                available</span>
-                                        </div>
-                                        <div class="limit-row flex items-center justify-between px-4 py-2.5"
-                                            id="amountCheck">
-                                            <div class="flex items-center gap-2"><i
-                                                    class="fas fa-dollar-sign text-slate-500 text-sm"></i><span
-                                                    class="text-[12px] text-slate-600">Amount within range</span></div>
-                                            <span class="text-[12px] font-semibold text-slate-400">— Enter amount
-                                                above</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div><label class="field-label">Remarks</label><textarea class="field resize-none"
-                                        rows="3" placeholder="Optional notes about this transaction..."></textarea>
                                 </div>
                             </div>
                         </div>
@@ -1209,6 +1200,7 @@ require 'db_connect.php';
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        // Updated: only mark active card, do NOT navigate
         function selectType(card, sub) {
             document.querySelectorAll('.type-card').forEach(c => {
                 c.classList.remove('active-card', 'border-navy-600', 'bg-navy-50', 'shadow-md');
@@ -1216,7 +1208,7 @@ require 'db_connect.php';
             });
             card.classList.add('active-card', 'border-navy-600', 'bg-navy-50', 'shadow-md');
             card.classList.remove('border-slate-200');
-            setTimeout(() => switchSub(sub), 200);
+            // no automatic switchSub
         }
 
         function checkAmount(input) {
@@ -1296,21 +1288,51 @@ require 'db_connect.php';
         function saveDraft() { showToast('Draft saved successfully!'); }
         function saveComplete() { showToast('Availment saved & completed ✓'); }
 
-        // Proceed button – if no subtype selected yet, default to medical? But we can just use the first card.
+        // UPDATED: Validate before proceeding
         document.getElementById('proceedToSubtype')?.addEventListener('click', () => {
-            const activeCard = document.querySelector('.type-card.active-card');
-            if (activeCard) {
-                const subtype = activeCard.querySelector('p')?.innerText.toLowerCase();
-                if (subtype === 'medical') switchSub('medical');
-                else if (subtype === 'financial') switchSub('financial');
-                else if (subtype === 'educational') switchSub('educational');
-                else if (subtype === 'livelihood') switchSub('livelihood');
-                else if (subtype === 'burial') switchSub('burial');
-                else switchSub('medical');
-            } else {
-                // default to medical if none selected
-                switchSub('medical');
+            // 1. Amount validation
+            const amountInput = document.getElementById('amountField');
+            const amountVal = parseFloat(amountInput.value);
+            if (!amountInput.value.trim() || isNaN(amountVal) || amountVal < 500 || amountVal > 5000) {
+                showToast('Please enter a valid amount (₱500 – ₱5,000).');
+                amountInput.focus();
+                return;
             }
+
+            // 2. Date Applied validation
+            const dateApplied = document.getElementById('dateApplied').value;
+            if (!dateApplied) {
+                showToast('Please select Date Applied.');
+                document.getElementById('dateApplied').focus();
+                return;
+            }
+
+            // 3. Date Released validation
+            const dateReleased = document.getElementById('dateReleased').value;
+            if (!dateReleased) {
+                showToast('Please select Date Released.');
+                document.getElementById('dateReleased').focus();
+                return;
+            }
+
+            // 4. Subtype selected?
+            const activeCard = document.querySelector('.type-card.active-card');
+            if (!activeCard) {
+                showToast('Please select an assistance type first.');
+                return;
+            }
+
+            // 5. Determine subtype and navigate
+            const subtypeText = activeCard.querySelector('p')?.innerText.toLowerCase().trim();
+            const subtypeMap = {
+                'medical': 'medical',
+                'financial': 'financial',
+                'educational': 'educational',
+                'livelihood': 'livelihood',
+                'burial': 'burial'
+            };
+            const subtype = subtypeMap[subtypeText] || 'medical';
+            switchSub(subtype);
         });
 
         requestAnimationFrame(() => setTimeout(() => {
