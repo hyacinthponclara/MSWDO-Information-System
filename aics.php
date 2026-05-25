@@ -320,7 +320,7 @@ require 'db_connect.php';
     <?php require 'sidebar.php'; ?>
 
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
-        <header
+         <header
             class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
                 <a href="#" class="text-slate-400 hover:text-navy-600">Clients</a>
