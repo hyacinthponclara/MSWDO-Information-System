@@ -2,6 +2,114 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker', 'Staff']);
 require 'db_connect.php';
+
+// ── Resolve & validate client ────────────────────────────────────────────────
+$client_id = (int)($_GET['client_id'] ?? 0);
+if ($client_id <= 0) {
+    header("Location: clientslist.php");
+    exit;
+}
+
+$stmt = $pdo->prepare("SELECT cl_firstname, cl_lastname FROM CLIENT WHERE client_id = ?");
+$stmt->execute([$client_id]);
+$client = $stmt->fetch();
+if (!$client) {
+    header("Location: clientslist.php");
+    exit;
+}
+$client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_lastname']);
+
+// ── Fetch SFP program_id ─────────────────────────────────────────────────────
+$progStmt = $pdo->prepare("SELECT program_id FROM PROGRAM WHERE program_name = 'SFP' LIMIT 1");
+$progStmt->execute();
+$sfpProgram = $progStmt->fetch();
+$sfp_program_id = $sfpProgram ? $sfpProgram['program_id'] : null;
+
+// ── Fetch Day Care centers for dropdown ──────────────────────────────────────
+$daycareStmt = $pdo->query("SELECT daycare_id, dc_name FROM DAYCARE ORDER BY dc_name");
+$daycares = $daycareStmt->fetchAll();
+
+// ── POST handler ─────────────────────────────────────────────────────────────
+$success_msg = '';
+$error_msg   = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'submit') {
+    try {
+        if (!$sfp_program_id) {
+            throw new Exception("SFP program not found in the PROGRAM table. Please add it first.");
+        }
+
+        $user_id        = $_SESSION['user_id'];
+        $child_name     = trim($_POST['childName'] ?? '');
+        $child_age      = (int)($_POST['childAge'] ?? 0);
+        $daycare_id     = (int)($_POST['daycareCenter'] ?? 0);
+        $start_date     = $_POST['feedingStartDate'] ?? '';
+        $feeding_days   = (int)($_POST['feedingDays'] ?? 0);
+        $final_nutri    = trim($_POST['finalNutriStatus'] ?? '');
+
+        // Build monthly progress JSON for av_remarks
+        $monthly = [];
+        for ($m = 1; $m <= 6; $m++) {
+            $monthly[] = [
+                'month'   => $m,
+                'weight'  => $_POST["m{$m}_weight"]  ?? null,
+                'height'  => $_POST["m{$m}_height"]  ?? null,
+                'date'    => $_POST["m{$m}_date"]    ?? null,
+                'status'  => $_POST["m{$m}_status"]  ?? null,
+            ];
+        }
+
+        // Baseline snapshot stored alongside monthly data
+        $remarks_payload = json_encode([
+            'baseline' => [
+                'weight' => $_POST['baseWeight'] ?? null,
+                'height' => $_POST['baseHeight'] ?? null,
+                'date'   => $_POST['baseDate']   ?? null,
+            ],
+            'monthly' => $monthly,
+        ]);
+
+        // Validation
+        if (!$child_name) throw new Exception("Child's full name is required.");
+        if ($child_age < 0 || $child_age > 12) throw new Exception("Child age must be 0–12 for SFP.");
+        if (!$daycare_id) throw new Exception("Please select a Day Care Center.");
+        if (!$start_date) throw new Exception("Feeding Start Date is required.");
+
+        $pdo->beginTransaction();
+
+        // 1. Insert AVAILMENT (av_amount = 0 for feeding program, no cash disbursement)
+        $avStmt = $pdo->prepare("
+            INSERT INTO AVAILMENT
+                (client_id, program_id, user_id, av_date_applied, av_amount, av_status, av_remarks)
+            VALUES (?, ?, ?, ?, 0.00, 'Approved', ?)
+        ");
+        $avStmt->execute([$client_id, $sfp_program_id, $user_id, $start_date, $remarks_payload]);
+        $availment_id = $pdo->lastInsertId();
+
+        // 2. Insert SFP record
+        $sfpStmt = $pdo->prepare("
+            INSERT INTO SFP
+                (availment_id, user_id, daycare_id, sfp_childname, sfp_child_age, sfp_feeding_days, sfp_nutrition_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $sfpStmt->execute([
+            $availment_id,
+            $user_id,
+            $daycare_id,
+            $child_name,
+            $child_age,
+            $feeding_days,
+            $final_nutri,
+        ]);
+
+        $pdo->commit();
+        $success_msg = "SFP record for <strong>{$child_name}</strong> has been submitted successfully.";
+
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $error_msg = htmlspecialchars($e->getMessage());
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -180,17 +288,18 @@ require 'db_connect.php';
         <header
             class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
-                <a href="#" class="text-slate-400 hover:text-navy-600">Clients</a>
+                <a href="clientslist.php" class="text-slate-400 hover:text-navy-600">Clients</a>
                 <span class="text-slate-300">/</span>
-                <a href="#" class="text-slate-400 hover:text-navy-600">Program Avaiments</a>
+                <a href="clientprofile.php?id=<?= $client_id ?>" class="text-slate-400 hover:text-navy-600"><?= $client_name ?></a>
+                <span class="text-slate-300">/</span>
+                <a href="programavailmentselection.php?client_id=<?= $client_id ?>" class="text-slate-400 hover:text-navy-600">Select Program</a>
                 <span class="text-slate-300">/</span>
                 <span class="text-navy-600 font-semibold">SFP Availment</span>
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="saveDraft()"
-                    class="text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-3 py-1.5 hover:bg-navy-100">Save
-                    Draft</button>
-            </div>
+            <a href="programavailmentselection.php?client_id=<?= $client_id ?>"
+                class="text-[12px] text-slate-500 hover:text-navy-600 flex items-center gap-1.5 transition-colors">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
         </header>
 
         <main class="p-6 overflow-y-auto">
@@ -202,9 +311,27 @@ require 'db_connect.php';
                     </div>
                     <h1 class="text-xl font-serif text-navy-600">SFP Availment Form</h1>
                     <p class="text-[13px] text-slate-500 mt-1">Enroll a child in the feeding program and record
-                        nutrition status
-                        per feeding cycle.</p>
+                        nutrition status per feeding cycle for
+                        <span class="font-semibold text-navy-600"><?= $client_name ?></span>.
+                    </p>
                 </div>
+
+                <?php if ($success_msg): ?>
+                <div class="animate-fade-up bg-green-50 border border-green-200 text-green-800 rounded-xl px-5 py-3.5 flex items-center gap-3 text-[13px]">
+                    <i class="fas fa-check-circle text-green-500 text-lg"></i>
+                    <span><?= $success_msg ?></span>
+                    <a href="clientprofile.php?id=<?= $client_id ?>" class="ml-auto text-[12px] font-semibold text-green-700 underline">Back to Profile</a>
+                </div>
+                <?php endif; ?>
+                <?php if ($error_msg): ?>
+                <div class="animate-fade-up bg-red-50 border border-red-200 text-red-800 rounded-xl px-5 py-3.5 flex items-center gap-3 text-[13px]">
+                    <i class="fas fa-exclamation-circle text-red-500 text-lg"></i>
+                    <span><?= $error_msg ?></span>
+                </div>
+                <?php endif; ?>
+
+                <form method="POST" action="sfp.php?client_id=<?= $client_id ?>" id="sfpForm">
+                <input type="hidden" name="action" value="submit">
 
                 <!-- Info banner -->
                 <div
@@ -233,13 +360,13 @@ require 'db_connect.php';
                     <div class="p-6 space-y-4">
                         <div class="grid grid-cols-3 gap-4">
                             <div class="col-span-2"><label class="field-label req">Child's Full Name</label><input
-                                    type="text" class="field" placeholder="Full name of child" id="childName"></div>
+                                    type="text" class="field" placeholder="Full name of child" id="childName" name="childName"></div>
                             <div><label class="field-label req">Age</label><input type="number" min="0" max="12"
-                                    class="field" placeholder="Auto-calculated" id="childAge" readonly></div>
+                                    class="field" placeholder="Auto-calculated" id="childAge" name="childAge" readonly></div>
                         </div>
                         <div class="grid grid-cols-3 gap-4">
                             <div><label class="field-label">Birthdate</label><input type="date" class="field"
-                                    id="birthdate"></div>
+                                    id="birthdate" name="birthdate"></div>
                             <div><label class="field-label req">Sex</label>
                                 <div class="flex gap-2 mt-0.5">
                                     <label
@@ -258,28 +385,25 @@ require 'db_connect.php';
 
                         </div>
                         <div class="grid grid-cols-3 gap-4">
-                            <div><label class="field-label req">Day Care Center</label><select class="field"
-                                    id="daycareCenter">
+                            <div><label class="field-label req">Day Care Center</label>
+                                <select class="field" id="daycareCenter" name="daycareCenter">
                                     <option value="">Select</option>
-                                    <option>Brgy. Bagonawa Day Care</option>
-                                    <option>Brgy. Baliwagan Day Care</option>
-                                    <option>Brgy. Batuan Day Care</option>
-                                    <option>Brgy. Guintorilan Day Care</option>
-                                    <option>Brgy. Nayon Day Care</option>
-                                    <option>Brgy. Poblacion Day Care</option>
-                                    <option>Brgy. Sibucao Day Care</option>
-                                    <option>Brgy. Tabao Baybay Day Care</option>
-                                    <option>Brgy. Tabao Rizal Day Care</option>
-                                    <option>Brgy. Tibsoc Day Care</option>
-                                </select></div>
+                                    <?php foreach ($daycares as $dc): ?>
+                                    <option value="<?= $dc['daycare_id'] ?>"><?= htmlspecialchars($dc['dc_name']) ?></option>
+                                    <?php endforeach; ?>
+                                    <?php if (empty($daycares)): ?>
+                                    <option disabled>No day care centers found – add them first</option>
+                                    <?php endif; ?>
+                                </select>
+                            </div>
                             <div><label class="field-label req">Feeding Start Date</label><input type="date"
-                                    class="field" id="feedingStartDate"></div>
+                                    class="field" id="feedingStartDate" name="feedingStartDate"></div>
                             <div><label class="field-label">Feeding End Date</label><input type="date" class="field"
-                                    id="feedingEndDate"></div>
+                                    id="feedingEndDate" name="feedingEndDate"></div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div><label class="field-label req">Feeding Days Completed</label><input type="number"
-                                    min="0" class="field" placeholder="Days attended" id="feedingDays"></div>
+                                    min="0" class="field" placeholder="Days attended" id="feedingDays" name="feedingDays"></div>
                             <div><label class="field-label">Total Feeding Days</label>
                                 <input type="number" min="0"
                                     class="field bg-slate-100 text-slate-700 cursor-not-allowed" value="180" readonly>
@@ -328,16 +452,16 @@ require 'db_connect.php';
                                 <div>
                                     <label class="field-label req">Weight (kg)</label>
                                     <input type="number" step="0.1" min="0" class="field" placeholder="e.g. 14.5"
-                                        id="baseWeight">
+                                        id="baseWeight" name="baseWeight">
                                 </div>
                                 <div>
                                     <label class="field-label req">Height (cm)</label>
                                     <input type="number" step="0.1" min="0" class="field" placeholder="e.g. 95.0"
-                                        id="baseHeight">
+                                        id="baseHeight" name="baseHeight">
                                 </div>
                                 <div>
                                     <label class="field-label req">Date Measured</label>
-                                    <input type="date" class="field" id="baseDate">
+                                    <input type="date" class="field" id="baseDate" name="baseDate">
                                 </div>
                             </div>
                         </div>
@@ -359,20 +483,24 @@ require 'db_connect.php';
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-100" id="monthlyBody">
-                                        <!-- Month 1 -->
+                                        <?php
+                                        $months = ['Month 1','Month 2','Month 3','Month 4','Month 5','Month 6'];
+                                        foreach ($months as $i => $label):
+                                            $m = $i + 1;
+                                        ?>
                                         <tr>
-                                            <td class="px-3 py-2 font-medium text-navy-600">Month 1</td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
+                                            <td class="px-3 py-2 font-medium text-navy-600"><?= $label ?></td>
+                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0" name="m<?= $m ?>_weight"
                                                     class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
                                                     placeholder="kg"></td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
+                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0" name="m<?= $m ?>_height"
                                                     class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
                                                     placeholder="cm"></td>
-                                            <td class="px-3 py-2"><input type="date"
+                                            <td class="px-3 py-2"><input type="date" name="m<?= $m ?>_date"
                                                     class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400">
                                             </td>
                                             <td class="px-3 py-2">
-                                                <select
+                                                <select name="m<?= $m ?>_status"
                                                     class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400 bg-white">
                                                     <option value="">Select</option>
                                                     <option>Severely Wasted</option>
@@ -383,126 +511,7 @@ require 'db_connect.php';
                                                 </select>
                                             </td>
                                         </tr>
-                                        <!-- Month 2 -->
-                                        <tr>
-                                            <td class="px-3 py-2 font-medium text-navy-600">Month 2</td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="kg"></td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="cm"></td>
-                                            <td class="px-3 py-2"><input type="date"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <select
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400 bg-white">
-                                                    <option value="">Select</option>
-                                                    <option>Severely Wasted</option>
-                                                    <option>Wasted</option>
-                                                    <option>Normal</option>
-                                                    <option>Overweight</option>
-                                                    <option>Obese</option>
-                                                </select>
-                                            </td>
-                                        </tr>
-                                        <!-- Month 3 -->
-                                        <tr>
-                                            <td class="px-3 py-2 font-medium text-navy-600">Month 3</td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="kg"></td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="cm"></td>
-                                            <td class="px-3 py-2"><input type="date"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <select
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400 bg-white">
-                                                    <option value="">Select</option>
-                                                    <option>Severely Wasted</option>
-                                                    <option>Wasted</option>
-                                                    <option>Normal</option>
-                                                    <option>Overweight</option>
-                                                    <option>Obese</option>
-                                                </select>
-                                            </td>
-                                        </tr>
-                                        <!-- Month 4 -->
-                                        <tr>
-                                            <td class="px-3 py-2 font-medium text-navy-600">Month 4</td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="kg"></td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="cm"></td>
-                                            <td class="px-3 py-2"><input type="date"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <select
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400 bg-white">
-                                                    <option value="">Select</option>
-                                                    <option>Severely Wasted</option>
-                                                    <option>Wasted</option>
-                                                    <option>Normal</option>
-                                                    <option>Overweight</option>
-                                                    <option>Obese</option>
-                                                </select>
-                                            </td>
-                                        </tr>
-                                        <!-- Month 5 -->
-                                        <tr>
-                                            <td class="px-3 py-2 font-medium text-navy-600">Month 5</td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="kg"></td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="cm"></td>
-                                            <td class="px-3 py-2"><input type="date"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <select
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400 bg-white">
-                                                    <option value="">Select</option>
-                                                    <option>Severely Wasted</option>
-                                                    <option>Wasted</option>
-                                                    <option>Normal</option>
-                                                    <option>Overweight</option>
-                                                    <option>Obese</option>
-                                                </select>
-                                            </td>
-                                        </tr>
-                                        <!-- Month 6 -->
-                                        <tr>
-                                            <td class="px-3 py-2 font-medium text-navy-600">Month 6</td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="kg"></td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="cm"></td>
-                                            <td class="px-3 py-2"><input type="date"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <select
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400 bg-white">
-                                                    <option value="">Select</option>
-                                                    <option>Severely Wasted</option>
-                                                    <option>Wasted</option>
-                                                    <option>Normal</option>
-                                                    <option>Overweight</option>
-                                                    <option>Obese</option>
-                                                </select>
-                                            </td>
-                                        </tr>
+                                        <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
@@ -512,6 +521,7 @@ require 'db_connect.php';
                         <div class="pt-3 border-t border-slate-100">
                             <p class="text-[12px] font-semibold text-navy-600 mb-3">Overall Nutrition Status (after 6
                                 months)</p>
+                            <input type="hidden" name="finalNutriStatus" id="finalNutriStatus" value="">
                             <div class="grid grid-cols-5 gap-3" id="nutriSelector">
                                 <div onclick="setNutri(this,'Severely Wasted')"
                                     class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
@@ -545,11 +555,12 @@ require 'db_connect.php';
                 </div>
 
                 <div class="flex justify-end gap-3">
-                    <button onclick="saveComplete()"
+                    <button type="submit" form="sfpForm"
                         class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500">Submit
                         SFP
                         Record</button>
                 </div>
+                </form>
             </div>
         </main>
         <footer class="border-t border-slate-200 bg-white px-6 py-3 text-[11px] text-slate-400"><span>MSWDO San Enrique
@@ -623,6 +634,7 @@ require 'db_connect.php';
         function setNutri(el, label) {
             document.querySelectorAll('#nutriSelector .nutri-opt').forEach(e => e.classList.remove('n-sel'));
             el.classList.add('n-sel');
+            document.getElementById('finalNutriStatus').value = label;
         }
 
         // Toast
@@ -648,77 +660,49 @@ require 'db_connect.php';
             }, 3000);
         }
 
-        // Validate and submit
-        function saveComplete() {
+        // Client-side validation then native form submit
+        document.getElementById('sfpForm').addEventListener('submit', function(e) {
             const errors = [];
 
-            // Child's Full Name
             const childName = document.getElementById('childName');
-            if (!childName.value.trim()) {
-                errors.push({ field: childName, msg: 'Please enter the child\'s full name.' });
-            }
+            if (!childName.value.trim()) errors.push({ field: childName, msg: "Please enter the child's full name." });
 
-            // Age (auto-calculated, must not be empty)
             const ageField = document.getElementById('childAge');
             if (!ageField.value) {
-                errors.push({ field: document.getElementById('birthdate'), msg: 'Please provide birthdate and feeding start date to calculate age.' });
+                errors.push({ field: document.getElementById('birthdate'), msg: 'Provide birthdate & feeding start date to calculate age.' });
             } else if (parseInt(ageField.value) > 12) {
                 errors.push({ field: ageField, msg: 'Child age must be 0–12 years for SFP.' });
             }
 
-            // Sex
-            const sexSelected = document.querySelector('input[name="childSex"]:checked');
-            if (!sexSelected) {
-                errors.push({ field: document.querySelector('input[name="childSex"]'), msg: 'Please select the child\'s sex.' });
-            }
-
-            // Day Care Center
             const daycare = document.getElementById('daycareCenter');
-            if (!daycare.value) {
-                errors.push({ field: daycare, msg: 'Please select a Day Care Center.' });
-            }
+            if (!daycare.value) errors.push({ field: daycare, msg: 'Please select a Day Care Center.' });
 
-            // Feeding Start Date
             const startDate = document.getElementById('feedingStartDate');
-            if (!startDate.value) {
-                errors.push({ field: startDate, msg: 'Please select Feeding Start Date.' });
-            }
+            if (!startDate.value) errors.push({ field: startDate, msg: 'Please select Feeding Start Date.' });
 
-            // Check if end date is before start date (should not happen due to min, but extra safety)
             const endDate = document.getElementById('feedingEndDate').value;
             if (endDate && startDate.value && endDate < startDate.value) {
                 errors.push({ field: document.getElementById('feedingEndDate'), msg: 'Feeding End Date cannot be before Start Date.' });
             }
 
-            // Baseline weight
             const baseWeight = document.getElementById('baseWeight');
-            if (!baseWeight.value || parseFloat(baseWeight.value) <= 0) {
-                errors.push({ field: baseWeight, msg: 'Please enter baseline weight.' });
-            }
+            if (!baseWeight.value || parseFloat(baseWeight.value) <= 0) errors.push({ field: baseWeight, msg: 'Please enter baseline weight.' });
 
-            // Baseline height
             const baseHeight = document.getElementById('baseHeight');
-            if (!baseHeight.value || parseFloat(baseHeight.value) <= 0) {
-                errors.push({ field: baseHeight, msg: 'Please enter baseline height.' });
-            }
+            if (!baseHeight.value || parseFloat(baseHeight.value) <= 0) errors.push({ field: baseHeight, msg: 'Please enter baseline height.' });
 
-            // Baseline date
             const baseDate = document.getElementById('baseDate');
-            if (!baseDate.value) {
-                errors.push({ field: baseDate, msg: 'Please select baseline measurement date.' });
-            }
+            if (!baseDate.value) errors.push({ field: baseDate, msg: 'Please select baseline measurement date.' });
 
             if (errors.length > 0) {
+                e.preventDefault();
                 const first = errors[0];
                 showToast(first.msg, 'error');
                 first.field.focus();
                 first.field.style.borderColor = '#EF4444';
                 setTimeout(() => { first.field.style.borderColor = ''; }, 2000);
-                return;
             }
-
-            showToast('SFP record submitted successfully!');
-        }
+        });
 
         function saveDraft() { showToast('Draft saved!'); }
     </script>
