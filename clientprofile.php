@@ -221,14 +221,6 @@ $progColors = [
         </span>
       </div>
       <div class="flex items-center gap-2">
-        <a href="clientedit.php?id=<?= $client_id ?>"
-          class="btn-act text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-navy-400 hover:text-navy-600">
-          <i class="fas fa-edit"></i> Edit Profile
-        </a>
-        <button onclick="window.print()"
-          class="btn-act text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-navy-400 hover:text-navy-600">
-          <i class="fas fa-print"></i> Print Case Summary
-        </button>
         <a href="programavailmentselection.php?client_id=<?= $client_id ?>"
           class="btn-act text-[12px] font-semibold text-white bg-navy-600 rounded-lg px-4 py-1.5 hover:bg-navy-500">
           <i class="fas fa-plus"></i> New Availment

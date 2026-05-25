@@ -348,14 +348,6 @@ foreach ($clients as $c) {
                 <span class="text-navy-600 font-semibold">Clients</span>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="showImport()"
-                    class="text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-navy-400 hover:text-navy-600 transition-all flex items-center gap-1.5">
-                    <i class="fas fa-file-import"></i> Import
-                </button>
-                <button onclick="showExport()"
-                    class="text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-navy-400 hover:text-navy-600 transition-all flex items-center gap-1.5">
-                    <i class="fas fa-file-export"></i> Export
-                </button>
                 <a href="clientregistrationform.php"
                     class="text-[12px] font-semibold text-white bg-navy-600 rounded-lg px-4 py-1.5 hover:bg-navy-500 transition-all flex items-center gap-1.5">
                     <i class="fas fa-user-plus"></i> Register New Client
