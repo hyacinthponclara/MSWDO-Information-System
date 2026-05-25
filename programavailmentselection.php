@@ -122,7 +122,7 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                     </a>
 
                     <!-- SLP -->
-                    <a href="slp_availment.php?client_id=<?= $client_id ?>"
+                    <a href="slp.php?client_id=<?= $client_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
                             <i class="fas fa-briefcase text-navy-600"></i>
@@ -132,7 +132,7 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                     </a>
 
                     <!-- SFP -->
-                    <a href="sfp_availment.php?client_id=<?= $client_id ?>"
+                    <a href="sfp.php?client_id=<?= $client_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
                             <i class="fas fa-utensils text-navy-600"></i>
@@ -142,7 +142,7 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                     </a>
 
                     <!-- Day Care -->
-                    <a href="daycare_assessment.php?client_id=<?= $client_id ?>"
+                    <a href="daycare.php?client_id=<?= $client_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
                             <i class="fas fa-school text-navy-600"></i>
