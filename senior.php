@@ -2,6 +2,165 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker', 'Staff']);
 require 'db_connect.php';
+
+$client_id = (int)($_GET['client_id'] ?? 0);
+if ($client_id <= 0) {
+    header("Location: clientslist.php");
+    exit;
+}
+
+$stmt = $pdo->prepare("
+    SELECT cl_firstname, cl_middlename, cl_lastname, cl_suffix, cl_birthdate, cl_age, cl_sex, cl_is_senior, b.barangay_name
+    FROM CLIENT c
+    LEFT JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+    WHERE c.client_id = ?
+");
+$stmt->execute([$client_id]);
+$client = $stmt->fetch();
+if (!$client) {
+    header("Location: clientslist.php");
+    exit;
+}
+
+$cl_fullname = htmlspecialchars(trim(
+    $client['cl_firstname'] . ' ' .
+    ($client['cl_middlename'] ? $client['cl_middlename'][0] . '. ' : '') .
+    $client['cl_lastname'] .
+    ($client['cl_suffix'] ? ' ' . $client['cl_suffix'] : '')
+));
+
+$cl_initials = strtoupper(substr($client['cl_firstname'], 0, 1) . substr($client['cl_lastname'], 0, 1));
+$cl_age = (int)$client['cl_age'];
+$cl_sex = htmlspecialchars($client['cl_sex']);
+$cl_barangay = htmlspecialchars($client['barangay_name'] ?? 'Unknown');
+$cl_eligible = $cl_age >= 60;
+
+$barangay = $pdo->prepare("SELECT program_id FROM PROGRAM WHERE program_name = 'Senior Citizen' LIMIT 1");
+$barangay->execute();
+$seniorProgram     = $barangay->fetch();
+$senior_program_id = $seniorProgram ? $seniorProgram['program_id'] : null;
+
+function fileUpload(string $field): ?string {
+    if (empty($_FILES[$field]['name'])) return null;
+    $uploadDir = __DIR__ . '/uploads/senior/';
+    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+    $ext = strtolower(pathinfo($_FILES[$field]['name'], PATHINFO_EXTENSION));
+    $allowed = ['pdf', 'jpg', 'jpeg', 'png'];
+    if (!in_array($ext, $allowed)) return null;
+    $filename = uniqid('sen_', true) . '.' . $ext; //to assign random text strings as filenames, prevents duplication
+    move_uploaded_file($_FILES[$field]['tmp_name'], $uploadDir . $filename);
+    return 'uploads/senior/' . $filename;
+}
+
+$success_msg = '';
+$error_msg = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'submit') {
+    try {
+        if (!$senior_program_id) {
+            throw new Exception("'Senior Citizen' program not found in the PROGRAM table. Please add it first.");
+        }
+        if (!$cl_eligible) {
+            throw new Exception("Client is {$cl_age} years old and does not meet the 60+ eligibility requirement.");
+        }
+
+        $user_id = $_SESSION['user_id'];
+        $svc_type = $_POST['svcType'] ?? ''; //service(svc) type
+        $av_date  = date('Y-m-d');  //availment(av)
+        $av_amount = 0.00;
+
+        $sen_pension = null;
+        $sen_centenarian_benefit = null;
+        $sen_is_indigent = false;
+        $sen_is_sick = false;
+        $sen_is_bedridden = false;
+        $sen_sss_gsis = false;
+        $sen_cent_birth_cert = null;
+        $sen_cent_marriage_cert = null;
+        $sen_cent_baptismal = null;
+        $sen_first_born_birth_cert = null;
+        $sen_first_born_death_cert = null;
+        $av_remarks = '';
+
+        if ($svc_type === 'scid') {
+            $scid_number = trim($_POST['scidNumber'] ?? '');
+            $scid_date = $_POST['scidDate'] ?? '';
+            $scid_type_val = $_POST['scidType'] ?? '';
+            if (!$scid_number) throw new Exception("SCID Number is required.");
+            if (!$scid_date) throw new Exception("Date Issued is required.");
+            $av_remarks = json_encode([
+                'service' => 'SCID Issuance',
+                'scid_number' => $scid_number,
+                'scid_date' => $scid_date,
+                'scid_type' => $scid_type_val,
+            ]);
+
+        } elseif ($svc_type === 'pension') {
+            $pension_amount = (float)($_POST['pensionAmount'] ?? 0);
+            if ($pension_amount <= 0) throw new Exception("Pension amount must be greater than zero.");
+            $sen_is_indigent = !empty($_POST['chk_indigent']);
+            $sen_is_sick = !empty($_POST['chk_sick']);
+            $sen_is_bedridden = !empty($_POST['chk_bedridden']);
+            // chk_no_sss checked = client has NO sss/gsis — sen_sss_gsis stores FALSE
+            $sen_sss_gsis = empty($_POST['chk_no_sss']);
+            $sen_pension = $pension_amount;
+            $av_amount = $pension_amount;
+            $av_remarks = json_encode([
+                'service' => 'Pension Top-up',
+                'remarks' => trim($_POST['pensionRemarks'] ?? ''),
+            ]);
+
+        } elseif ($svc_type === 'centenarian') {
+            if ($cl_age < 100) throw new Exception("Centenarian benefit requires client to be 100 years or older (client is {$cl_age}).");
+            $cent_amount = (float)($_POST['centAmount'] ?? 0);
+            $cent_dob = $_POST['centDOB'] ?? ''; //dob(date of birth)
+            if ($cent_amount <= 0) throw new Exception("Centenarian benefit amount must be greater than zero.");
+            if (!$cent_dob) throw new Exception("Verified Date of Birth is required for centenarian benefit.");
+            $sen_centenarian_benefit = $cent_amount;
+            $av_amount = $cent_amount;
+            $sen_cent_birth_cert = fileUpload('cent_birth_cert');
+            $sen_cent_marriage_cert = fileUpload('cent_marr_cert');
+            $sen_cent_baptismal = fileUpload('cent_baptismal');
+            $sen_first_born_birth_cert = fileUpload('cent_fb_birth');
+            $sen_first_born_death_cert = fileUpload('cent_fb_death');
+            $av_remarks = json_encode(['service' => 'Centenarian Benefit', 'verified_dob' => $cent_dob]);
+
+        } else {
+            throw new Exception("Please select a service type before submitting.");
+        }
+
+        $pdo->beginTransaction();
+
+        // 1. Insert AVAILMENT
+        $avStmt = $pdo->prepare("
+            INSERT INTO AVAILMENT
+                (client_id, program_id, user_id, av_date_applied, av_amount, av_status, av_remarks)
+            VALUES (?, ?, ?, ?, ?, 'Pending', ?)
+        ");
+        $avStmt->execute([$client_id, $senior_program_id, $user_id, $av_date, $av_amount, $av_remarks]);
+        $availment_id = $pdo->lastInsertId();
+
+        // 2. Insert SENIOR
+        $senStmt = $pdo->prepare("
+            INSERT INTO SENIOR
+                (availment_id, user_id, sen_pension, sen_centenarian_benefit, sen_is_indigent, sen_is_sick, sen_is_bedridden, sen_sss_gsis,
+                 sen_cent_birth_cert, sen_cent_marriage_cert, sen_cent_baptismal, sen_first_born_birth_cert, sen_first_born_death_cert)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $senStmt->execute([
+            $availment_id, $user_id, $sen_pension, $sen_centenarian_benefit, (int)$sen_is_indigent, (int)$sen_is_sick, (int)$sen_is_bedridden, (int)$sen_sss_gsis,
+            $sen_cent_birth_cert, $sen_cent_marriage_cert, $sen_cent_baptismal, $sen_first_born_birth_cert, $sen_first_born_death_cert,
+        ]);
+
+        $pdo->commit();
+        $svc_labels  = ['scid' => 'SCID Issuance', 'pension' => 'Pension Top-up', 'centenarian' => 'Centenarian Benefit'];
+        $success_msg = "Senior Citizen record (<strong>{$svc_labels[$svc_type]}</strong>) for <strong>{$cl_fullname}</strong> submitted successfully.";
+
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $error_msg = htmlspecialchars($e->getMessage());
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -281,17 +440,18 @@ require 'db_connect.php';
         <header
             class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
-                <a href="#" class="text-slate-400 hover:text-navy-600">Clients</a>
+                <a href="clientslist.php" class="text-slate-400 hover:text-navy-600">Clients</a>
                 <span class="text-slate-300">/</span>
-                <a href="#" class="text-slate-400 hover:text-navy-600">Program Availments</a>
+                <a href="clientprofile.php?id=<?= $client_id ?>" class="text-slate-400 hover:text-navy-600"><?= $cl_fullname ?></a>
+                <span class="text-slate-300">/</span>
+                <a href="programavailmentselection.php?client_id=<?= $client_id ?>" class="text-slate-400 hover:text-navy-600">Select Program</a>
                 <span class="text-slate-300">/</span>
                 <span class="text-navy-600 font-semibold">Senior Citizen Availment</span>
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="saveDraft()"
-                    class="text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-3 py-1.5 hover:bg-navy-100">Save
-                    Draft</button>
-            </div>
+            <a href="programavailmentselection.php?client_id=<?= $client_id ?>"
+               class="text-[12px] text-slate-500 hover:text-navy-600 flex items-center gap-1.5 transition-colors">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
         </header>
 
         <main class="p-6 overflow-y-auto">
@@ -299,24 +459,45 @@ require 'db_connect.php';
                 <div class="animate-fade-up">
                     <h1 class="text-xl font-serif text-navy-600">Senior Citizen Availment Form</h1>
                     <p class="text-[13px] text-slate-500 mt-1">SCID issuance, social pension top‑up, and centenarian
-                        benefit processing.</p>
+                        benefit processing for <span class="font-semibold text-navy-600"><?= $cl_fullname ?></span>.</p>
                 </div>
+
+                <?php if ($success_msg): ?>
+                <div class="animate-fade-up bg-green-50 border border-green-200 text-green-800 rounded-xl px-5 py-3.5 flex items-center gap-3 text-[13px]">
+                    <i class="fas fa-check-circle text-green-500 text-lg"></i>
+                    <span><?= $success_msg ?></span>
+                    <a href="clientprofile.php?id=<?= $client_id ?>" class="ml-auto text-[12px] font-semibold text-green-700 underline">Back to Profile</a>
+                </div>
+                <?php endif; ?>
+                <?php if ($error_msg): ?>
+                <div class="animate-fade-up bg-red-50 border border-red-200 text-red-800 rounded-xl px-5 py-3.5 flex items-center gap-3 text-[13px]">
+                    <i class="fas fa-exclamation-circle text-red-500 text-lg"></i>
+                    <span><?= $error_msg ?></span>
+                </div>
+                <?php endif; ?>
 
                 <!-- Client banner -->
                 <div class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-4">
-                    <div
-                        class="w-11 h-11 rounded-xl bg-navy-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                        MS</div>
+                    <!-- <div class="w-11 h-11 rounded-xl bg-navy-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                        <?= $cl_initials ?>
+                    </div> -->
                     <div class="flex-1">
-                        <p class="text-[14px] font-semibold text-navy-600">Maria R. Santos</p>
-                        <p class="text-[11px] text-slate-400">CLT-2024-00142 · Poblacion · 62 yrs, Female</p>
+                        <p class="text-[14px] font-semibold text-navy-600"><?= $cl_fullname ?></p>
+                        <p class="text-[11px] text-slate-400"><?= $cl_barangay ?> · <?= $cl_age ?> yrs, <?= $cl_sex ?></p>
                     </div>
                     <div class="text-right">
                         <p class="text-[10px] text-slate-400 uppercase tracking-wide">Age Verification</p>
-                        <p class="text-[13px] font-bold text-navy-600 mt-0.5"><i class="fas fa-check-circle"></i> 62 yrs
-                            — Eligible (60+)</p>
+                        <?php if ($cl_eligible): ?>
+                        <p class="text-[13px] font-bold text-green-600 mt-0.5"><i class="fas fa-check-circle"></i> <?= $cl_age ?> yrs — Eligible (60+)</p>
+                        <?php else: ?>
+                        <p class="text-[13px] font-bold text-red-500 mt-0.5"><i class="fas fa-times-circle"></i> <?= $cl_age ?> yrs — Not Eligible</p>
+                        <?php endif; ?>
                     </div>
                 </div>
+
+                <form method="POST" action="senior_citizen.php?client_id=<?= $client_id ?>" id="seniorForm" enctype="multipart/form-data">
+                <input type="hidden" name="action"  value="submit">
+                <input type="hidden" name="svcType" id="svcTypeInput" value="scid">
 
                 <!-- Service Type -->
                 <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -365,9 +546,9 @@ require 'db_connect.php';
                                     IDs use Affidavit of Loss. For expired IDs, upload the old card.</p>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
-                                <div><label class="field-label req">SCID Number</label><input type="text" class="field"
-                                        placeholder="SC-XXXX-XXXX-XXXX"></div>
-                                <div><label class="field-label req">Date Issued</label><input type="date" class="field">
+                                <div><label class="field-label req">SCID Number</label><input type="text" name="scidNumber" class="field"
+                                        placeholder="SC-XXXX-XXXX-XXXX" id="scidNumber"></div>
+                                <div><label class="field-label req">Date Issued</label><input type="date" name="scidDate" id="scidDate" class="field">
                                 </div>
                             </div>
                             <div>
@@ -375,15 +556,15 @@ require 'db_connect.php';
                                 <div class="flex gap-3 mt-1">
                                     <label
                                         class="flex-1 flex items-center justify-center gap-2 border-2 border-slate-200 rounded-xl py-2.5 cursor-pointer text-[12px] font-medium has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700"><input
-                                            type="radio" name="scidType" class="hidden"> <i
+                                            type="radio" name="scidType" value="New" class="hidden"> <i
                                             class="fas fa-plus-circle"></i> New</label>
                                     <label
                                         class="flex-1 flex items-center justify-center gap-2 border-2 border-slate-200 rounded-xl py-2.5 cursor-pointer text-[12px] font-medium has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700"><input
-                                            type="radio" name="scidType" class="hidden"> <i class="fas fa-sync-alt"></i>
+                                            type="radio" name="scidType" value="Renewal" class="hidden"> <i class="fas fa-sync-alt"></i>
                                         Renewal</label>
                                     <label
                                         class="flex-1 flex items-center justify-center gap-2 border-2 border-slate-200 rounded-xl py-2.5 cursor-pointer text-[12px] font-medium has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700"><input
-                                            type="radio" name="scidType" class="hidden"> <i class="fas fa-file-alt"></i>
+                                            type="radio" name="scidType" value="Replacement" class="hidden"> <i class="fas fa-file-alt"></i>
                                         Replacement</label>
                                 </div>
                             </div>
@@ -393,7 +574,7 @@ require 'db_connect.php';
                                     <div>
                                         <div class="field-label flex items-center text-[10px]">Birth Certificate (PSA)
                                             <span class="copy-badge">1 orig + 2 copies</span></div><label
-                                            class="upload-zone" id="uz-sc-birth"><input type="file"
+                                            class="upload-zone" id="uz-sc-birth"><input type="file" name="sc_birth_cert"
                                                 onchange="fileSelected(this,'uz-sc-birth')">
                                             <div class="upload-content"><i class="fas fa-file-alt text-2xl mb-1"></i>
                                                 <p class="text-[12px] font-medium text-slate-600">Click to upload</p>
@@ -403,7 +584,7 @@ require 'db_connect.php';
                                     <div>
                                         <div class="field-label flex items-center text-[10px]">Valid ID <span
                                                 class="copy-badge">1 orig + 2 copies</span></div><label
-                                            class="upload-zone" id="uz-sc-id"><input type="file"
+                                            class="upload-zone" id="uz-sc-id"><input type="file" name="sc_valid_id"
                                                 onchange="fileSelected(this,'uz-sc-id')">
                                             <div class="upload-content"><i class="fas fa-id-card text-2xl mb-1"></i>
                                                 <p class="text-[12px] font-medium text-slate-600">Click to upload</p>
@@ -413,7 +594,7 @@ require 'db_connect.php';
                                     <div>
                                         <div class="field-label flex items-center text-[10px]">1×1 Photo <span
                                                 class="copy-badge">2 pcs</span></div><label class="upload-zone"
-                                            id="uz-sc-photo"><input type="file"
+                                            id="uz-sc-photo"><input type="file" name="sc_photo"
                                                 onchange="fileSelected(this,'uz-sc-photo')">
                                             <div class="upload-content"><i class="fas fa-camera text-2xl mb-1"></i>
                                                 <p class="text-[12px] font-medium text-slate-600">Click to upload</p>
@@ -423,7 +604,7 @@ require 'db_connect.php';
                                     <div>
                                         <div class="field-label flex items-center text-[10px]">Expired SCID <span
                                                 class="opt-badge">If renewal</span></div><label class="upload-zone"
-                                            id="uz-sc-old"><input type="file" onchange="fileSelected(this,'uz-sc-old')">
+                                            id="uz-sc-old"><input type="file" name="sc_expired_id" onchange="fileSelected(this,'uz-sc-old')">
                                             <div class="upload-content"><i class="fas fa-history text-2xl mb-1"></i>
                                                 <p class="text-[12px] font-medium text-slate-600">Click to upload</p>
                                             </div>
@@ -443,40 +624,40 @@ require 'db_connect.php';
                             <div><label class="field-label req">Top‑up Amount (₱ / month)</label>
                                 <div class="relative max-w-xs"><span
                                         class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[13px]">₱</span><input
-                                        type="number" min="0" class="field pl-7" placeholder="e.g. 500"></div>
+                                        type="number" min="0" name="pensionAmount" id="pensionAmount" class="field pl-7" placeholder="e.g. 500"></div>
                             </div>
                             <div>
                                 <label class="field-label req">Eligibility Verification — All 4 Required</label>
                                 <div class="grid grid-cols-2 gap-3 mt-2">
                                     <label
                                         class="verif-check flex items-center gap-3 p-3.5 border-2 border-slate-200 rounded-xl cursor-pointer"><input
-                                            type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
+                                            type="checkbox" name="chk_indigent" value="1" class="w-4 h-4 accent-navy-600 flex-shrink-0">
                                         <div><span class="text-[12px] font-medium text-slate-700 block"><i
                                                     class="fas fa-clipboard-check mr-1"></i> Classified as
                                                 Indigent</span></div>
                                     </label>
                                     <label
                                         class="verif-check flex items-center gap-3 p-3.5 border-2 border-slate-200 rounded-xl cursor-pointer"><input
-                                            type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
+                                            type="checkbox" name="chk_sick" value="1" class="w-4 h-4 accent-navy-600 flex-shrink-0">
                                         <div><span class="text-[12px] font-medium text-slate-700 block"><i
                                                     class="fas fa-heartbeat mr-1"></i> Sick or Frail</span></div>
                                     </label>
                                     <label
                                         class="verif-check flex items-center gap-3 p-3.5 border-2 border-slate-200 rounded-xl cursor-pointer"><input
-                                            type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
+                                            type="checkbox" name="chk_bedridden" value="1" class="w-4 h-4 accent-navy-600 flex-shrink-0">
                                         <div><span class="text-[12px] font-medium text-slate-700 block"><i
                                                     class="fas fa-bed mr-1"></i> Bedridden / Low‑mobility</span></div>
                                     </label>
                                     <label
                                         class="verif-check flex items-center gap-3 p-3.5 border-2 border-slate-200 rounded-xl cursor-pointer"><input
-                                            type="checkbox" class="w-4 h-4 accent-navy-600 flex-shrink-0">
+                                            type="checkbox" name="chk_no_sss" value="1" class="w-4 h-4 accent-navy-600 flex-shrink-0">
                                         <div><span class="text-[12px] font-medium text-slate-700 block"><i
                                                     class="fas fa-times-circle mr-1"></i> No SSS / GSIS Pension</span>
                                         </div>
                                     </label>
                                 </div>
                             </div>
-                            <div><label class="field-label">Remarks</label><textarea class="field" rows="2"
+                            <div><label class="field-label">Remarks</label><textarea class="field" name="pensionRemarks" rows="2"
                                     placeholder="Additional notes..."></textarea></div>
                         </div>
 
@@ -491,10 +672,10 @@ require 'db_connect.php';
                                 <div><label class="field-label req">Benefit Amount (₱)</label>
                                     <div class="relative"><span
                                             class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[13px]">₱</span><input
-                                            type="number" min="0" class="field pl-7" placeholder="e.g. 100000"></div>
+                                            type="number" min="0" name="centAmount" id="centAmount" class="field pl-7" placeholder="e.g. 100000"></div>
                                 </div>
                                 <div><label class="field-label req">Date of Birth (Verified)</label><input type="date"
-                                        class="field"></div>
+                                        name="centDOB" id="centDOB" class="field"></div>
                             </div>
                             <div>
                                 <label class="field-label">Required Documents</label>
@@ -502,7 +683,7 @@ require 'db_connect.php';
                                     <div>
                                         <div class="field-label flex items-center text-[10px]">PSA Birth Certificate
                                             <span class="copy-badge">Required</span></div><label class="upload-zone"
-                                            id="uz-cent-birth"><input type="file"
+                                            id="uz-cent-birth"><input type="file" name="cent_birth_cert"
                                                 onchange="fileSelected(this,'uz-cent-birth')">
                                             <div class="upload-content"><i class="fas fa-file-alt text-2xl mb-1"></i>
                                                 <p class="text-[12px] font-medium text-slate-600">Click to upload</p>
@@ -512,7 +693,7 @@ require 'db_connect.php';
                                     <div>
                                         <div class="field-label flex items-center text-[10px]">PSA Marriage Contract
                                             <span class="opt-badge">If applicable</span></div><label class="upload-zone"
-                                            id="uz-cent-marr"><input type="file"
+                                            id="uz-cent-marr"><input type="file" name="cent_marr_cert"
                                                 onchange="fileSelected(this,'uz-cent-marr')">
                                             <div class="upload-content"><i class="fas fa-ring text-2xl mb-1"></i>
                                                 <p class="text-[12px] font-medium text-slate-600">Click to upload</p>
@@ -522,7 +703,7 @@ require 'db_connect.php';
                                     <div>
                                         <div class="field-label flex items-center text-[10px]">Baptismal Certificate
                                             <span class="copy-badge">Original</span></div><label class="upload-zone"
-                                            id="uz-cent-bap"><input type="file"
+                                            id="uz-cent-bap"><input type="file" name="cent_baptismal"
                                                 onchange="fileSelected(this,'uz-cent-bap')">
                                             <div class="upload-content"><i class="fas fa-church text-2xl mb-1"></i>
                                                 <p class="text-[12px] font-medium text-slate-600">Click to upload</p>
@@ -532,7 +713,7 @@ require 'db_connect.php';
                                     <div>
                                         <div class="field-label flex items-center text-[10px]">Birth Cert. of First Born
                                             <span class="copy-badge">Required</span></div><label class="upload-zone"
-                                            id="uz-cent-fb"><input type="file"
+                                            id="uz-cent-fb"><input type="file" name="cent_fb_birth"
                                                 onchange="fileSelected(this,'uz-cent-fb')">
                                             <div class="upload-content"><i class="fas fa-baby text-2xl mb-1"></i>
                                                 <p class="text-[12px] font-medium text-slate-600">Click to upload</p>
@@ -542,7 +723,7 @@ require 'db_connect.php';
                                     <div class="col-span-2">
                                         <div class="field-label flex items-center text-[10px]">Death Cert. of First Born
                                             <span class="opt-badge">If deceased</span></div><label class="upload-zone"
-                                            id="uz-cent-fd"><input type="file"
+                                            id="uz-cent-fd"><input type="file" name="cent_fb_death"
                                                 onchange="fileSelected(this,'uz-cent-fd')">
                                             <div class="upload-content"><i
                                                     class="fas fa-file-medical-alt text-2xl mb-1"></i>
@@ -557,10 +738,11 @@ require 'db_connect.php';
                 </div>
 
                 <div class="flex justify-end gap-3">
-                    <button onclick="saveComplete()"
+                    <button type="submit" form="seniorForm"
                         class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500">Submit
                         Senior Citizen Record</button>
                 </div>
+                </form>
             </div>
         </main>
         <footer class="border-t border-slate-200 bg-white px-6 py-3 text-[11px] text-slate-400"><span>MSWDO San Enrique
@@ -583,7 +765,10 @@ require 'db_connect.php';
             ['scid', 'pension', 'centenarian'].forEach(s => {
                 document.getElementById('svc-' + s).classList.toggle('hidden', s !== svc);
             });
+            // Sync hidden input so PHP knows which service was selected
+            document.getElementById('svcTypeInput').value = svc;
         }
+
         function fileSelected(input, zoneId) {
             if (!input.files || !input.files[0]) return;
             const zone = document.getElementById(zoneId);
@@ -591,16 +776,61 @@ require 'db_connect.php';
             zone.classList.add('has-file');
             zone.querySelector('.upload-content').innerHTML = `<i class="fas fa-check-circle text-navy-600 text-2xl mb-1"></i><p class="text-[12px] font-semibold text-navy-700">${name}</p><p class="text-[10px] text-navy-500">File ready</p>`;
         }
+
         function showToast(msg, type = 'success') {
             const t = document.getElementById('toast');
             document.getElementById('toastMsg').textContent = msg;
             t.querySelector('i').className = type === 'error' ? 'fas fa-exclamation-circle text-red-400' : 'fas fa-check-circle text-navy-400';
+            t.style.backgroundColor = type === 'error' ? '#7F1D1D' : '#0B2545';
             t.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
             t.classList.add('opacity-100', 'translate-y-0');
             setTimeout(() => { t.classList.add('opacity-0', 'translate-y-4'); t.classList.remove('opacity-100', 'translate-y-0'); }, 3000);
         }
-        function saveDraft() { showToast('Draft saved!'); }
-        function saveComplete() { showToast('Senior citizen record submitted ✓'); }
+
+        // Client-side validation before native form submit
+        document.getElementById('seniorForm').addEventListener('submit', function(e) {
+            const svc = document.getElementById('svcTypeInput').value;
+
+            if (svc === 'scid') {
+                const scidNum = document.getElementById('scidNumber');
+                if (!scidNum.value.trim()) {
+                    e.preventDefault();
+                    showToast('SCID Number is required.', 'error');
+                    scidNum.focus();
+                    return;
+                }
+                const scidDate = document.getElementById('scidDate');
+                if (!scidDate.value) {
+                    e.preventDefault();
+                    showToast('Date Issued is required.', 'error');
+                    scidDate.focus();
+                    return;
+                }
+            } else if (svc === 'pension') {
+                const amt = document.getElementById('pensionAmount');
+                if (!amt.value || parseFloat(amt.value) <= 0) {
+                    e.preventDefault();
+                    showToast('Please enter a valid pension top-up amount.', 'error');
+                    amt.focus();
+                    return;
+                }
+            } else if (svc === 'centenarian') {
+                const amt = document.getElementById('centAmount');
+                if (!amt.value || parseFloat(amt.value) <= 0) {
+                    e.preventDefault();
+                    showToast('Please enter a valid benefit amount.', 'error');
+                    amt.focus();
+                    return;
+                }
+                const dob = document.getElementById('centDOB');
+                if (!dob.value) {
+                    e.preventDefault();
+                    showToast('Verified Date of Birth is required.', 'error');
+                    dob.focus();
+                    return;
+                }
+            }
+        });
     </script>
 </body>
 
