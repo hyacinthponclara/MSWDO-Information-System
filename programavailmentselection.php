@@ -111,7 +111,7 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                         <p class="text-[10px] text-slate-400 mt-1">5 subtypes</p>
                     </a>
 
-                    <!-- 4Ps -->
+                    <!-- 4Ps
                     <a href="4ps.php?client_id=<?= $client_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
@@ -119,7 +119,7 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                         </div>
                         <p class="text-[13px] font-semibold text-navy-600">4Ps</p>
                         <p class="text-[10px] text-slate-400 mt-1">Monitoring</p>
-                    </a>
+                    </a> -->
 
                     <!-- SLP -->
                     <a href="slp.php?client_id=<?= $client_id ?>"
@@ -141,7 +141,7 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                         <p class="text-[10px] text-slate-400 mt-1">Feeding</p>
                     </a>
 
-                    <!-- Day Care -->
+                    <!-- Day Care
                     <a href="daycare.php?client_id=<?= $client_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
@@ -150,7 +150,7 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                         <p class="text-[13px] font-semibold text-navy-600">Day Care</p>
                         <p class="text-[10px] text-slate-400 mt-1">Assessment</p>
                     </a>
-
+ -->
                     <!-- Senior Citizen -->
                     <a href="senior.php?client_id=<?= $client_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
@@ -161,7 +161,7 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                         <p class="text-[10px] text-slate-400 mt-1">Pension & ID</p>
                     </a>
 
-                    <!-- PWD -->
+                    <!-- PWD
                     <a href="pwd.php?client_id=<?= $client_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
@@ -169,9 +169,9 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                         </div>
                         <p class="text-[13px] font-semibold text-navy-600">PWD</p>
                         <p class="text-[10px] text-slate-400 mt-1">ID & Assistance</p>
-                    </a>
+                    </a> -->
 
-                    <!-- Solo Parent -->
+                    <!-- Solo Parent
                     <a href="solo_parent.php?client_id=<?= $client_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
@@ -179,7 +179,7 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                         </div>
                         <p class="text-[13px] font-semibold text-navy-600">Solo Parent</p>
                         <p class="text-[10px] text-slate-400 mt-1">ID & Assistance</p>
-                    </a>
+                    </a> -->
 
                     <!-- Women & Child Protection -->
                     <a href="women_child.php?client_id=<?= $client_id ?>"
