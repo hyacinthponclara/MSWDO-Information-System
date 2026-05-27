@@ -229,6 +229,12 @@ require 'db_connect.php';
                             <div><label class="field-label">Purpose / Description</label><textarea class="field"
                                     rows="2" placeholder="Brief description of the activity"></textarea></div>
                         </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="field-label req">Claimant</label><input type="text" class="field"
+                                    id="claimantName" placeholder="Full name of the claimant"></div>
+                            <div><label class="field-label req">Role</label><input type="text" class="field"
+                                    placeholder="Position or role of the claimant"></textarea></div>
+                        </div>
 
                         <!-- Limit Check Panel -->
                         <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden" id="limitPanel">
