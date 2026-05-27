@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-requireRole('Staff');
+requireRole('Social Worker');
 ?>
 
 

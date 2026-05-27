@@ -235,35 +235,32 @@ $programs = $budgetDB->fetchAll(PDO::FETCH_ASSOC);
             'spent' => (float)$p['spent'],
         ], $programs)) ?>;
 
-        // Render budget rows (identical logic to the original)
+        // Render budget rows
         const budgetRows = document.getElementById('budgetRows');
+
+        // Header row
+        budgetRows.innerHTML = `
+            <div class="flex items-center px-5 py-2 gap-4 bg-slate-50">
+                <span class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold w-36 flex-shrink-0">Program</span>
+                <span class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold flex-1 text-right">Total Budget</span>
+                <span class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold flex-1 text-right">Spent</span>
+                <span class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold flex-1 text-right">Remaining</span>
+            </div>
+        `;
+
         budgets.forEach(b => {
             const remaining = b.total - b.spent;
-            const pct = b.total > 0 ? Math.round((b.spent / b.total) * 100) : 0;
-            const barColor = remaining < b.total * 0.2 ? 'bg-red-400' : 'bg-navy-500';
-            const textColor = remaining < b.total * 0.2 ? 'text-red-500' : 'text-navy-600';
+            const isLow = remaining < b.total * 0.2;
+            const remainingColor = isLow ? 'text-red-500' : 'text-emerald-600';
 
             budgetRows.innerHTML += `
                 <div class="budget-row flex items-center px-5 py-3.5 gap-4">
                     <span class="text-[12px] font-semibold text-navy-600 w-36 flex-shrink-0">${b.name}</span>
-                    <div class="flex-1 flex items-center gap-3 min-w-0">
-                        <div class="flex-1 min-w-0">
-                            <div class="bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                                <div class="prog-bar-fill h-1.5 rounded-full ${barColor}" style="width:0%" data-target="${pct}%"></div>
-                            </div>
-                        </div>
-                        <span class="text-[11px] text-slate-400 w-10 text-right flex-shrink-0">${pct}%</span>
-                    </div>
-                    <span class="text-[12px] font-semibold ${textColor} w-28 text-right flex-shrink-0">₱${remaining.toLocaleString()}</span>
+                    <span class="text-[12px] text-slate-500 flex-1 text-right">₱${b.total.toLocaleString()}</span>
+                    <span class="text-[12px] text-slate-500 flex-1 text-right">₱${b.spent.toLocaleString()}</span>
+                    <span class="text-[12px] font-semibold ${remainingColor} flex-1 text-right">₱${remaining.toLocaleString()}</span>
                 </div>
             `;
-        });
-
-        // Animate bars
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                document.querySelectorAll('.prog-bar-fill').forEach(el => el.style.width = el.dataset.target);
-            }, 300);
         });
     </script>
 </body>

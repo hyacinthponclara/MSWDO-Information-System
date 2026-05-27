@@ -182,7 +182,7 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
                     </a> -->
 
                     <!-- Women & Child Protection -->
-                    <a href="women_child.php?client_id=<?= $client_id ?>"
+                    <a href="confidential.php?client_id=<?= $client_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
                             <i class="fas fa-shield-alt text-navy-600"></i>
