@@ -171,7 +171,7 @@ $client_count = (int)$clientCount->fetchColumn();
                     </a>
 
                     <!-- Solo Parent -->
-                    <a href="funds_soloparent.php?barangay_id=<?= $barangay_id ?>"
+                    <a href="funds_soloparents.php?barangay_id=<?= $barangay_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
                             <i class="fas fa-user text-navy-600"></i>
@@ -179,7 +179,7 @@ $client_count = (int)$clientCount->fetchColumn();
                         <p class="text-[13px] font-semibold text-navy-600">Solo Parent</p>
                         <p class="text-[10px] text-slate-400 mt-1">ID & Assistance</p>
                     </a>
-
+    
                 </div>
             </div>
         </main>
