@@ -82,9 +82,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
-        <a href="programavailmentselection.php"
+        <a href="baranggay.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-list text-sm"></i> Availments
+            <i class="fas fa-list text-sm"></i> Baranggay
         </a>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
@@ -180,9 +180,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
-        <a href="programavailmentselection.php"
+        <a href="baranggay.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-list text-sm"></i> Availments
+            <i class="fas fa-list text-sm"></i> Baranggay
         </a>
         <!-- <a href="casestudy.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
@@ -264,9 +264,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
-        <a href="programavailmentselection.php"
+        <a href="baranggay.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-list text-sm"></i> Availments
+            <i class="fas fa-list text-sm"></i> Baranggay
         </a>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
