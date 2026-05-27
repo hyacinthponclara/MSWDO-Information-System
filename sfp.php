@@ -3,8 +3,7 @@ require 'auth.php';
 requireRole(['Admin', 'Social Worker', 'Staff']);
 require 'db_connect.php';
 
-// ── Resolve & validate client ────────────────────────────────────────────────
-$client_id = (int)($_GET['client_id'] ?? 0);
+$client_id = (int) ($_GET['client_id'] ?? 0);
 if ($client_id <= 0) {
     header("Location: clientslist.php");
     exit;
@@ -19,19 +18,16 @@ if (!$client) {
 }
 $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_lastname']);
 
-// ── Fetch SFP program_id ─────────────────────────────────────────────────────
 $progStmt = $pdo->prepare("SELECT program_id FROM PROGRAM WHERE program_name = 'SFP' LIMIT 1");
 $progStmt->execute();
 $sfpProgram = $progStmt->fetch();
 $sfp_program_id = $sfpProgram ? $sfpProgram['program_id'] : null;
 
-// ── Fetch Day Care centers for dropdown ──────────────────────────────────────
 $daycareStmt = $pdo->query("SELECT daycare_id, dc_name FROM DAYCARE ORDER BY dc_name");
 $daycares = $daycareStmt->fetchAll();
 
-// ── POST handler ─────────────────────────────────────────────────────────────
 $success_msg = '';
-$error_msg   = '';
+$error_msg = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'submit') {
     try {
@@ -39,45 +35,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             throw new Exception("SFP program not found in the PROGRAM table. Please add it first.");
         }
 
-        $user_id        = $_SESSION['user_id'];
-        $child_name     = trim($_POST['childName'] ?? '');
-        $child_age      = (int)($_POST['childAge'] ?? 0);
-        $daycare_id     = (int)($_POST['daycareCenter'] ?? 0);
-        $start_date     = $_POST['feedingStartDate'] ?? '';
-        $feeding_days   = (int)($_POST['feedingDays'] ?? 0);
-        $final_nutri    = trim($_POST['finalNutriStatus'] ?? '');
+        $user_id = $_SESSION['user_id'];
+        $child_name = trim($_POST['childName'] ?? '');
+        $child_age = (int) ($_POST['childAge'] ?? 0);
+        $daycare_id = (int) ($_POST['daycareCenter'] ?? 0);
+        $start_date = $_POST['feedingStartDate'] ?? '';
+        $feeding_days = (int) ($_POST['feedingDays'] ?? 0);
+        $final_nutri = trim($_POST['finalNutriStatus'] ?? '');
 
-        // Build monthly progress JSON for av_remarks
         $monthly = [];
         for ($m = 1; $m <= 6; $m++) {
             $monthly[] = [
-                'month'   => $m,
-                'weight'  => $_POST["m{$m}_weight"]  ?? null,
-                'height'  => $_POST["m{$m}_height"]  ?? null,
-                'date'    => $_POST["m{$m}_date"]    ?? null,
-                'status'  => $_POST["m{$m}_status"]  ?? null,
+                'month' => $m,
+                'weight' => $_POST["m{$m}_weight"] ?? null,
+                'height' => $_POST["m{$m}_height"] ?? null,
+                'date' => $_POST["m{$m}_date"] ?? null,
+                'status' => $_POST["m{$m}_status"] ?? null,
             ];
         }
 
-        // Baseline snapshot stored alongside monthly data
         $remarks_payload = json_encode([
             'baseline' => [
                 'weight' => $_POST['baseWeight'] ?? null,
                 'height' => $_POST['baseHeight'] ?? null,
-                'date'   => $_POST['baseDate']   ?? null,
+                'date' => $_POST['baseDate'] ?? null,
             ],
             'monthly' => $monthly,
         ]);
 
         // Validation
-        if (!$child_name) throw new Exception("Child's full name is required.");
-        if ($child_age < 0 || $child_age > 12) throw new Exception("Child age must be 0–12 for SFP.");
-        if (!$daycare_id) throw new Exception("Please select a Day Care Center.");
-        if (!$start_date) throw new Exception("Feeding Start Date is required.");
+        if (!$child_name)
+            throw new Exception("Child's full name is required.");
+        if ($child_age < 0 || $child_age > 12)
+            throw new Exception("Child age must be 0–12 for SFP.");
+        if (!$daycare_id)
+            throw new Exception("Please select a Day Care Center.");
+        if (!$start_date)
+            throw new Exception("Feeding Start Date is required.");
 
         $pdo->beginTransaction();
 
-        // 1. Insert AVAILMENT (av_amount = 0 for feeding program, no cash disbursement)
         $avStmt = $pdo->prepare("
             INSERT INTO AVAILMENT
                 (client_id, program_id, user_id, av_date_applied, av_amount, av_status, av_remarks)
@@ -86,7 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $avStmt->execute([$client_id, $sfp_program_id, $user_id, $start_date, $remarks_payload]);
         $availment_id = $pdo->lastInsertId();
 
-        // 2. Insert SFP record
         $sfpStmt = $pdo->prepare("
             INSERT INTO SFP
                 (availment_id, user_id, daycare_id, sfp_childname, sfp_child_age, sfp_feeding_days, sfp_nutrition_status)
@@ -106,7 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $success_msg = "SFP record for <strong>{$child_name}</strong> has been submitted successfully.";
 
     } catch (Exception $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
+        if ($pdo->inTransaction())
+            $pdo->rollBack();
         $error_msg = htmlspecialchars($e->getMessage());
     }
 }
@@ -290,9 +287,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             <div class="flex items-center gap-2 text-[13px]">
                 <a href="clientslist.php" class="text-slate-400 hover:text-navy-600">Clients</a>
                 <span class="text-slate-300">/</span>
-                <a href="clientprofile.php?id=<?= $client_id ?>" class="text-slate-400 hover:text-navy-600"><?= $client_name ?></a>
+                <a href="clientprofile.php?id=<?= $client_id ?>"
+                    class="text-slate-400 hover:text-navy-600"><?= $client_name ?></a>
                 <span class="text-slate-300">/</span>
-                <a href="programavailmentselection.php?client_id=<?= $client_id ?>" class="text-slate-400 hover:text-navy-600">Select Program</a>
+                <a href="programavailmentselection.php?client_id=<?= $client_id ?>"
+                    class="text-slate-400 hover:text-navy-600">Select Program</a>
                 <span class="text-slate-300">/</span>
                 <span class="text-navy-600 font-semibold">SFP Availment</span>
             </div>
@@ -317,249 +316,263 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 </div>
 
                 <?php if ($success_msg): ?>
-                <div class="animate-fade-up bg-green-50 border border-green-200 text-green-800 rounded-xl px-5 py-3.5 flex items-center gap-3 text-[13px]">
-                    <i class="fas fa-check-circle text-green-500 text-lg"></i>
-                    <span><?= $success_msg ?></span>
-                    <a href="clientprofile.php?id=<?= $client_id ?>" class="ml-auto text-[12px] font-semibold text-green-700 underline">Back to Profile</a>
-                </div>
+                    <div
+                        class="animate-fade-up bg-green-50 border border-green-200 text-green-800 rounded-xl px-5 py-3.5 flex items-center gap-3 text-[13px]">
+                        <i class="fas fa-check-circle text-green-500 text-lg"></i>
+                        <span><?= $success_msg ?></span>
+                        <a href="clientprofile.php?id=<?= $client_id ?>"
+                            class="ml-auto text-[12px] font-semibold text-green-700 underline">Back to Profile</a>
+                    </div>
                 <?php endif; ?>
                 <?php if ($error_msg): ?>
-                <div class="animate-fade-up bg-red-50 border border-red-200 text-red-800 rounded-xl px-5 py-3.5 flex items-center gap-3 text-[13px]">
-                    <i class="fas fa-exclamation-circle text-red-500 text-lg"></i>
-                    <span><?= $error_msg ?></span>
-                </div>
+                    <div
+                        class="animate-fade-up bg-red-50 border border-red-200 text-red-800 rounded-xl px-5 py-3.5 flex items-center gap-3 text-[13px]">
+                        <i class="fas fa-exclamation-circle text-red-500 text-lg"></i>
+                        <span><?= $error_msg ?></span>
+                    </div>
                 <?php endif; ?>
 
                 <form method="POST" action="sfp.php?client_id=<?= $client_id ?>" id="sfpForm">
-                <input type="hidden" name="action" value="submit">
+                    <input type="hidden" name="action" value="submit">
 
-                <!-- Info banner -->
-                <div
-                    class="animate-fade-up-1 bg-navy-50 border border-navy-100 rounded-xl px-4 py-3 flex items-start gap-3">
-                    <i class="fas fa-info-circle text-navy-500 text-lg mt-0.5"></i>
-                    <p class="text-[12px] text-navy-700">
-                        SFP runs for <strong class="font-semibold">180 days (6 months)</strong>.
-                        Record the child's baseline measurement at enrolment, then update
-                        <strong>monthly weight & height</strong> to monitor progress.
-                        Submit a separate record for each child.
-                    </p>
-                </div>
-
-                <!-- Transaction Details -->
-                <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                        <div
-                            class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold">
-                            <i class="fas fa-child"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-[14px] font-semibold text-navy-600">Transaction Details</h2>
-                            <p class="text-[11px] text-slate-400">Child information and feeding cycle dates</p>
-                        </div>
+                    <!-- Info banner -->
+                    <div
+                        class="animate-fade-up-1 bg-navy-50 border border-navy-100 rounded-xl px-4 py-3 flex items-start gap-3">
+                        <i class="fas fa-info-circle text-navy-500 text-lg mt-0.5"></i>
+                        <p class="text-[12px] text-navy-700">
+                            SFP runs for <strong class="font-semibold">180 days (6 months)</strong>.
+                            Record the child's baseline measurement at enrolment, then update
+                            <strong>monthly weight & height</strong> to monitor progress.
+                            Submit a separate record for each child.
+                        </p>
                     </div>
-                    <div class="p-6 space-y-4">
-                        <div class="grid grid-cols-3 gap-4">
-                            <div class="col-span-2"><label class="field-label req">Child's Full Name</label><input
-                                    type="text" class="field" placeholder="Full name of child" id="childName" name="childName"></div>
-                            <div><label class="field-label req">Age</label><input type="number" min="0" max="12"
-                                    class="field" placeholder="Auto-calculated" id="childAge" name="childAge" readonly></div>
-                        </div>
-                        <div class="grid grid-cols-3 gap-4">
-                            <div><label class="field-label">Birthdate</label><input type="date" class="field"
-                                    id="birthdate" name="birthdate"></div>
-                            <div><label class="field-label req">Sex</label>
-                                <div class="flex gap-2 mt-0.5">
-                                    <label
-                                        class="flex-1 flex items-center justify-center gap-1.5 border-2 border-slate-200 rounded-xl py-2.5 cursor-pointer text-[12px] font-medium text-slate-600 hover:border-navy-400 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
-                                        <input type="radio" name="childSex" value="Male" class="hidden"><i
-                                            class="fas fa-mars"></i> Male
-                                    </label>
-                                    <label
-                                        class="flex-1 flex items-center justify-center gap-1.5 border-2 border-slate-200 rounded-xl py-2.5 cursor-pointer text-[12px] font-medium text-slate-600 hover:border-navy-400 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
-                                        <input type="radio" name="childSex" value="Female" class="hidden"><i
-                                            class="fas fa-venus"></i>
-                                        Female
-                                    </label>
-                                </div>
-                            </div>
 
-                        </div>
-                        <div class="grid grid-cols-3 gap-4">
-                            <div><label class="field-label req">Day Care Center</label>
-                                <select class="field" id="daycareCenter" name="daycareCenter">
-                                    <option value="">Select</option>
-                                    <?php foreach ($daycares as $dc): ?>
-                                    <option value="<?= $dc['daycare_id'] ?>"><?= htmlspecialchars($dc['dc_name']) ?></option>
-                                    <?php endforeach; ?>
-                                    <?php if (empty($daycares)): ?>
-                                    <option disabled>No day care centers found – add them first</option>
-                                    <?php endif; ?>
-                                </select>
+                    <!-- Transaction Details -->
+                    <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                        <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                            <div
+                                class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold">
+                                <i class="fas fa-child"></i>
                             </div>
-                            <div><label class="field-label req">Feeding Start Date</label><input type="date"
-                                    class="field" id="feedingStartDate" name="feedingStartDate"></div>
-                            <div><label class="field-label">Feeding End Date</label><input type="date" class="field"
-                                    id="feedingEndDate" name="feedingEndDate"></div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="field-label req">Feeding Days Completed</label><input type="number"
-                                    min="0" class="field" placeholder="Days attended" id="feedingDays" name="feedingDays"></div>
-                            <div><label class="field-label">Total Feeding Days</label>
-                                <input type="number" min="0"
-                                    class="field bg-slate-100 text-slate-700 cursor-not-allowed" value="180" readonly>
+                            <div>
+                                <h2 class="text-[14px] font-semibold text-navy-600">Transaction Details</h2>
+                                <p class="text-[11px] text-slate-400">Child information and feeding cycle dates</p>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Nutrition Progress – Baseline + Monthly Updates -->
-                <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                        <div
-                            class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold">
-                            <i class="fas fa-weight-scale"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-[14px] font-semibold text-navy-600">Nutrition Progress – Baseline &amp;
-                                Monthly Updates
-                            </h2>
-                            <p class="text-[11px] text-slate-400">Baseline before feeding, then monthly weight, height
-                                &amp; nutrition
-                                status for 6 months (180 days)</p>
-                        </div>
-                    </div>
-                    <div class="p-6 space-y-5">
-
-                        <!-- WHO reference note -->
-                        <div class="bg-navy-50 border border-navy-100 rounded-xl px-4 py-3 flex items-start gap-3">
-                            <i class="fas fa-book-open text-navy-500 text-lg mt-0.5"></i>
-                            <p class="text-[12px] text-navy-700">
-                                <strong>Classify nutritional status</strong> using the WHO Child Growth Standards table
-                                (boys/girls
-                                24–60 months).<br>
-                                <span class="text-[11px] text-navy-500">Refer to the official NNC/DOH tables for
-                                    weight‑for‑height
-                                    cut‑offs.</span>
-                            </p>
-                        </div>
-
-                        <!-- Baseline (before feeding) -->
-                        <div>
-                            <h3 class="text-[13px] font-semibold text-navy-600 mb-3 flex items-center gap-2">
-                                <i class="fas fa-clock text-navy-400"></i> Baseline (Before Feeding Starts)
-                            </h3>
+                        <div class="p-6 space-y-4">
                             <div class="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label class="field-label req">Weight (kg)</label>
-                                    <input type="number" step="0.1" min="0" class="field" placeholder="e.g. 14.5"
-                                        id="baseWeight" name="baseWeight">
-                                </div>
-                                <div>
-                                    <label class="field-label req">Height (cm)</label>
-                                    <input type="number" step="0.1" min="0" class="field" placeholder="e.g. 95.0"
-                                        id="baseHeight" name="baseHeight">
-                                </div>
-                                <div>
-                                    <label class="field-label req">Date Measured</label>
-                                    <input type="date" class="field" id="baseDate" name="baseDate">
-                                </div>
+                                <div class="col-span-2"><label class="field-label req">Child's Full Name</label><input
+                                        type="text" class="field" placeholder="Full name of child" id="childName"
+                                        name="childName"></div>
+                                <div><label class="field-label req">Age</label><input type="number" min="0" max="12"
+                                        class="field" placeholder="Auto-calculated" id="childAge" name="childAge"
+                                        readonly></div>
                             </div>
-                        </div>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div><label class="field-label">Birthdate</label><input type="date" class="field"
+                                        id="birthdate" name="birthdate"></div>
+                                <div><label class="field-label req">Sex</label>
+                                    <div class="flex gap-2 mt-0.5">
+                                        <label
+                                            class="flex-1 flex items-center justify-center gap-1.5 border-2 border-slate-200 rounded-xl py-2.5 cursor-pointer text-[12px] font-medium text-slate-600 hover:border-navy-400 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
+                                            <input type="radio" name="childSex" value="Male" class="hidden"><i
+                                                class="fas fa-mars"></i> Male
+                                        </label>
+                                        <label
+                                            class="flex-1 flex items-center justify-center gap-1.5 border-2 border-slate-200 rounded-xl py-2.5 cursor-pointer text-[12px] font-medium text-slate-600 hover:border-navy-400 has-[:checked]:border-navy-600 has-[:checked]:bg-navy-50 has-[:checked]:text-navy-700">
+                                            <input type="radio" name="childSex" value="Female" class="hidden"><i
+                                                class="fas fa-venus"></i>
+                                            Female
+                                        </label>
+                                    </div>
+                                </div>
 
-                        <!-- Monthly progress (Month 1 to 6) -->
-                        <div>
-                            <h3 class="text-[13px] font-semibold text-navy-600 mb-3 flex items-center gap-2">
-                                <i class="fas fa-chart-line text-navy-400"></i> Monthly Progress (6 months / 180 days)
-                            </h3>
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-[12px] border-collapse">
-                                    <thead>
-                                        <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wide">
-                                            <th class="px-3 py-2 text-left font-semibold">Month</th>
-                                            <th class="px-3 py-2 text-left font-semibold">Weight (kg)</th>
-                                            <th class="px-3 py-2 text-left font-semibold">Height (cm)</th>
-                                            <th class="px-3 py-2 text-left font-semibold">Date</th>
-                                            <th class="px-3 py-2 text-left font-semibold">Nutrition Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100" id="monthlyBody">
-                                        <?php
-                                        $months = ['Month 1','Month 2','Month 3','Month 4','Month 5','Month 6'];
-                                        foreach ($months as $i => $label):
-                                            $m = $i + 1;
-                                        ?>
-                                        <tr>
-                                            <td class="px-3 py-2 font-medium text-navy-600"><?= $label ?></td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0" name="m<?= $m ?>_weight"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="kg"></td>
-                                            <td class="px-3 py-2"><input type="number" step="0.1" min="0" name="m<?= $m ?>_height"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
-                                                    placeholder="cm"></td>
-                                            <td class="px-3 py-2"><input type="date" name="m<?= $m ?>_date"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400">
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <select name="m<?= $m ?>_status"
-                                                    class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400 bg-white">
-                                                    <option value="">Select</option>
-                                                    <option>Severely Wasted</option>
-                                                    <option>Wasted</option>
-                                                    <option>Normal</option>
-                                                    <option>Overweight</option>
-                                                    <option>Obese</option>
-                                                </select>
-                                            </td>
-                                        </tr>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div><label class="field-label req">Day Care Center</label>
+                                    <select class="field" id="daycareCenter" name="daycareCenter">
+                                        <option value="">Select</option>
+                                        <?php foreach ($daycares as $dc): ?>
+                                            <option value="<?= $dc['daycare_id'] ?>"><?= htmlspecialchars($dc['dc_name']) ?>
+                                            </option>
                                         <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+                                        <?php if (empty($daycares)): ?>
+                                            <option disabled>No day care centers found – add them first</option>
+                                        <?php endif; ?>
+                                    </select>
+                                </div>
+                                <div><label class="field-label req">Feeding Start Date</label><input type="date"
+                                        class="field" id="feedingStartDate" name="feedingStartDate"></div>
+                                <div><label class="field-label">Feeding End Date</label><input type="date" class="field"
+                                        id="feedingEndDate" name="feedingEndDate"></div>
                             </div>
-                        </div>
-
-                        <!-- Overall nutrition classification (after 6 months) -->
-                        <div class="pt-3 border-t border-slate-100">
-                            <p class="text-[12px] font-semibold text-navy-600 mb-3">Overall Nutrition Status (after 6
-                                months)</p>
-                            <input type="hidden" name="finalNutriStatus" id="finalNutriStatus" value="">
-                            <div class="grid grid-cols-5 gap-3" id="nutriSelector">
-                                <div onclick="setNutri(this,'Severely Wasted')"
-                                    class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
-                                    <i class="fas fa-exclamation-circle text-navy-400 text-2xl mb-1"></i>
-                                    <p class="text-[11px] font-semibold text-slate-700">Severely Wasted</p>
-                                </div>
-                                <div onclick="setNutri(this,'Wasted')"
-                                    class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
-                                    <i class="fas fa-exclamation-triangle text-navy-500 text-2xl mb-1"></i>
-                                    <p class="text-[11px] font-semibold text-slate-700">Wasted</p>
-                                </div>
-                                <div onclick="setNutri(this,'Normal')"
-                                    class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
-                                    <i class="fas fa-check-circle text-navy-600 text-2xl mb-1"></i>
-                                    <p class="text-[11px] font-semibold text-slate-700">Normal</p>
-                                </div>
-                                <div onclick="setNutri(this,'Overweight')"
-                                    class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
-                                    <i class="fas fa-chart-bar text-navy-600 text-2xl mb-1"></i>
-                                    <p class="text-[11px] font-semibold text-slate-700">Overweight</p>
-                                </div>
-                                <div onclick="setNutri(this,'Obese')"
-                                    class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
-                                    <i class="fas fa-weight-scale text-navy-600 text-2xl mb-1"></i>
-                                    <p class="text-[11px] font-semibold text-slate-700">Obese</p>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div><label class="field-label req">Feeding Days Completed</label><input type="number"
+                                        min="0" class="field" placeholder="Days attended" id="feedingDays"
+                                        name="feedingDays"></div>
+                                <div><label class="field-label">Total Feeding Days</label>
+                                    <input type="number" min="0"
+                                        class="field bg-slate-100 text-slate-700 cursor-not-allowed" value="180"
+                                        readonly>
                                 </div>
                             </div>
                         </div>
-
                     </div>
-                </div>
 
-                <div class="flex justify-end gap-3">
-                    <button type="submit" form="sfpForm"
-                        class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500">Submit
-                        SFP
-                        Record</button>
-                </div>
+                    <!-- Nutrition Progress – Baseline + Monthly Updates -->
+                    <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                        <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                            <div
+                                class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold">
+                                <i class="fas fa-weight-scale"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-[14px] font-semibold text-navy-600">Nutrition Progress – Baseline &amp;
+                                    Monthly Updates
+                                </h2>
+                                <p class="text-[11px] text-slate-400">Baseline before feeding, then monthly weight,
+                                    height
+                                    &amp; nutrition
+                                    status for 6 months (180 days)</p>
+                            </div>
+                        </div>
+                        <div class="p-6 space-y-5">
+
+                            <!-- WHO reference note -->
+                            <div class="bg-navy-50 border border-navy-100 rounded-xl px-4 py-3 flex items-start gap-3">
+                                <i class="fas fa-book-open text-navy-500 text-lg mt-0.5"></i>
+                                <p class="text-[12px] text-navy-700">
+                                    <strong>Classify nutritional status</strong> using the WHO Child Growth Standards
+                                    table
+                                    (boys/girls
+                                    24–60 months).<br>
+                                    <span class="text-[11px] text-navy-500">Refer to the official NNC/DOH tables for
+                                        weight‑for‑height
+                                        cut‑offs.</span>
+                                </p>
+                            </div>
+
+                            <!-- Baseline (before feeding) -->
+                            <div>
+                                <h3 class="text-[13px] font-semibold text-navy-600 mb-3 flex items-center gap-2">
+                                    <i class="fas fa-clock text-navy-400"></i> Baseline (Before Feeding Starts)
+                                </h3>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="field-label req">Weight (kg)</label>
+                                        <input type="number" step="0.1" min="0" class="field" placeholder="e.g. 14.5"
+                                            id="baseWeight" name="baseWeight">
+                                    </div>
+                                    <div>
+                                        <label class="field-label req">Height (cm)</label>
+                                        <input type="number" step="0.1" min="0" class="field" placeholder="e.g. 95.0"
+                                            id="baseHeight" name="baseHeight">
+                                    </div>
+                                    <div>
+                                        <label class="field-label req">Date Measured</label>
+                                        <input type="date" class="field" id="baseDate" name="baseDate">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Monthly progress (Month 1 to 6) -->
+                            <div>
+                                <h3 class="text-[13px] font-semibold text-navy-600 mb-3 flex items-center gap-2">
+                                    <i class="fas fa-chart-line text-navy-400"></i> Monthly Progress (6 months / 180
+                                    days)
+                                </h3>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-[12px] border-collapse">
+                                        <thead>
+                                            <tr class="bg-slate-50 text-slate-500 text-[10px] uppercase tracking-wide">
+                                                <th class="px-3 py-2 text-left font-semibold">Month</th>
+                                                <th class="px-3 py-2 text-left font-semibold">Weight (kg)</th>
+                                                <th class="px-3 py-2 text-left font-semibold">Height (cm)</th>
+                                                <th class="px-3 py-2 text-left font-semibold">Date</th>
+                                                <th class="px-3 py-2 text-left font-semibold">Nutrition Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100" id="monthlyBody">
+                                            <?php
+                                            $months = ['Month 1', 'Month 2', 'Month 3', 'Month 4', 'Month 5', 'Month 6'];
+                                            foreach ($months as $i => $label):
+                                                $m = $i + 1;
+                                                ?>
+                                                <tr>
+                                                    <td class="px-3 py-2 font-medium text-navy-600"><?= $label ?></td>
+                                                    <td class="px-3 py-2"><input type="number" step="0.1" min="0"
+                                                            name="m<?= $m ?>_weight"
+                                                            class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
+                                                            placeholder="kg"></td>
+                                                    <td class="px-3 py-2"><input type="number" step="0.1" min="0"
+                                                            name="m<?= $m ?>_height"
+                                                            class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400"
+                                                            placeholder="cm"></td>
+                                                    <td class="px-3 py-2"><input type="date" name="m<?= $m ?>_date"
+                                                            class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400">
+                                                    </td>
+                                                    <td class="px-3 py-2">
+                                                        <select name="m<?= $m ?>_status"
+                                                            class="w-full py-1 px-2 border border-slate-200 rounded-lg text-[12px] focus:outline-none focus:border-navy-400 bg-white">
+                                                            <option value="">Select</option>
+                                                            <option>Severely Wasted</option>
+                                                            <option>Wasted</option>
+                                                            <option>Normal</option>
+                                                            <option>Overweight</option>
+                                                            <option>Obese</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Overall nutrition classification (after 6 months) -->
+                            <div class="pt-3 border-t border-slate-100">
+                                <p class="text-[12px] font-semibold text-navy-600 mb-3">Overall Nutrition Status (after
+                                    6
+                                    months)</p>
+                                <input type="hidden" name="finalNutriStatus" id="finalNutriStatus" value="">
+                                <div class="grid grid-cols-5 gap-3" id="nutriSelector">
+                                    <div onclick="setNutri(this,'Severely Wasted')"
+                                        class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
+                                        <i class="fas fa-exclamation-circle text-navy-400 text-2xl mb-1"></i>
+                                        <p class="text-[11px] font-semibold text-slate-700">Severely Wasted</p>
+                                    </div>
+                                    <div onclick="setNutri(this,'Wasted')"
+                                        class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
+                                        <i class="fas fa-exclamation-triangle text-navy-500 text-2xl mb-1"></i>
+                                        <p class="text-[11px] font-semibold text-slate-700">Wasted</p>
+                                    </div>
+                                    <div onclick="setNutri(this,'Normal')"
+                                        class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
+                                        <i class="fas fa-check-circle text-navy-600 text-2xl mb-1"></i>
+                                        <p class="text-[11px] font-semibold text-slate-700">Normal</p>
+                                    </div>
+                                    <div onclick="setNutri(this,'Overweight')"
+                                        class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
+                                        <i class="fas fa-chart-bar text-navy-600 text-2xl mb-1"></i>
+                                        <p class="text-[11px] font-semibold text-slate-700">Overweight</p>
+                                    </div>
+                                    <div onclick="setNutri(this,'Obese')"
+                                        class="nutri-opt border-2 border-slate-200 rounded-2xl p-3 text-center">
+                                        <i class="fas fa-weight-scale text-navy-600 text-2xl mb-1"></i>
+                                        <p class="text-[11px] font-semibold text-slate-700">Obese</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3">
+                        <button type="submit" form="sfpForm"
+                            class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500">Submit
+                            SFP
+                            Record</button>
+                    </div>
                 </form>
             </div>
         </main>
@@ -661,7 +674,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         // Client-side validation then native form submit
-        document.getElementById('sfpForm').addEventListener('submit', function(e) {
+        document.getElementById('sfpForm').addEventListener('submit', function (e) {
             const errors = [];
 
             const childName = document.getElementById('childName');

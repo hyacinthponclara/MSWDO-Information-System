@@ -30,7 +30,7 @@ function saveFile($field, $folder) {
         mkdir($folder, 0755, true); // Create upload folder if missing
     }
     if (move_uploaded_file($_FILES[$field]['tmp_name'], $folder . $safe_name)) {
-        return $safe_name; // Return filename → save this in DB column
+        return $safe_name; // 
     }
     return null;
 }
@@ -222,12 +222,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
         }
 
-        $pdo->prepare("
-            UPDATE PROGRAM
-            SET prog_remaining_budget = prog_remaining_budget - ?
-            WHERE program_id = ?
-        ")->execute([$amount, $program_id]);
-
         header("Location: clientprofile.php?id={$client_id}&saved=aics");
         exit;
 
@@ -239,8 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $stmt = $pdo->prepare("
     SELECT
         p.prog_annual_budget,
-        p.prog_remaining_budget,
-        COALESCE(SUM(a.av_amount), 0) AS spent
+        COALESCE(SUM(CASE WHEN a.av_status IN ('Approved','Released') THEN a.av_amount ELSE 0 END), 0) AS spent
     FROM PROGRAM p
     LEFT JOIN AVAILMENT a
         ON a.program_id = p.program_id
@@ -251,35 +244,76 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute();
 $budget    = $stmt->fetch(PDO::FETCH_ASSOC);
-$annual    = $budget['prog_annual_budget']    ?? 0;
-$remaining = $budget['prog_remaining_budget'] ?? 0;
-$spent     = $budget['spent']                 ?? 0;
-// round() rounds to 1 decimal: 88.456 → 88.5
+$annual    = (float)($budget['prog_annual_budget'] ?? 0);
+$spent     = (float)($budget['spent']              ?? 0);
+$remaining = $annual - $spent;
 $pct_used  = $annual > 0 ? round(($spent / $annual) * 100, 1) : 0;
 
 // Budget badge — what to show based on $pct_used
 if ($pct_used >= 90) {
     $badge_cls  = 'text-red-500 bg-red-50 border-red-200';
     $badge_icon = 'fa-exclamation-triangle';
-    $badge_text = 'Critical — ' . (100 - $pct_used) . '% remaining';
+    $badge_text = 'Critical — ' . round(100 - $pct_used, 1) . '% remaining';
     $bar_color  = 'bg-red-400';
 } elseif ($pct_used >= 70) {
     $badge_cls  = 'text-amber-600 bg-amber-50 border-amber-200';
     $badge_icon = 'fa-exclamation-circle';
-    $badge_text = 'Moderate — ' . (100 - $pct_used) . '% remaining';
+    $badge_text = 'Moderate — ' . round(100 - $pct_used, 1) . '% remaining';
     $bar_color  = 'bg-amber-400';
 } else {
     $badge_cls  = 'text-emerald-600 bg-emerald-50 border-emerald-200';
     $badge_icon = 'fa-check-circle';
-    $badge_text = 'Healthy — ' . (100 - $pct_used) . '% remaining';
+    $badge_text = 'Healthy — ' . round(100 - $pct_used, 1) . '% remaining';
     $bar_color  = 'bg-emerald-400';
 }
 
 
+//  AICS Educational budget (separate program) 
+$stmt = $pdo->prepare("
+    SELECT
+        p.prog_annual_budget,
+        COALESCE(SUM(CASE WHEN a.av_status IN ('Approved','Released') THEN a.av_amount ELSE 0 END), 0) AS spent
+    FROM PROGRAM p
+    LEFT JOIN AVAILMENT a
+        ON a.program_id = p.program_id
+        AND YEAR(a.av_date_applied) = YEAR(CURDATE())
+    WHERE p.program_name = 'AICS Educational'
+    GROUP BY p.program_id
+    LIMIT 1
+");
+$stmt->execute();
+$edu_budget    = $stmt->fetch(PDO::FETCH_ASSOC);
+$edu_annual    = (float)($edu_budget['prog_annual_budget'] ?? 0);
+$edu_spent     = (float)($edu_budget['spent']              ?? 0);
+$edu_remaining = $edu_annual - $edu_spent;
+$edu_pct_used  = $edu_annual > 0 ? round(($edu_spent / $edu_annual) * 100, 1) : 0;
+
+if ($edu_pct_used >= 90) {
+    $edu_badge_cls  = 'text-red-500 bg-red-50 border-red-200';
+    $edu_badge_icon = 'fa-exclamation-triangle';
+    $edu_badge_text = 'Critical — ' . round(100 - $edu_pct_used, 1) . '% remaining';
+    $edu_bar_color  = 'bg-red-400';
+} elseif ($edu_pct_used >= 70) {
+    $edu_badge_cls  = 'text-amber-600 bg-amber-50 border-amber-200';
+    $edu_badge_icon = 'fa-exclamation-circle';
+    $edu_badge_text = 'Moderate — ' . round(100 - $edu_pct_used, 1) . '% remaining';
+    $edu_bar_color  = 'bg-amber-400';
+} else {
+    $edu_badge_cls  = 'text-emerald-600 bg-emerald-50 border-emerald-200';
+    $edu_badge_icon = 'fa-check-circle';
+    $edu_badge_text = 'Healthy — ' . round(100 - $edu_pct_used, 1) . '% remaining';
+    $edu_bar_color  = 'bg-emerald-400';
+}
+
+$edu_budget_ok = $edu_remaining > 0;
+// Denied availments are excluded so a rejected request doesn't block re-application.
+// AICS FBML covers Medical, Financial, Livelihood, and Burial (1×/quarter, 4×/year).
+// AICS Educational has its own limits (2×/year) and its own program row.
 $stmt = $pdo->prepare("
     SELECT COUNT(*) FROM AVAILMENT
     WHERE client_id  = ?
     AND program_id   = (SELECT program_id FROM PROGRAM WHERE program_name = 'AICS FBML' LIMIT 1)
+    AND av_status   != 'Denied'
     AND QUARTER(av_date_applied) = QUARTER(CURDATE())
     AND YEAR(av_date_applied)    = YEAR(CURDATE())
 ");
@@ -290,15 +324,29 @@ $stmt = $pdo->prepare("
     SELECT COUNT(*) FROM AVAILMENT
     WHERE client_id  = ?
     AND program_id   = (SELECT program_id FROM PROGRAM WHERE program_name = 'AICS FBML' LIMIT 1)
+    AND av_status   != 'Denied'
     AND YEAR(av_date_applied) = YEAR(CURDATE())
 ");
 $stmt->execute([$client_id]);
 $y_count = (int)$stmt->fetchColumn();
 
-$quarter_ok = $q_count < 1;           // true = eligible (under 1/quarter)
-$year_ok    = $y_count < 4;           // true = eligible (under 4/year)
-$budget_ok  = $remaining > 0;
-$year_left  = max(0, 4 - $y_count);
+// AICS Educational: separate 2×/year limit
+$stmt = $pdo->prepare("
+    SELECT COUNT(*) FROM AVAILMENT
+    WHERE client_id  = ?
+    AND program_id   = (SELECT program_id FROM PROGRAM WHERE program_name = 'AICS Educational' LIMIT 1)
+    AND av_status   != 'Denied'
+    AND YEAR(av_date_applied) = YEAR(CURDATE())
+");
+$stmt->execute([$client_id]);
+$edu_y_count = (int)$stmt->fetchColumn();
+
+$quarter_ok   = $q_count < 1;         // FBML: max 1 per quarter
+$year_ok      = $y_count < 4;         // FBML: max 4 per year
+$edu_year_ok  = $edu_y_count < 2;     // Educational: max 2 per year
+$budget_ok    = $remaining > 0;
+$year_left    = max(0, 4 - $y_count);
+$edu_year_left= max(0, 2 - $edu_y_count);
 
 // Validation errors from POST (if any)
 $post_errors = $errors ?? [];
@@ -449,41 +497,32 @@ $post_errors = $errors ?? [];
                         </div>
 
                         <div class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                                <h2 class="text-[13px] font-semibold text-navy-600">AICS Budget Status</h2>
-                                <!--
-                                -->
-                                <span class="text-[10px] font-semibold border px-2.5 py-0.5 rounded-full <?= $badge_cls ?>">
-                                    <i class="fas <?= $badge_icon ?> mr-1"></i><?= $badge_text ?>
-                                </span>
+                            <div class="px-5 py-4 border-b border-slate-100 flex items-center">
+                                <h2 class="text-[13px] font-semibold text-navy-600" id="budgetTitle">AICS Budget Status — <span id="budgetProgramLabel">AICS FBML</span></h2>
                             </div>
                             <div class="px-5 py-4 grid grid-cols-3 gap-4">
                                 <div>
                                     <p class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">Annual Budget</p>
-                                    <!-- number_format($annual) adds commas: 240000 → "240,000" -->
-                                    <p class="text-[18px] font-bold text-navy-600">₱<?= number_format($annual) ?></p>
+                                    <p class="text-[18px] font-bold text-navy-600" id="budgetAnnual">₱<?= number_format($annual) ?></p>
                                 </div>
                                 <div>
                                     <p class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">Spent This Year</p>
-                                    <p class="text-[18px] font-bold text-slate-700">₱<?= number_format($spent) ?></p>
+                                    <p class="text-[18px] font-bold text-slate-700" id="budgetSpent">₱<?= number_format($spent) ?></p>
                                 </div>
                                 <div>
                                     <p class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">Remaining</p>
-                                    <!-- PHP ternary: if remaining <= 0 use red, else green -->
-                                    <p class="text-[18px] font-bold <?= $remaining <= 0 ? 'text-red-500' : 'text-emerald-600' ?>">
-                                        ₱<?= number_format($remaining) ?>
-                                    </p>
+                                    <p class="text-[18px] font-bold" id="budgetRemaining">₱<?= number_format($remaining) ?></p>
                                 </div>
                             </div>
                             <div class="px-5 pb-4">
                                 <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                    <div class="budget-bar-fill h-2 rounded-full <?= $bar_color ?>"
+                                    <div class="budget-bar-fill h-2 rounded-full" id="budgetBar"
                                          style="width:0%"
                                          data-target="<?= $pct_used ?>%"></div>
                                 </div>
                                 <div class="flex justify-between text-[10px] text-slate-400 mt-1.5">
                                     <span>0%</span>
-                                    <span class="font-semibold"><?= $pct_used ?>% utilized</span>
+                                    <span class="font-semibold" id="budgetPct"><?= $pct_used ?>% utilized</span>
                                     <span>100%</span>
                                 </div>
                             </div>
@@ -518,23 +557,35 @@ $post_errors = $errors ?? [];
                                         <p class="text-[11px] font-semibold text-navy-600">Automatic Limit Check — <?= $client_name ?> · AICS</p>
                                     </div>
                                     <div id="limitRows" class="divide-y divide-slate-100">
-                                        <div class="limit-row flex items-center justify-between px-4 py-2.5">
+
+                                        <!-- FBML rows (Medical / Financial / Livelihood / Burial) -->
+                                        <div id="row-fbml-quarter" class="limit-row flex items-center justify-between px-4 py-2.5">
                                             <div class="flex items-center gap-2"><i class="fas fa-calendar-alt text-slate-500 text-sm"></i><span class="text-[12px] text-slate-600">Availments this quarter</span></div>
                                             <span class="text-[12px] font-semibold flex items-center gap-1 <?= $quarter_ok ? 'text-emerald-600' : 'text-red-500' ?>">
                                                 <?= $quarter_ok ? '✓' : '✗' ?>
                                                 <?= $q_count ?> of 1 — <?= $quarter_ok ? 'eligible' : 'limit reached' ?>
                                             </span>
                                         </div>
-                                        <div class="limit-row flex items-center justify-between px-4 py-2.5">
+                                        <div id="row-fbml-year" class="limit-row flex items-center justify-between px-4 py-2.5">
                                             <div class="flex items-center gap-2"><i class="fas fa-calendar-week text-slate-500 text-sm"></i><span class="text-[12px] text-slate-600">Availments this year</span></div>
                                             <span class="text-[12px] font-semibold flex items-center gap-1 <?= $year_ok ? 'text-emerald-600' : 'text-red-500' ?>">
                                                 <?= $year_ok ? '✓' : '✗' ?>
                                                 <?= $y_count ?> of 4 — <?= $year_ok ? "{$year_left} remaining" : 'limit reached' ?>
                                             </span>
                                         </div>
-                                        <div class="limit-row flex items-center justify-between px-4 py-2.5">
+
+                                        <!-- Educational row (shown only when Educational type is selected) -->
+                                        <div id="row-edu-year" class="limit-row items-center justify-between px-4 py-2.5 hidden">
+                                            <div class="flex items-center gap-2"><i class="fas fa-calendar-week text-slate-500 text-sm"></i><span class="text-[12px] text-slate-600">Educational availments this year</span></div>
+                                            <span class="text-[12px] font-semibold flex items-center gap-1 <?= $edu_year_ok ? 'text-emerald-600' : 'text-red-500' ?>">
+                                                <?= $edu_year_ok ? '✓' : '✗' ?>
+                                                <?= $edu_y_count ?> of 2 — <?= $edu_year_ok ? "{$edu_year_left} remaining" : 'limit reached' ?>
+                                            </span>
+                                        </div>
+
+                                        <div class="limit-row flex items-center justify-between px-4 py-2.5" id="row-budget">
                                             <div class="flex items-center gap-2"><i class="fas fa-chart-line text-slate-500 text-sm"></i><span class="text-[12px] text-slate-600">Budget sufficient</span></div>
-                                            <span class="text-[12px] font-semibold <?= $budget_ok ? 'text-emerald-600' : 'text-red-500' ?>">
+                                            <span class="text-[12px] font-semibold <?= $budget_ok ? 'text-emerald-600' : 'text-red-500' ?>" id="budgetSufficientText">
                                                 <?= $budget_ok ? '✓ ₱' . number_format($remaining) . ' available' : '✗ No budget remaining' ?>
                                             </span>
                                         </div>
@@ -637,9 +688,6 @@ $post_errors = $errors ?? [];
                             </div>
                             <div class="p-6 grid grid-cols-2 gap-4">
                                 <!--
-                                    name="doc_medcert" → $_FILES['doc_medcert'] in PHP
-                                    → saveFile('doc_medcert', ...) → DB: amed_med_cert
-                                    The name="" here MUST match saveFile()'s first argument above.
                                 -->
                                 <div>
                                     <div class="field-label flex items-center flex-wrap gap-1">Medical Certificate / Abstract <span class="copy-badge">1 orig + 2 copies</span></div>
@@ -1113,6 +1161,61 @@ $post_errors = $errors ?? [];
     </div>
 
     <script>
+        const FBML_QUARTER_OK  = <?= $quarter_ok  ? 'true' : 'false' ?>;
+        const FBML_YEAR_OK     = <?= $year_ok     ? 'true' : 'false' ?>;
+        const EDU_YEAR_OK      = <?= $edu_year_ok ? 'true' : 'false' ?>;
+        const BUDGET_OK        = <?= $budget_ok   ? 'true' : 'false' ?>;
+
+        // Budget data for both programs
+        const BUDGETS = {
+            fbml: {
+                label:     'AICS FBML',
+                annual:    <?= $annual ?>,
+                spent:     <?= $spent ?>,
+                remaining: <?= $remaining ?>,
+                pct:       <?= $pct_used ?>,
+                badgeCls:  '<?= $badge_cls ?>',
+                badgeIcon: '<?= $badge_icon ?>',
+                badgeText: '<?= $badge_text ?>',
+                barColor:  '<?= $bar_color ?>',
+                ok:        <?= $budget_ok ? 'true' : 'false' ?>,
+            },
+            edu: {
+                label:     'AICS Educational',
+                annual:    <?= $edu_annual ?>,
+                spent:     <?= $edu_spent ?>,
+                remaining: <?= $edu_remaining ?>,
+                pct:       <?= $edu_pct_used ?>,
+                badgeCls:  '<?= $edu_badge_cls ?>',
+                badgeIcon: '<?= $edu_badge_icon ?>',
+                badgeText: '<?= $edu_badge_text ?>',
+                barColor:  '<?= $edu_bar_color ?>',
+                ok:        <?= $edu_budget_ok ? 'true' : 'false' ?>,
+            },
+        };
+
+        function switchBudgetDisplay(key) {
+            const b = BUDGETS[key];
+            const fmt = n => '₱' + Math.round(n).toLocaleString();
+
+            document.getElementById('budgetProgramLabel').textContent = b.label;
+            document.getElementById('budgetAnnual').textContent    = fmt(b.annual);
+            document.getElementById('budgetSpent').textContent     = fmt(b.spent);
+
+            const remEl = document.getElementById('budgetRemaining');
+            remEl.textContent  = fmt(b.remaining);
+            remEl.className    = 'text-[18px] font-bold ' + (b.remaining <= 0 ? 'text-red-500' : 'text-emerald-600');
+
+            const bar = document.getElementById('budgetBar');
+            bar.className      = 'budget-bar-fill h-2 rounded-full ' + b.barColor;
+            bar.style.width    = b.pct + '%';
+            document.getElementById('budgetPct').textContent = b.pct + '% utilized';
+
+            const budgetRow = document.getElementById('budgetSufficientText');
+            budgetRow.textContent  = b.ok ? '✓ ' + fmt(b.remaining) + ' available' : '✗ No budget remaining';
+            budgetRow.className    = 'text-[12px] font-semibold ' + (b.ok ? 'text-emerald-600' : 'text-red-500');
+        }
+
         const subNames = {
             main: 'AICS Availment', medical: 'AICS — Medical', financial: 'AICS — Financial',
             educational: 'AICS — Educational', livelihood: 'AICS — Livelihood', burial: 'AICS — Burial'
@@ -1138,9 +1241,18 @@ $post_errors = $errors ?? [];
             card.classList.add('active-card', 'border-navy-600', 'bg-navy-50', 'shadow-md');
             card.classList.remove('border-slate-200');
             currentSubtype = sub;
+
+            const isEdu = sub === 'educational';
+            document.getElementById('row-fbml-quarter').classList.toggle('hidden', isEdu);
+            document.getElementById('row-fbml-quarter').classList.toggle('flex', !isEdu);
+            document.getElementById('row-fbml-year').classList.toggle('hidden', isEdu);
+            document.getElementById('row-fbml-year').classList.toggle('flex', !isEdu);
+            document.getElementById('row-edu-year').classList.toggle('hidden', !isEdu);
+            document.getElementById('row-edu-year').classList.toggle('flex', isEdu);
+
+            switchBudgetDisplay(isEdu ? 'edu' : 'fbml');
         }
 
-        // ── checkAmount(input) ────────────────────────────────
         // Live validation of the amount — updates the limit check row.
         function checkAmount(input) {
             const val = parseFloat(input.value);
@@ -1160,7 +1272,6 @@ $post_errors = $errors ?? [];
             }
         }
 
-        // ── togglePatient() ───────────────────────────────────
         // Shows/hides patient fields in Medical panel.
         let patientOn = false;
         function togglePatient() {
@@ -1174,7 +1285,7 @@ $post_errors = $errors ?? [];
             fields.classList.toggle('hidden', !patientOn);
         }
 
-        // ── fileSelected(input, zoneId) ───────────────────────
+        //  fileSelected(input, zoneId) 
         // When a file is chosen, shows the filename in the upload zone.
         function fileSelected(input, zoneId) {
             if (!input.files || !input.files[0]) return;
@@ -1205,7 +1316,7 @@ $post_errors = $errors ?? [];
             document.getElementById('aicsForm').submit();
         }
 
-        // ── Date Released cannot be before Date Applied ───────
+        //  Date Released cannot be before Date Applied 
         document.getElementById('dateApplied').addEventListener('change', function () {
             const appliedVal    = this.value;
             const releasedInput = document.getElementById('dateReleased');
@@ -1220,9 +1331,6 @@ $post_errors = $errors ?? [];
             if (applied) document.getElementById('dateReleased').min = applied;
         });
 
-        //  Proceed button 
-        // Validates amount, date, and subtype selection before
-        // switching to the subtype requirements panel.
         document.getElementById('proceedToSubtype')?.addEventListener('click', () => {
             const amountInput = document.getElementById('amountField');
             const amountVal   = parseFloat(amountInput.value);
@@ -1249,9 +1357,7 @@ $post_errors = $errors ?? [];
         });
 
         requestAnimationFrame(() => setTimeout(() => {
-            document.querySelectorAll('.budget-bar-fill').forEach(el => {
-                el.style.width = el.dataset.target;
-            });
+            switchBudgetDisplay('fbml');
         }, 400));
     </script>
 </body>

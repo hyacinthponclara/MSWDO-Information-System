@@ -3,10 +3,8 @@ require 'auth.php';
 requireRole(['Admin', 'Social Worker', 'Staff']);
 require 'db_connect.php';
 
-// ── Session user ──────────────────────────────────────────────────────────────
 $user_id = $_SESSION['user_id'] ?? null;
 
-// ── Resolve & validate client ─────────────────────────────────────────────────
 $client_id = (int)($_GET['client_id'] ?? 0);
 if ($client_id <= 0) { header("Location: clientslist.php"); exit; }
 
@@ -16,17 +14,28 @@ $client = $stmt->fetch();
 if (!$client) { header("Location: clientslist.php"); exit; }
 $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_lastname']);
 
-// ── Fetch SLP program row ─────────────────────────────────────────────────────
-$stmt = $pdo->prepare("SELECT * FROM PROGRAM WHERE program_name = 'SLP' LIMIT 1");
+$stmt = $pdo->prepare("
+    SELECT
+        p.program_id,
+        p.prog_annual_budget,
+        COALESCE(SUM(CASE WHEN a.av_status IN ('Approved','Released') THEN a.av_amount ELSE 0 END), 0) AS spent
+    FROM PROGRAM p
+    LEFT JOIN AVAILMENT a
+        ON a.program_id = p.program_id
+        AND YEAR(a.av_date_applied) = YEAR(CURDATE())
+    WHERE p.program_name = 'SLP'
+    GROUP BY p.program_id
+    LIMIT 1
+");
 $stmt->execute();
 $program     = $stmt->fetch();
-$program_id  = $program['program_id']          ?? null;
-$annual      = $program['prog_annual_budget']   ?? 0;
-$remaining   = $program['prog_remaining_budget']?? 0;
-$spent       = $annual - $remaining;
+$program_id  = $program['program_id']        ?? null;
+$annual      = (float)($program['prog_annual_budget'] ?? 0);
+$spent       = (float)($program['spent']              ?? 0);
+$remaining   = $annual - $spent;
 $pct_used    = $annual > 0 ? round(($spent / $annual) * 100, 1) : 0;
 
-// ── SLP-specific eligibility checks ──────────────────────────────────────────
+$bar_color   = $pct_used >= 90 ? 'bg-red-400' : ($pct_used >= 70 ? 'bg-amber-400' : 'bg-navy-500');
 // SLP rule: client can only get ONE project. Additional funding only if
 // previous project was profitable. We check if ANY prior SLP availment exists.
 $stmt = $pdo->prepare("
@@ -37,25 +46,6 @@ $stmt->execute([$client_id, $program_id]);
 $prior_slp_count = (int) $stmt->fetchColumn();
 $has_prior_slp   = $prior_slp_count > 0;
 
-// Budget status badge
-if ($pct_used >= 90) {
-    $badge_cls  = 'text-red-500 bg-red-50 border-red-200';
-    $badge_icon = 'fa-exclamation-triangle';
-    $badge_text = 'Critical — ' . round(100 - $pct_used, 1) . '% remaining';
-    $bar_color  = 'bg-red-400';
-} elseif ($pct_used >= 70) {
-    $badge_cls  = 'text-amber-600 bg-amber-50 border-amber-200';
-    $badge_icon = 'fa-exclamation-circle';
-    $badge_text = 'Moderate — ' . round(100 - $pct_used, 1) . '% remaining';
-    $bar_color  = 'bg-amber-400';
-} else {
-    $badge_cls  = 'text-emerald-600 bg-emerald-50 border-emerald-200';
-    $badge_icon = 'fa-check-circle';
-    $badge_text = 'Healthy — ' . round(100 - $pct_used, 1) . '% remaining';
-    $bar_color  = 'bg-emerald-400';
-}
-
-// ── Handle POST (Submit) ──────────────────────────────────────────────────────
 $post_errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -73,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ? $other_livelihood
         : $livelihood_type;
 
-    // File paths (store filename only; handle actual upload if needed)
     $file_intent   = !empty($_FILES['file_intent']['name'])   ? basename($_FILES['file_intent']['name'])   : null;
     $file_proposal = !empty($_FILES['file_proposal']['name']) ? basename($_FILES['file_proposal']['name']) : null;
     $file_id       = !empty($_FILES['file_id']['name'])       ? basename($_FILES['file_id']['name'])       : null;
@@ -89,7 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo->beginTransaction();
 
-            // 1. Insert into AVAILMENT
             $ins = $pdo->prepare("
                 INSERT INTO AVAILMENT
                     (client_id, program_id, user_id, av_date_applied, av_date_released, av_amount, av_status, av_remarks)
@@ -98,7 +86,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ins->execute([$client_id, $program_id, $user_id, $date_applied, $date_released, $amount, $remarks]);
             $availment_id = $pdo->lastInsertId();
 
-            // 2. Insert into SLP
             $ins2 = $pdo->prepare("
                 INSERT INTO SLP (availment_id, user_id, slp_livelihood_type, slp_business_proposal, slp_letter, slp_training)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -111,12 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $file_intent,
                 $slp_training,
             ]);
-
-            // 3. Deduct from PROGRAM remaining budget
-            $pdo->prepare("
-                UPDATE PROGRAM SET prog_remaining_budget = prog_remaining_budget - ?
-                WHERE program_id = ?
-            ")->execute([$amount, $program_id]);
 
             $pdo->commit();
             header("Location: clientprofile.php?id={$client_id}&saved=slp");
@@ -292,15 +273,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Budget Card -->
             <div class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div class="px-5 py-4 border-b border-slate-100 flex items-center">
                     <h2 class="text-[13px] font-semibold text-navy-600">SLP Budget Status</h2>
-                    <?php if ($program_id): ?>
-                    <span class="text-[10px] font-semibold border px-2.5 py-0.5 rounded-full <?= $badge_cls ?>">
-                        <i class="fas <?= $badge_icon ?> mr-1"></i><?= $badge_text ?>
-                    </span>
-                    <?php else: ?>
-                    <span class="text-[10px] font-semibold border px-2.5 py-0.5 rounded-full text-slate-400 bg-slate-50 border-slate-200">No program data</span>
-                    <?php endif; ?>
                 </div>
                 <div class="px-5 py-4 grid grid-cols-3 gap-4">
                     <div>
@@ -530,7 +504,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </div>
                             </label>
                         </div>
-                        <!-- Valid ID (stored as file path; no direct SLP column — store in remarks or extend table) -->
                         <div>
                             <div class="field-label flex items-center">Valid ID <span class="copy-badge">1 orig + 2 copies</span></div>
                             <label class="upload-zone" id="uz-slp-id">
@@ -592,7 +565,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </button>
                 </div>
 
-            </form><!-- end slpForm -->
+            </form>
 
         </div>
     </main>
@@ -610,9 +583,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <script>
-    const budgetRemaining = <?= (float)$remaining ?>;
+    const budgetRemaining = <?= (float)$remaining ?>; // annual − spent (Approved/Released this year)
 
-    // ── Training toggle ───────────────────────────────────────────────────────
+    //  Training toggle 
     let trainingOn = <?= !empty($_POST['slp_training']) ? 'true' : 'false' ?>;
     function toggleTraining() {
         trainingOn = !trainingOn;
@@ -627,7 +600,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         document.getElementById('trainingDetails').classList.toggle('grid', trainingOn);
     }
 
-    // ── Amount check vs remaining budget ─────────────────────────────────────
+    //  Amount check vs remaining budget 
     function checkAmount(input) {
         const val = parseFloat(input.value);
         const el  = document.getElementById('amountCheck').querySelector('span');
@@ -643,7 +616,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // ── Livelihood type "Other" handler ───────────────────────────────────────
+    //  Livelihood type "Other" handler 
     function handleLivelihoodChange() {
         const select = document.getElementById('livelihoodType');
         const other  = document.getElementById('otherLivelihood');
@@ -656,7 +629,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // ── Date Released guard ───────────────────────────────────────────────────
     document.getElementById('dateApplied').addEventListener('change', function () {
         const released = document.getElementById('dateReleased');
         released.min = this.value;
@@ -670,7 +642,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (applied) document.getElementById('dateReleased').min = applied;
     });
 
-    // ── File upload feedback ──────────────────────────────────────────────────
     function fileSelected(input, zoneId) {
         if (!input.files || !input.files[0]) return;
         const zone = document.getElementById(zoneId);
@@ -681,7 +652,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              <p class="upload-hint">File ready</p>`;
     }
 
-    // ── Toast ─────────────────────────────────────────────────────────────────
     function showToast(msg) {
         document.getElementById('toastMsg').textContent = msg;
         const t = document.getElementById('toast');
@@ -693,7 +663,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }, 3000);
     }
 
-    // ── Animate budget bar ────────────────────────────────────────────────────
     requestAnimationFrame(() => setTimeout(() => {
         document.querySelectorAll('.budget-bar-fill').forEach(el => el.style.width = el.dataset.target);
     }, 400));

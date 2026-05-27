@@ -1,7 +1,3 @@
-<?php
-require 'auth.php';
-requireRole('Social Worker');
-?>
 
 <!DOCTYPE html>
 <html lang="en">

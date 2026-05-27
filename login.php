@@ -41,11 +41,11 @@ if ($user && password_verify($password, $user['user_password'])) {
     $_SESSION['user_lastname']  = $user['user_lastname'];
 
     if ($user['user_role'] === 'Admin') {
-        header('Location: admindashboard.php');
+        header('Location: dashboard.php');
     } elseif ($user['user_role'] === 'Social Worker') {
-        header('Location: mswdohead.php');
+        header('Location: dashboard.php');
     } else {
-        header('Location: staffdashboard.php');
+        header('Location: dashboard.php');
     }
     exit;
 

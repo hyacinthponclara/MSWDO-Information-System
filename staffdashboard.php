@@ -1,7 +1,4 @@
-<?php
-require 'auth.php';
-requireRole('Staff');
-?>
+
 
 <!DOCTYPE html>
 <html lang="en">

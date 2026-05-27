@@ -1,9 +1,9 @@
 <?php
-$role = $_SESSION['user_role'];
+if (session_status() === PHP_SESSION_NONE) session_start();
+$role = $_SESSION['user_role'] ?? '';
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 
-<html>
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script>
     tailwind.config = {
@@ -57,9 +57,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
     }
 </script>
 
-</html>
-
-<aside id="sidebar" class="fixed top-0 left-0 w-64 h-screen flex flex-col overflow-y-auto z-50" style="background: #0B2545;">
+<aside id="sidebar" class="fixed top-0 left-0 w-64 h-screen flex flex-col overflow-y-auto z-50"
+    style="background: #0B2545;">
 
     <!-- Logo -->
     <div class="px-5 pt-5 pb-4 border-b border-white/10">
@@ -73,17 +72,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <!-- acces by admin -->
     <?php if ($role === 'Admin'): ?>
-        <a href="admindashboard.php"
-            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'admindashboard.php' ? 'active' : '' ?>">
+        <a href="dashboard.php"
+            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'dashboard.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie text-sm"></i> Dashboard
         </a>
 
         <a href="clientslist.php"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'clientslist.php' ? 'active' : '' ?>">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
         <a href="barangaylist.php"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'barangaylist.php' ? 'active' : '' ?>">
             <i class="fas fa-list text-sm"></i> Barangay
         </a>
 
@@ -160,32 +159,33 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <div class="px-4 py-3 border-t border-white/10 flex items-center gap-3">
             <div
                 class="w-8 h-8 rounded-full bg-gold-400 flex items-center justify-center text-navy-600 text-xs font-bold flex-shrink-0">
-                JD</div>
+                <?= strtoupper(substr($_SESSION['user_firstname'] ?? 'A', 0, 1) . substr($_SESSION['user_lastname'] ?? 'D', 0, 1)) ?></div>
             <div class="min-w-0">
-                <p class="text-white text-xs font-medium truncate">Juan Dela Cruz</p>
-                <p class="text-white/40 text-[10px]">Administrator</p>
+                <p class="text-white text-xs font-medium truncate"><?= htmlspecialchars(($_SESSION['user_firstname'] ?? '') . ' ' . ($_SESSION['user_lastname'] ?? '')) ?></p>
+                <p class="text-white/40 text-[10px]"><?= htmlspecialchars($_SESSION['user_role'] ?? 'Admin') ?></p>
             </div>
-            <a href="logout.php" class="ml-auto text-white/50 hover:text-white text-[12px] font-medium transition-colors px-2 py-1 rounded hover:bg-white/10">Logout</a>
+            <a href="logout.php"
+                class="ml-auto text-white/50 hover:text-white text-[12px] font-medium transition-colors px-2 py-1 rounded hover:bg-white/10">Logout</a>
         </div>
     <?php endif; ?>
 
 
     <!-- access by social worker -->
     <?php if ($role === 'Social Worker'): ?>
-        <a href="mswdohead.php"
-            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'mswdohead.php' ? 'active' : '' ?>">
+        <a href="dashboard.php"
+            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'dashboard.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie text-sm"></i> Dashboard
         </a>
         <a href="clientslist.php"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'clientslist.php' ? 'active' : '' ?>">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
         <a href="barangaylist.php"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'barangaylist.php' ? 'active' : '' ?>">
             <i class="fas fa-list text-sm"></i> Barangay
         </a>
         <!-- <a href="casestudy.php"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'casestudy.php' ? 'active' : '' ?>">
             <i class="fas fa-book text-sm"></i> Case Study
         </a>
  -->
@@ -243,29 +243,29 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <div class="px-4 py-3 border-t border-white/10 flex items-center gap-3">
             <div
                 class="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                MP</div>
+                <?= strtoupper(substr($_SESSION['user_firstname'] ?? 'S', 0, 1) . substr($_SESSION['user_lastname'] ?? 'W', 0, 1)) ?></div>
             <div class="min-w-0">
-                <p class="text-white text-xs font-medium truncate">Ma. Teresa C. Ponclara </p>
-                <p class="text-violet-300/60 text-[10px]">MSWDO Head</p>
+                <p class="text-white text-xs font-medium truncate"><?= htmlspecialchars(($_SESSION['user_firstname'] ?? '') . ' ' . ($_SESSION['user_lastname'] ?? '')) ?></p>
+                <p class="text-violet-300/60 text-[10px]"><?= htmlspecialchars($_SESSION['user_role'] ?? 'Social Worker') ?></p>
             </div>
-            <a href="logout.php" class="ml-auto text-white/50 hover:text-white text-[12px] font-medium transition-colors px-2 py-1 rounded hover:bg-white/10">Logout</a>
+            <a href="logout.php"
+                class="ml-auto text-white/50 hover:text-white text-[12px] font-medium transition-colors px-2 py-1 rounded hover:bg-white/10">Logout</a>
         </div>
 
     <?php endif; ?>
 
     <!-- access by staff -->
     <?php if ($role === 'Staff'): ?>
-        <a href="staffdashboard.php"
-            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'staffdashboard.php' ? 'active' : '' ?>">
+        <a href="dashboard.php"
+            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'dashboard.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie text-sm"></i> Dashboard
         </a>
-        </a>
         <a href="clientslist.php"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'clientslist.php' ? 'active' : '' ?>">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
         <a href="barangaylist.php"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'barangaylist.php' ? 'active' : '' ?>">
             <i class="fas fa-list text-sm"></i> Barangay
         </a>
 
@@ -308,15 +308,15 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <div class="px-4 py-3 border-t border-white/10 flex items-center gap-3">
             <div
                 class="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                AR</div>
+                <?= strtoupper(substr($_SESSION['user_firstname'] ?? 'S', 0, 1) . substr($_SESSION['user_lastname'] ?? 'T', 0, 1)) ?></div>
             <div class="min-w-0">
-                <p class="text-white text-xs font-medium truncate">Ana Reyes</p>
-                <p class="text-white/40 text-[10px]">Staff</p>
+                <p class="text-white text-xs font-medium truncate"><?= htmlspecialchars(($_SESSION['user_firstname'] ?? '') . ' ' . ($_SESSION['user_lastname'] ?? '')) ?></p>
+                <p class="text-white/40 text-[10px]"><?= htmlspecialchars($_SESSION['user_role'] ?? 'Staff') ?></p>
             </div>
-            <a href="logout.php" class="ml-auto text-white/50 hover:text-white text-[12px] font-medium transition-colors px-2 py-1 rounded hover:bg-white/10">Logout</a>
+            <a href="logout.php"
+                class="ml-auto text-white/50 hover:text-white text-[12px] font-medium transition-colors px-2 py-1 rounded hover:bg-white/10">Logout</a>
         </div>
     <?php endif; ?>
-
 
     </nav>
 

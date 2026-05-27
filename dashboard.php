@@ -1,6 +1,40 @@
 <?php
 require 'auth.php';
-requireRole('Admin');
+requireRole(['Admin', 'Social Worker', 'Staff']);
+require 'db_connect.php';
+
+$avTodayDB = $pdo->query("
+    SELECT COUNT(DISTINCT client_id)
+    FROM AVAILMENT
+    WHERE av_date_applied = CURDATE()
+");
+$clients_today = (int)$avTodayDB->fetchColumn();
+
+$avDB = $pdo->query("SELECT COUNT(*) FROM AVAILMENT");
+$total_availments = (int)$avDB->fetchColumn();
+
+$avThisMonthDB = $pdo->query("
+    SELECT COUNT(DISTINCT client_id)
+    FROM AVAILMENT
+    WHERE MONTH(av_date_applied) = MONTH(CURDATE())
+      AND YEAR(av_date_applied)  = YEAR(CURDATE())
+");
+$clients_this_month = (int)$avThisMonthDB->fetchColumn();
+
+//  BUDGET SUMMARY 
+$budgetDB = $pdo->query("
+    SELECT
+        p.program_name,
+        p.prog_annual_budget AS total,
+        COALESCE(SUM(a.av_amount), 0) AS spent
+    FROM PROGRAM p
+    LEFT JOIN AVAILMENT a
+        ON a.program_id = p.program_id
+       AND a.av_status IN ('Approved', 'Released')
+    GROUP BY p.program_id, p.program_name, p.prog_annual_budget
+    ORDER BY p.program_name ASC
+");
+$programs = $budgetDB->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -135,7 +169,7 @@ requireRole('Admin');
                         <div>
                             <p class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Clients
                                 Availed Today</p>
-                            <p class="text-2xl font-bold text-navy-600">24</p>
+                            <p class="text-2xl font-bold text-navy-600"><?= number_format($clients_today) ?></p>
                         </div>
                     </div>
                 </div>
@@ -149,7 +183,7 @@ requireRole('Admin');
                         <div>
                             <p class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Total
                                 Availments</p>
-                            <p class="text-2xl font-bold text-navy-600">1,247</p>
+                            <p class="text-2xl font-bold text-navy-600"><?= number_format($total_availments) ?></p>
                         </div>
                     </div>
                 </div>
@@ -163,7 +197,7 @@ requireRole('Admin');
                         <div>
                             <p class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">Clients This
                                 Month</p>
-                            <p class="text-2xl font-bold text-navy-600">89</p>
+                            <p class="text-2xl font-bold text-navy-600"><?= number_format($clients_this_month) ?></p>
                         </div>
                     </div>
                 </div>
@@ -178,103 +212,6 @@ requireRole('Admin');
                 <div class="divide-y divide-slate-100" id="budgetRows">
                 </div>
             </div>
-
-            <!-- Recent Availments -->
-            <div class="animate-fade-up-5 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-                    <h2 class="text-[13px] font-semibold text-navy-600">Recent Availments</h2>
-                    <a href="#" class="text-[11px] text-navy-500 font-medium hover:text-navy-700">View all →</a>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-[12px]">
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-100">
-                                <th
-                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                                    Date</th>
-                                <th
-                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                                    Client</th>
-                                <th
-                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                                    Program</th>
-                                <th
-                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                                    Type</th>
-                                <th
-                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                                    Amount</th>
-                                <th
-                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                                    Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <tr class="table-row">
-                                <td class="px-5 py-3 text-slate-500">Apr 14</td>
-                                <td class="px-5 py-3 font-medium text-navy-600">Maria Santos</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-navy-50 text-navy-600 px-2 py-0.5 rounded text-[10px] font-semibold">AICS</span>
-                                </td>
-                                <td class="px-5 py-3 text-slate-600">Medical</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱3,500</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-navy-50 text-navy-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span>
-                                </td>
-                            </tr>
-                            <tr class="table-row">
-                                <td class="px-5 py-3 text-slate-500">Apr 14</td>
-                                <td class="px-5 py-3 font-medium text-navy-600">Pedro Cruz</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-navy-50 text-navy-600 px-2 py-0.5 rounded text-[10px] font-semibold">PWD</span>
-                                </td>
-                                <td class="px-5 py-3 text-slate-600">Financial</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱2,000</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-navy-50 text-navy-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Released</span>
-                                </td>
-                            </tr>
-                            <tr class="table-row">
-                                <td class="px-5 py-3 text-slate-500">Apr 13</td>
-                                <td class="px-5 py-3 font-medium text-navy-600">Luz Bautista</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-navy-50 text-navy-600 px-2 py-0.5 rounded text-[10px] font-semibold">Solo
-                                        Parent</span></td>
-                                <td class="px-5 py-3 text-slate-600">SPID Issuance</td>
-                                <td class="px-5 py-3 text-slate-400">—</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-navy-50 text-navy-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span>
-                                </td>
-                            </tr>
-                            <tr class="table-row">
-                                <td class="px-5 py-3 text-slate-500">Apr 12</td>
-                                <td class="px-5 py-3 font-medium text-navy-600">Elena Dela Cruz</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-navy-50 text-navy-600 px-2 py-0.5 rounded text-[10px] font-semibold">AICS</span>
-                                </td>
-                                <td class="px-5 py-3 text-slate-600">Burial</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱5,000</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-navy-50 text-navy-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span>
-                                </td>
-                            </tr>
-                            <tr class="table-row">
-                                <td class="px-5 py-3 text-slate-500">Apr 12</td>
-                                <td class="px-5 py-3 font-medium text-navy-600">Rodrigo Lim</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-navy-50 text-navy-600 px-2 py-0.5 rounded text-[10px] font-semibold">Senior</span>
-                                </td>
-                                <td class="px-5 py-3 text-slate-600">Pension Top-up</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱500</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-navy-50 text-navy-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Released</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
         </main>
 
         <footer
@@ -291,25 +228,18 @@ requireRole('Admin');
             dateSpan.textContent = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         }
 
-        // Budget data for all 10 programs
-        const budgets = [
-            { name: 'AICS FBML', total: 240000, spent: 211600 },
-            { name: 'AICS Educational', total: 120000, spent: 78000 },
-            { name: 'SLP', total: 150000, spent: 138000 },
-            { name: 'SFP', total: 200000, spent: 70000 },
-            { name: 'Day Care', total: 300000, spent: 189000 },
-            { name: 'Solo Parents', total: 160000, spent: 73200 },
-            { name: 'Senior Citizen', total: 180000, spent: 96000 },
-            { name: '4Ps', total: 250000, spent: 178500 },
-            { name: 'PWD', total: 210000, spent: 134500 },
-            { name: 'Women & Children', total: 100000, spent: 32000 },
-        ];
+        // Budget data — now driven by the database via PHP
+        const budgets = <?= json_encode(array_map(fn($p) => [
+            'name'  => $p['program_name'],
+            'total' => (float)$p['total'],
+            'spent' => (float)$p['spent'],
+        ], $programs)) ?>;
 
-        // Render budget rows
+        // Render budget rows (identical logic to the original)
         const budgetRows = document.getElementById('budgetRows');
         budgets.forEach(b => {
             const remaining = b.total - b.spent;
-            const pct = Math.round((b.spent / b.total) * 100);
+            const pct = b.total > 0 ? Math.round((b.spent / b.total) * 100) : 0;
             const barColor = remaining < b.total * 0.2 ? 'bg-red-400' : 'bg-navy-500';
             const textColor = remaining < b.total * 0.2 ? 'text-red-500' : 'text-navy-600';
 
