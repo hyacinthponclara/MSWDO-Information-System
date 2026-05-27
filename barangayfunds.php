@@ -2,6 +2,55 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker', 'Staff']);
 require 'db_connect.php';
+
+$barangay_id = (int)($_GET['barangay_id'] ?? 0);
+
+if ($barangay_id <= 0) {
+    header("Location: barangaylist.php");
+    exit;
+}
+
+$barangayDB = $pdo->prepare("SELECT barangay_id, barangay_name FROM BARANGAY WHERE barangay_id = ?");
+$barangayDB->execute([$barangay_id]);
+$barangay = $barangayDB->fetch(PDO::FETCH_ASSOC);
+
+if (!$barangay) {
+    header("Location: barangaylist.php");
+    exit;
+}
+
+$barangay_name = htmlspecialchars($barangay['barangay_name']);
+
+$programBudget = $pdo->prepare("
+    SELECT
+        p.program_id,
+        p.program_name,
+        p.prog_annual_budget,
+        COALESCE(SUM(a.av_amount), 0) AS total_spent
+    FROM PROGRAM p
+    LEFT JOIN AVAILMENT a
+        ON a.program_id = p.program_id
+        AND a.client_id IN (
+            SELECT client_id FROM CLIENT WHERE brgy_id = ?
+        )
+    GROUP BY p.program_id, p.program_name, p.prog_annual_budget
+    ORDER BY p.program_name ASC
+");
+$programBudget->execute([$barangay_id]);
+$programs = $programBudget->fetchAll(PDO::FETCH_ASSOC);
+
+$prog_spent = [];
+foreach ($programs as $prog) {
+    $prog_spent[$prog['program_name']] = [
+        'spent'  => (float)$prog['total_spent'],
+        'budget' => (float)$prog['prog_annual_budget'],
+    ];
+}
+
+$clientCount = $pdo->prepare("SELECT COUNT(*) FROM CLIENT WHERE brgy_id = ?");
+$clientCount->execute([$barangay_id]);
+$client_count = (int)$clientCount->fetchColumn();
+
 ?>
 
 <!DOCTYPE html>
@@ -58,11 +107,12 @@ require 'db_connect.php';
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
         <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
-                <a href="barangay.php" class="text-slate-400 hover:text-navy-600">Barangay List</a>
+                <a href="barangaylist.php" class="text-slate-400 hover:text-navy-600">Barangay List</a>
                 <span class="text-slate-300">/</span>
-                <a href="clientprofile.php?id=<?= $client_id ?>" class="text-slate-400 hover:text-navy-600">
-                    <?= $client_name ?>
+                <a href="barangayfunds.php?barangay_id=<?= $barangay_id ?>" class="text-slate-400 hover:text-navy-600">
+                    <?= $barangay_name ?>
                 </a>
+                <span class="text-slate-300">/</span>
                 <span class="text-navy-600 font-semibold">Select Program</span>
             </div>
         </header>
@@ -72,15 +122,16 @@ require 'db_connect.php';
                 <div class="animate-fade-up">
                     <h1 class="text-xl font-serif text-navy-600">Select a Program</h1>
                     <p class="text-[13px] text-slate-500 mt-1">
-                        Choose the program to begin a new fund request
-                        <span class="font-semibold text-navy-600"><?= $client_name ?></span>.
+                        Choose the program to begin a new fund request for
+                        <span class="font-semibold text-navy-600"><?= $barangay_name ?></span>
+                        &mdash; <?= number_format($client_count) ?> registered client<?= $client_count !== 1 ? 's' : '' ?>
                     </p>
                 </div>
 
                 <div class="animate-fade-up-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
 
                     <!-- 4Ps -->
-                    <a href="4ps.php?client_id=<?= $client_id ?>"
+                    <a href="funds_4ps.php?barangay_id=<?= $barangay_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
                             <i class="fas fa-home text-navy-600"></i>
@@ -90,7 +141,7 @@ require 'db_connect.php';
                     </a>
 
                     <!-- Day Care -->
-                    <a href="daycare.php?client_id=<?= $client_id ?>"
+                    <a href="funds_daycare.php?barangay_id=<?= $barangay_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
                             <i class="fas fa-school text-navy-600"></i>
@@ -100,7 +151,7 @@ require 'db_connect.php';
                     </a>
 
                     <!-- Senior Citizen -->
-                    <a href="senior.php?client_id=<?= $client_id ?>"
+                    <a href="funds_senior.php?barangay_id=<?= $barangay_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
                             <i class="fas fa-user-friends text-navy-600"></i>
@@ -110,7 +161,7 @@ require 'db_connect.php';
                     </a>
 
                     <!-- PWD -->
-                    <a href="pwd.php?client_id=<?= $client_id ?>"
+                    <a href="funds_pwd.php?barangay_id=<?= $barangay_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
                             <i class="fas fa-wheelchair text-navy-600"></i>
@@ -120,7 +171,7 @@ require 'db_connect.php';
                     </a>
 
                     <!-- Solo Parent -->
-                    <a href="solo_parent.php?client_id=<?= $client_id ?>"
+                    <a href="funds_soloparent.php?barangay_id=<?= $barangay_id ?>"
                         class="prog-card bg-white border-2 border-slate-200 hover:border-navy-600 rounded-2xl p-5 text-center">
                         <div class="card-icon w-14 h-14 mx-auto mb-3 rounded-xl bg-navy-50 flex items-center justify-center text-2xl">
                             <i class="fas fa-user text-navy-600"></i>
