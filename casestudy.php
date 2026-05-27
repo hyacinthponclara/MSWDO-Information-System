@@ -26,9 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $type_of_case_study = trim($_POST['type_of_case_study'] ?? '');
     $patient_name = trim($_POST['patient_name'] ?? '');
     $patient_relationship = trim($_POST['patient_relationship'] ?? '');
-    $combined_income = trim((float) $_POST['combined_income'] ?? '0');
-    $monthly_expenses = trim((float) $_POST['monthly_expenses'] ?? '0');
-    $emergency_fund_available = isset($_POST['emergency_fund_available']) ? 1 : 0;
+    $combined_income = (float) ($_POST['combined_income'] ?? 0);
+    $monthly_expenses = (float) ($_POST['monthly_expenses'] ?? 0);
+    $emergency_fund_available = isset($_POST['emergency_fund_available']) ? (int) $_POST['emergency_fund_available'] : 0;
     $crisis_severity = trim($_POST['crisis_severity'] ?? '') ?: null;
     $crisis_experienced = trim($_POST['crisis_experienced'] ?? '') ?: null;
     $problem_presented = trim($_POST['problem_presented'] ?? '');
@@ -37,9 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $recommendation = trim($_POST['recommendation'] ?? '') ?: null;
     $previous_dswd_assistance = isset($_POST['previous_dswd_assistance']) ? 1 : 0;
     $previous_assistance_details = trim($_POST['previous_assistance_details'] ?? '') ?: null;
-    $previous_assisstance_date = trim($_POST['previous_assistance_date'] ?? '') ?: null;
+    $previous_assistance_date = trim($_POST['previous_assistance_date'] ?? '') ?: null;
     $insurance_coverage = trim($_POST['insurance_coverage'] ?? '') ?: null;
-    $savings = trim((float) $_POST['savings'] ?? '0');
+    $savings = (float) ($_POST['savings'] ?? 0);
 
     $family_names = $_POST['family_names'] ?? [];
     $family_relationships = $_POST['family_relationships'] ?? [];
@@ -65,36 +65,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $family_composition_json = json_encode($family_members);
 
-    $stmt = $pdo->prepare("INSERT INTO CASE_STUDY (client_id, user_id, interview_date, type_of_case_study, patient_name, patient_relationship, family_composition_json, combined_income, monthly_expenses, emergency_fund_available, crisis_severity, crisis_experienced, problem_presented, home_condition, indigency_assessment, recommendation, previous_dswd_assistance, previous_assistance_details, previous_assistance_date, insurance_coverage, savings)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$client_id, $user_id, $interview_date, $type_of_case_study, $patient_name, $patient_relationship, $family_composition_json, $combined_income, $monthly_expenses, $emergency_fund_available, $crisis_severity, $crisis_experienced, $problem_presented, $home_condition, $indigency_assessment, $recommendation, $previous_dswd_assistance, $previous_assistance_details, $previous_assisstance_date, $insurance_coverage, $savings]);
+    $stmt = $pdo->prepare("
+        INSERT INTO CASE_STUDY (
+            client_id, user_id, interview_date, type_of_case_study,
+            patient_name, patient_relationship, family_composition_json,
+            combined_income, monthly_expenses, emergency_fund_available,
+            crisis_severity, crises_experienced, problem_presented,
+            home_condition, indigency_assessment, recommendation,
+            previous_dswd_assistance, previous_assistance_details,
+            previous_assistance_date, insurance_coverage, savings
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $stmt->execute([
+        $client_id,
+        $user_id,
+        $interview_date,
+        $type_of_case_study,
+        $patient_name,
+        $patient_relationship,
+        $family_composition_json,
+        $combined_income,
+        $monthly_expenses,
+        $emergency_fund_available,
+        $crisis_severity,
+        $crisis_experienced,
+        $problem_presented,
+        $home_condition,
+        $indigency_assessment,
+        $recommendation,
+        $previous_dswd_assistance,
+        $previous_assistance_details,
+        $previous_assistance_date,
+        $insurance_coverage,
+        $savings
+    ]);
 
-    header("Location: clientslist.php?id={$client_id}");
+    header("Location: clientprofile.php?id={$client_id}&saved=casestudy");
     exit;
-
 }
 
-
-$initials = strtoupper(
-    substr($client['cl_firstname'], 0, 1) . substr($client['cl_lastname'], 0, 1)
-);
-
-
 $full_name = htmlspecialchars(
-    $client['cl_firstname'] . ' ' . ($client['cl_middlename'] ? $client['cl_middlename'][0] . '. ' : '') . $client['cl_lastname']
+    $client['cl_firstname'] . ' ' .
+    ($client['cl_middlename'] ? $client['cl_middlename'][0] . '. ' : '') .
+    $client['cl_lastname']
 );
-
 
 $barangay = htmlspecialchars($client['barangay_name'] ?? 'Unknown Barangay');
 $age = $client['cl_age'] ?? '—';
 $sex = htmlspecialchars($client['cl_sex'] ?? '');
-$civilStat = htmlspecialchars($client['cl_civil_status'] ?? '');
+$civilStat = htmlspecialchars($client['cl_civilstatus'] ?? '');
 $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {$civilStat}";
 
+$client_income = (float) ($client['cl_monthly_income'] ?? 0);
 ?>
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -139,7 +162,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             font-family: 'DM Sans', sans-serif;
         }
 
-        /* Sidebar */
         .sidebar-item {
             transition: all .15s;
         }
@@ -155,7 +177,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             color: #fff;
         }
 
-        /* Fields */
         .field {
             display: block;
             width: 100%;
@@ -208,7 +229,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             min-height: 80px;
         }
 
-        /* Section card */
         .section-card {
             background: #fff;
             border-radius: 1rem;
@@ -244,12 +264,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             padding: 1.5rem;
         }
 
-        /* Step progress */
-        .step-dot {
-            transition: all .2s;
-        }
-
-        /* Indigency selector */
         .indig-opt {
             transition: all .18s;
             cursor: pointer;
@@ -295,7 +309,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             color: #475569;
         }
 
-        /* Crisis severity */
         .sev-opt {
             transition: all .18s;
             cursor: pointer;
@@ -315,7 +328,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             font-weight: 600;
         }
 
-        /* Checklist */
         .crisis-check {
             transition: all .15s;
             cursor: pointer;
@@ -335,7 +347,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             border-color: #94A3B8;
         }
 
-        /* Family table */
         .fam-input {
             width: 100%;
             border: none;
@@ -365,7 +376,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             outline: none;
         }
 
-        /* Upload zone */
         .upload-zone {
             border: 2px dashed #CBD5E1;
             border-radius: .875rem;
@@ -391,7 +401,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             display: none;
         }
 
-        /* Character counter */
         .char-counter {
             font-size: 10px;
             color: #94A3B8;
@@ -407,7 +416,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             color: #EF4444;
         }
 
-        /* Income/expense calculator */
         .calc-row {
             display: flex;
             align-items: center;
@@ -430,17 +438,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             width: 120px;
         }
 
-        /* PDF preview panel */
-        #pdfPreview {
-            display: none;
-        }
-
-        #pdfPreview.show {
-            display: block;
-            animation: fadeUp 0.3s ease both;
-        }
-
-        /* Print styles */
         @media print {
 
             aside,
@@ -451,16 +448,8 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                 display: none !important;
             }
 
-            .ml-56 {
+            .ml-64 {
                 margin-left: 0 !important;
-            }
-
-            #pdfPreview {
-                display: block !important;
-            }
-
-            #formArea {
-                display: none !important;
             }
 
             body {
@@ -493,7 +482,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
 
 <body class="bg-slate2 min-h-screen flex">
 
-    <?php include 'sidebar.php'; ?>
+    <?php require 'sidebar.php'; ?>
 
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
@@ -507,8 +496,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                 <span class="text-slate-300">/</span>
                 <span class="text-navy-600 font-semibold">Case Study</span>
             </div>
-            <div class="flex items-center gap-2 no-print">
-            </div>
         </header>
 
         <main class="flex-1 p-6">
@@ -520,6 +507,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
 
                 <form method="POST" action="casestudy.php?client_id=<?= $client_id ?>">
 
+                    <!-- Client banner -->
                     <div
                         class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-4 mb-5">
                         <div class="flex-1">
@@ -528,8 +516,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                         </div>
                     </div>
 
-                    <!-- name="interview_date"      = $_POST['interview_date']      -->
-                    <!-- name="type_of_case_study"  = $_POST['type_of_case_study']  -->
+                    <!--  Section 1: Interview Details  -->
                     <div class="section-card animate-fade-up-1">
                         <div class="section-head">
                             <div class="section-num">1</div>
@@ -562,7 +549,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                                 </div>
                             </div>
 
-                            <!-- if patient is different -->
+                            <!-- Patient toggle -->
                             <div
                                 class="mt-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between">
                                 <div>
@@ -582,8 +569,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                                 </label>
                             </div>
 
-                            <!-- name="patient_name"         = $_POST['patient_name']         -->
-                            <!-- name="patient_relationship" = $_POST['patient_relationship']  -->
                             <div id="patientInfoFields" class="hidden mt-4 grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="field-label">Patient Name</label>
@@ -598,6 +583,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                         </div>
                     </div>
 
+                    <!--  Section 2: Family Composition  -->
                     <div class="section-card animate-fade-up-2">
                         <div class="section-head">
                             <div class="section-num">2</div>
@@ -616,7 +602,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                                                 class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-6">
                                                 #</th>
                                             <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-30">
                                                 Name</th>
                                             <th
                                                 class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">
@@ -625,7 +611,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                                                 class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-17">
                                                 Age</th>
                                             <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-10">
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-20 ">
                                                 Sex</th>
                                             <th
                                                 class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">
@@ -643,51 +629,53 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                                         </tr>
                                     </thead>
                                     <tbody id="famBody">
-                                        <tr class="fam-row border-b border-slate-100">
+                                        <tr class="fam-row border-b border-slate-100 bg-navy-50/40">
                                             <td class="px-3 py-2 text-slate-400 font-medium">1</td>
                                             <td class="px-3 py-2">
-                                                <input class="fam-input" type="text" name="family_names[]"
-                                                    placeholder="Full name">
+                                                <input class="fam-input font-semibold text-navy-700" type="text"
+                                                    name="family_names[]"
+                                                    value="<?= htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_lastname']) ?>"
+                                                    readonly>
                                             </td>
                                             <td class="px-3 py-2">
-                                                <input class="fam-input" type="text" name="family_relationships[]"
-                                                    placeholder="e.g. Self, Child">
+                                                <input class="fam-input text-navy-500 italic" type="text"
+                                                    name="family_relationships[]" value="Client (Self)" readonly>
                                             </td>
                                             <td class="px-3 py-2">
                                                 <input class="fam-input" type="number" name="family_age[]"
-                                                    placeholder="Age" min="0">
+                                                    value="<?= $client['cl_age'] ?>" readonly>
                                             </td>
                                             <td class="px-3 py-2">
-                                                <select class="fam-select" name="family_sex[]">
-                                                    <option value="F">F</option>
-                                                    <option value="M">M</option>
+                                                <select class="fam-select" name="family_sex[]" disabled>
+                                                    <option value="<?= htmlspecialchars($client['cl_sex']) ?>" selected>
+                                                        <?= htmlspecialchars($client['cl_sex']) ?>
+                                                    </option>
                                                 </select>
                                             </td>
                                             <td class="px-3 py-2">
-                                                <select class="fam-select" name="family_civil_status[]">
-                                                    <option value="Single">Single</option>
-                                                    <option value="Married">Married</option>
-                                                    <option value="Widowed">Widowed</option>
-                                                    <option value="Separated">Separated</option>
+                                                <select class="fam-select" name="family_civil_status[]" disabled>
+                                                    <option value="<?= htmlspecialchars($client['cl_civilstatus']) ?>"
+                                                        selected>
+                                                        <?= htmlspecialchars($client['cl_civilstatus']) ?>
+                                                    </option>
                                                 </select>
                                             </td>
                                             <td class="px-3 py-2">
                                                 <input class="fam-input" type="text" name="family_education[]"
-                                                    placeholder="High School">
+                                                    value="<?= htmlspecialchars($client['cl_educ_attain'] ?? '') ?>"
+                                                    readonly>
                                             </td>
                                             <td class="px-3 py-2">
                                                 <input class="fam-input" type="text" name="family_occupation[]"
-                                                    placeholder="Occupation">
+                                                    value="<?= htmlspecialchars($client['cl_occupation'] ?? '') ?>"
+                                                    readonly>
                                             </td>
                                             <td class="px-3 py-2">
-                                                <input class="fam-input" type="number" name="family_income[]"
-                                                    placeholder="0" oninput="income()">
+                                                <!-- Client income — readonly; income() picks this up automatically -->
+                                                <input class="fam-input font-medium text-navy-700" type="number"
+                                                    name="family_income[]" value="<?= $client_income ?>" readonly>
                                             </td>
-                                            <td class="px-3 py-2 text-center">
-                                                <button type="button"
-                                                    onclick="this.closest('tr').remove();renumber();income()"
-                                                    class="text-slate-300 hover:text-red-400 transition-colors">✕</button>
-                                            </td>
+                                            <td class="px-3 py-2 text-center text-slate-300 text-[10px]">locked</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -704,11 +692,13 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                                 </div>
                             </div>
 
+                            <!-- Hidden fields submitted to DB -->
                             <input type="hidden" name="combined_income" id="hiddenIncome" value="0">
                             <input type="hidden" name="monthly_expenses" id="hiddenExpenses" value="0">
                         </div>
                     </div>
 
+                    <!--  Section 3: Income & Financial Resources  -->
                     <div class="section-card animate-fade-up-3">
                         <div class="section-head">
                             <div class="section-num">3</div>
@@ -767,7 +757,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
 
                                     <div class="mt-4 space-y-3">
                                         <div>
-                                            <!-- name="insurance_coverage" = $_POST['insurance_coverage'] -->
                                             <label class="field-label">Insurance / PhilHealth / SSS / GSIS</label>
                                             <input type="text" class="field" name="insurance_coverage"
                                                 placeholder="e.g. PhilHealth only, None">
@@ -777,7 +766,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                                             <div class="relative">
                                                 <span
                                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[12px]">₱</span>
-                                                <!-- name="savings" = $_POST['savings'] -->
                                                 <input type="number" class="field pl-6" name="savings" placeholder="0">
                                             </div>
                                         </div>
@@ -800,13 +788,13 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                                 </div>
 
                                 <!-- Expenses side -->
-                                <div>
+                                <div class="expense-group">
                                     <p class="text-[11px] font-bold uppercase tracking-wider text-red-500 mb-3">Monthly
                                         Expenses</p>
                                     <div>
                                         <div class="calc-row">
                                             <span class="calc-label">Utilities (electric, water)</span>
-                                            <div class="relative calc-input">
+                                            <div class="relative calc-input">   
                                                 <span
                                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[12px]">₱</span>
                                                 <input type="number" class="field pl-6 text-[12px] py-2" placeholder="0"
@@ -853,7 +841,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                                 </div>
                             </div>
 
-                            <!-- Net summary display -->
+                            <!-- Net summary -->
                             <div class="mt-5 grid grid-cols-3 gap-3">
                                 <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-center">
                                     <p class="text-[10px] uppercase tracking-wide text-emerald-600 font-semibold mb-1">
@@ -874,6 +862,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                         </div>
                     </div>
 
+                    <!--  Section 4: Crisis Assessment  -->
                     <div class="section-card animate-fade-up-4">
                         <div class="section-head">
                             <div class="section-num">4</div>
@@ -884,9 +873,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                             </div>
                         </div>
                         <div class="section-body space-y-5">
-
                             <input type="hidden" name="crisis_severity" id="severityValue" value="">
-
                             <div>
                                 <label class="field-label req">Severity of Crisis</label>
                                 <div class="grid grid-cols-4 gap-3 mt-2" id="sevSelector">
@@ -969,8 +956,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                         </div>
                     </div>
 
-                    <!-- name="problem_presented" - $_POST['problem_presented'] -->
-                    <!-- name="home_condition"    - $_POST['home_condition']    -->
+                    <!--  Section 5: Problem Presented & Home Condition  -->
                     <div class="section-card animate-fade-up-5">
                         <div class="section-head">
                             <div class="section-num">5</div>
@@ -998,7 +984,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                         </div>
                     </div>
 
-                    <!-- 'Indigent' 'Near Poor' 'Not Indigent' 'Not Assessed' -->
+                    <!--  Section 6: Indigency Assessment  -->
                     <div class="section-card animate-fade-up-6">
                         <div class="section-head">
                             <div class="section-num">6</div>
@@ -1009,7 +995,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                         </div>
                         <div class="section-body">
                             <input type="hidden" name="indigency_assessment" id="indigValue" value="">
-
                             <div class="grid grid-cols-4 gap-3" id="indigSelector">
                                 <div onclick="setIndig(this,'Indigent','sel-indigent')"
                                     class="indig-opt border-2 border-slate-200 rounded-2xl p-4 text-center">
@@ -1035,6 +1020,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                         </div>
                     </div>
 
+                    <!--  Section 7: Previous DSWD Assistance  -->
                     <div class="section-card animate-fade-up-6">
                         <div class="section-head">
                             <div class="section-num">7</div>
@@ -1054,13 +1040,11 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                             </div>
                             <div id="prevDSWDFields" class="hidden grid grid-cols-2 gap-4">
                                 <div class="col-span-2">
-                                    <!-- name="previous_assistance_details" - $_POST['previous_assistance_details'] -->
                                     <label class="field-label">Details of Previous Assistance</label>
                                     <textarea class="field" rows="2" name="previous_assistance_details"
                                         placeholder="Type of assistance, amount, program..."></textarea>
                                 </div>
                                 <div>
-                                    <!-- name="previous_assistance_date" - $_POST['previous_assistance_date'] -->
                                     <label class="field-label">Date of Previous Assistance</label>
                                     <input type="date" class="field" name="previous_assistance_date">
                                 </div>
@@ -1068,7 +1052,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                         </div>
                     </div>
 
-                    <!-- name="recommendation" - $_POST['recommendation'] -->
+                    <!--  Section 8: Evaluation & Recommendation  -->
                     <div class="section-card animate-fade-up-7">
                         <div class="section-head">
                             <div class="section-num">8</div>
@@ -1104,6 +1088,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                         </div>
                     </div>
 
+                    <!-- Submit -->
                     <div class="flex items-center justify-end gap-3 mt-2 no-print">
                         <a href="clientprofile.php?id=<?= $client_id ?>"
                             class="text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">
@@ -1116,7 +1101,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
                     </div>
 
                 </form>
-
             </div>
         </main>
 
@@ -1126,7 +1110,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
         </footer>
     </div>
 
-    <!-- notification  -->
+    <!-- Toast -->
     <div id="toast"
         class="fixed bottom-6 right-6 bg-navy-600 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
         <span class="text-emerald-400 text-base">✓</span>
@@ -1145,7 +1129,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             document.getElementById('patientInfoFields').classList.toggle('hidden', !patientOn);
         }
 
-
+        //  Crisis severity selector 
         function setSev(el, enumValue) {
             document.querySelectorAll('#sevSelector .sev-opt').forEach(e => {
                 e.className = 'sev-opt border-2 border-slate-200 rounded-xl p-3 text-center';
@@ -1156,7 +1140,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             document.getElementById('severityValue').value = enumValue;
         }
 
-
+        //  Indigency selector 
         function setIndig(el, enumValue, cssClass) {
             document.querySelectorAll('#indigSelector .indig-opt').forEach(e => {
                 e.className = 'indig-opt border-2 border-slate-200 rounded-2xl p-4 text-center';
@@ -1166,49 +1150,50 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             document.getElementById('indigValue').value = enumValue;
         }
 
-
+        //  Crisis checkboxes 
         function updateCrisis() {
             const checked = document.querySelectorAll('.crisis-check input:checked');
             const values = Array.from(checked).map(cb => cb.value).join(', ');
             document.getElementById('crisisValue').value = values;
         }
 
+        //  Family composition table 
+        let famCount = 1; // row 1 is the locked client row
 
-        let famCount = 1;
         function addFamRow() {
             famCount++;
             const tr = document.createElement('tr');
             tr.className = 'fam-row border-b border-slate-100';
             tr.innerHTML = `
-        <td class="px-3 py-2 text-slate-400 font-medium">${famCount}</td>
-        <td class="px-3 py-2"><input class="fam-input" type="text" name="family_names[]" placeholder="Full name"></td>
-        <td class="px-3 py-2"><input class="fam-input" type="text" name="family_relationships[]" placeholder="e.g. Child"></td>
-        <td class="px-3 py-2"><input class="fam-input" type="number" name="family_age[]" placeholder="Age" min="0"></td>
-        <td class="px-3 py-2"><select class="fam-select" name="family_sex[]"><option value="F">F</option><option value="M">M</option></select></td>
-        <td class="px-3 py-2"><select class="fam-select" name="family_civil_status[]"><option value="Single">Single</option><option value="Married">Married</option><option value="Widowed">Widowed</option><option value="Separated">Separated</option></select></td>
-        <td class="px-3 py-2"><input class="fam-input" type="text" name="family_education[]" placeholder="Education"></td>
-        <td class="px-3 py-2"><input class="fam-input" type="text" name="family_occupation[]" placeholder="Occupation"></td>
-        <td class="px-3 py-2"><input class="fam-input font-medium text-slate-700" type="number" name="family_income[]" placeholder="0" oninput="income()"></td>
-        <td class="px-3 py-2 text-center"><button type="button" onclick="this.closest('tr').remove();renumber();income()" class="text-slate-300 hover:text-red-400 transition-colors">✕</button></td>
-    `;
+            <td class="px-3 py-2 text-slate-400 font-medium">${famCount}</td>
+            <td class="px-3 py-2"><input class="fam-input" type="text"   name="family_names[]"        placeholder="Full name"></td>
+            <td class="px-3 py-2"><input class="fam-input" type="text"   name="family_relationships[]" placeholder="e.g. Child"></td>
+            <td class="px-3 py-2"><input class="fam-input" type="number" name="family_age[]"           placeholder="Age" min="0"></td>
+            <td class="px-3 py-2">
+                <select class="fam-select" name="family_sex[]">
+                    <option value="F">F</option>
+                    <option value="M">M</option>
+                </select>
+            </td>
+            <td class="px-3 py-2">
+                <select class="fam-select" name="family_civil_status[]">
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Widowed">Widowed</option>
+                    <option value="Separated">Separated</option>
+                </select>
+            </td>
+            <td class="px-3 py-2"><input class="fam-input" type="text"   name="family_education[]"  placeholder="Education"></td>
+            <td class="px-3 py-2"><input class="fam-input" type="text"   name="family_occupation[]" placeholder="Occupation"></td>
+            <td class="px-3 py-2"><input class="fam-input font-medium text-slate-700" type="number" name="family_income[]" placeholder="0" oninput="income()"></td>
+            <td class="px-3 py-2 text-center">
+                <button type="button" onclick="this.closest('tr').remove(); renumber(); income();"
+                    class="text-slate-300 hover:text-red-400 transition-colors">✕</button>
+            </td>
+        `;
             document.getElementById('famBody').appendChild(tr);
         }
 
-        function income() {
-            let total = 0;
-            document.querySelectorAll('#famBody input[name="family_income[]"]').forEach(inp => {
-                total += parseFloat(inp.value) || 0;
-            });
-
-            document.getElementById('totalIncome').textContent = '₱' + total.toLocaleString();
-
-            const sec3Input = document.getElementById('sec3CombinedIncome');
-            if (sec3Input) {
-                sec3Input.value = total;
-            }
-
-            calcNet();
-        }
         function renumber() {
             document.querySelectorAll('#famBody tr').forEach((tr, i) => {
                 tr.querySelector('td').textContent = i + 1;
@@ -1219,7 +1204,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
         function income() {
             let total = 0;
             document.querySelectorAll('#famBody input[type=number]').forEach(inp => {
-                if (inp.name === "family_income[]") {
+                if (inp.name === 'family_income[]') {
                     total += parseFloat(inp.value) || 0;
                 }
             });
@@ -1227,20 +1212,19 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             document.getElementById('totalIncome').textContent = '₱' + total.toLocaleString();
 
             const sec3Input = document.getElementById('sec3CombinedIncome');
-            if (sec3Input) {
-                sec3Input.value = total;
-            }
+            if (sec3Input) sec3Input.value = total;
+
             calcNet();
         }
 
+        // totals income & expense ledger, updates summary cards 
         function calcNet() {
-            const allInputs = document.querySelectorAll('.ledger-group input[type=number]');
-            let inc = 0, exp = 0;
+            const incomeInputs = document.querySelectorAll('.ledger-group .calc-row input[type=number]');
+            const expenseInputs = document.querySelectorAll('.expense-group .calc-row input[type=number]');
 
-            allInputs.forEach((inp, i) => {
-                const val = parseFloat(inp.value) || 0;
-                if (i < 4) inc += val; else exp += val;
-            });
+            let inc = 0, exp = 0;
+            incomeInputs.forEach(inp => inc += parseFloat(inp.value) || 0);
+            expenseInputs.forEach(inp => exp += parseFloat(inp.value) || 0);
 
             document.getElementById('totalIncomeSum').textContent = '₱' + inc.toLocaleString();
             document.getElementById('totalExpenses').textContent = '₱' + exp.toLocaleString();
@@ -1253,7 +1237,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             document.getElementById('hiddenIncome').value = inc;
             document.getElementById('hiddenExpenses').value = exp;
         }
-
+        //  Character counters 
         function countChars(id, countId, max) {
             const len = document.getElementById(id).value.length;
             const el = document.getElementById(countId);
@@ -1261,12 +1245,11 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             el.className = `char-counter ${len > max * .9 ? 'limit' : len > max * .75 ? 'warn' : ''}`;
         }
 
-
+        //  Previous DSWD toggle 
         function togglePrevDSWD() {
             const checked = document.getElementById('prevDSWD').checked;
             document.getElementById('prevDSWDFields').classList.toggle('hidden', !checked);
         }
-
 
         //  Recommendation templates 
         const templates = {
@@ -1281,8 +1264,6 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             countChars('recoText', 'recoCount', 1200);
         }
 
-
-        //  Toast notification 
         function showToast(msg) {
             document.getElementById('toastMsg').textContent = msg;
             const t = document.getElementById('toast');
@@ -1294,6 +1275,7 @@ $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {
             }, 3000);
         }
 
+        window.addEventListener('DOMContentLoaded', () => income());
     </script>
 </body>
 

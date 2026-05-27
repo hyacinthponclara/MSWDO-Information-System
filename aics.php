@@ -302,6 +302,7 @@ $year_left  = max(0, 4 - $y_count);
 
 // Validation errors from POST (if any)
 $post_errors = $errors ?? [];
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
