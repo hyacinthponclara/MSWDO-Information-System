@@ -17,7 +17,7 @@ $client = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$client) {
     header("Location: clientslist.php");
     exit;
-}
+}                                                                       
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_id = $_SESSION['user_id'];
@@ -534,7 +534,8 @@ $client_income = (float) ($client['cl_monthly_income'] ?? 0);
                                 </div>
                                 <div>
                                     <label class="field-label req">Type of Case Study</label>
-                                    <select class="field" name="type_of_case_study" required>
+                                    <select class="field" name="type_of_case_study" required
+                                        onchange="applyCaseStudyTemplate(this.value)">
                                         <option value="">Select type</option>
                                         <option value="Medical">Medical</option>
                                         <option value="Financial">Financial</option>
@@ -1064,21 +1065,6 @@ $client_income = (float) ($client['cl_monthly_income'] ?? 0);
                         </div>
                         <div class="section-body space-y-4">
                             <div>
-                                <label class="field-label">Quick Templates</label>
-                                <div class="flex flex-wrap gap-2 mt-1">
-                                    <button type="button" onclick="fillTemplate('medical')"
-                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">Medical</button>
-                                    <button type="button" onclick="fillTemplate('financial')"
-                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">Financial</button>
-                                    <button type="button" onclick="fillTemplate('educational')"
-                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">Educational</button>
-                                    <button type="button" onclick="fillTemplate('burial')"
-                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">Burial</button>
-                                    <button type="button" onclick="fillTemplate('livelihood')"
-                                        class="text-[11px] border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 hover:border-navy-400 hover:text-navy-600 hover:bg-navy-50 transition-all">Livelihood</button>
-                                </div>
-                            </div>
-                            <div>
                                 <label class="field-label req">Recommendation</label>
                                 <textarea class="field" rows="5" name="recommendation" id="recoText" maxlength="1200"
                                     oninput="countChars('recoText','recoCount',1200)"
@@ -1253,14 +1239,26 @@ $client_income = (float) ($client['cl_monthly_income'] ?? 0);
 
         //  Recommendation templates 
         const templates = {
-            medical: 'Based on the conducted case study and assessment, the client is classified as INDIGENT under the DOH/DSWD Assessment Tool. It is therefore respectfully recommended that the client be granted AICS Medical Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to help defray the cost of ongoing medical treatment.',
-            financial: 'Based on the conducted case study, the client is classified as INDIGENT. It is respectfully recommended that the client be provided Financial Assistance amounting to [AMOUNT IN WORDS] (₱____.__) to address the immediate financial crisis of the household.',
-            educational: "Based on the case study conducted, the client is classified as INDIGENT. It is recommended that the client's dependent be granted AICS Educational Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to cover school fees for the school year.",
-            burial: 'Based on the conducted case study, the bereaved family is classified as INDIGENT. It is respectfully recommended that the client be granted AICS Burial Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to help defray funeral and burial expenses.',
-            livelihood: 'Based on the case study, the client is classified as INDIGENT. It is recommended that the client be granted AICS Livelihood Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) as seed capital for the proposed [business type].',
+            Medical: 'Based on the conducted case study and assessment, the client is classified as INDIGENT under the DOH/DSWD Assessment Tool. It is therefore respectfully recommended that the client be granted AICS Medical Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to help defray the cost of ongoing medical treatment.',
+            Financial: 'Based on the conducted case study, the client is classified as INDIGENT. It is respectfully recommended that the client be provided Financial Assistance amounting to [AMOUNT IN WORDS] (₱____.__) to address the immediate financial crisis of the household.',
+            Educational: "Based on the case study conducted, the client is classified as INDIGENT. It is recommended that the client's dependent be granted AICS Educational Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to cover school fees for the school year.",
+            Burial: 'Based on the conducted case study, the bereaved family is classified as INDIGENT. It is respectfully recommended that the client be granted AICS Burial Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to help defray funeral and burial expenses.',
+            Livelihood: 'Based on the case study, the client is classified as INDIGENT. It is recommended that the client be granted AICS Livelihood Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) as seed capital for the proposed [business type].',
+            PWD: 'Based on the conducted case study, the client is classified as INDIGENT. It is respectfully recommended that the client, a person with disability, be granted appropriate AICS Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to address identified needs.',
+            'Senior Citizen': 'Based on the conducted case study, the client is classified as INDIGENT. It is respectfully recommended that the client, a senior citizen, be granted appropriate AICS Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to address identified needs.',
+            'Solo Parent': 'Based on the conducted case study, the client is classified as INDIGENT. It is respectfully recommended that the client, a solo parent, be granted appropriate AICS Assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to address the needs of the household.',
+            Others: 'Based on the conducted case study and assessment, the client is classified as INDIGENT. It is respectfully recommended that the client be granted appropriate assistance in the amount of [AMOUNT IN WORDS] (₱____.__) to address identified needs.',
         };
-        function fillTemplate(type) {
-            document.getElementById('recoText').value = templates[type];
+        function applyCaseStudyTemplate(type) {
+            const template = templates[type];
+            if (!template) return;
+            const textarea = document.getElementById('recoText');
+            if (textarea.value.trim() && textarea.value !== template) {
+                if (!confirm('Replace the current Recommendation text with the ' + type + ' template?')) {
+                    return;
+                }
+            }
+            textarea.value = template;
             countChars('recoText', 'recoCount', 1200);
         }
 
