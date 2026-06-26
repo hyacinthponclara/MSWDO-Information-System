@@ -41,29 +41,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $insurance_coverage = trim($_POST['insurance_coverage'] ?? '') ?: null;
     $savings = (float) ($_POST['savings'] ?? 0);
 
-    $family_names = $_POST['family_names'] ?? [];
-    $family_relationships = $_POST['family_relationships'] ?? [];
-    $family_age = $_POST['family_age'] ?? [];
-    $family_sex = $_POST['family_sex'] ?? [];
-    $family_civil_status = $_POST['family_civil_status'] ?? [];
-    $family_education = $_POST['family_education'] ?? [];
-    $family_occupation = $_POST['family_occupation'] ?? [];
-    $family_income = $_POST['family_income'] ?? [];
+    $famStmt2 = $pdo->prepare("
+        SELECT family_composition_json FROM CASE_STUDY
+        WHERE client_id = ? AND problem_presented = 'Initial registration'
+        ORDER BY created_at ASC LIMIT 1
+    ");
+    $famStmt2->execute([$client_id]);
+    $famRow2 = $famStmt2->fetch(PDO::FETCH_ASSOC);
+    $regFamily2 = ($famRow2 && !empty($famRow2['family_composition_json']))
+        ? (json_decode($famRow2['family_composition_json'], true) ?? [])
+        : [];
 
-    $family_members = [];
-    foreach ($family_names as $f => $family) {
-        $family_members[] = [
-            'name' => trim($family),
-            'relationship' => trim($family_relationships[$f] ?? ''),
-            'age' => (int) ($family_age[$f] ?? 0),
-            'sex' => trim($family_sex[$f] ?? ''),
-            'civil_status' => trim($family_civil_status[$f] ?? ''),
-            'education' => trim($family_education[$f] ?? ''),
-            'occupation' => trim($family_occupation[$f] ?? ''),
-            'income' => (float) ($family_income[$f] ?? 0),
-        ];
-    }
-    $family_composition_json = json_encode($family_members);
+    // the client as row 1
+    $clientRow = [
+        'name'         => trim($client['cl_firstname'] . ' ' . $client['cl_lastname']),
+        'relationship' => 'Client (Self)',
+        'age'          => $client['cl_age'],
+        'sex'          => $client['cl_sex'],
+        'civil_status' => $client['cl_civilstatus'],
+        'education'    => $client['cl_educ_attain'] ?? '',
+        'occupation'   => $client['cl_occupation'] ?? '',
+        'income'       => (float) ($client['cl_monthly_income'] ?? 0),
+    ];
+    $family_composition_json = json_encode(array_merge([$clientRow], $regFamily2));
 
     $stmt = $pdo->prepare("
         INSERT INTO CASE_STUDY (
@@ -117,6 +117,21 @@ $civilStat = htmlspecialchars($client['cl_civilstatus'] ?? '');
 $subtitle = "ID-{$client['client_id']} · {$barangay} · {$age} yrs, {$sex} · {$civilStat}";
 
 $client_income = (float) ($client['cl_monthly_income'] ?? 0);
+
+$famStmt = $pdo->prepare("
+    SELECT family_composition_json
+    FROM CASE_STUDY
+    WHERE client_id = ?
+      AND problem_presented = 'Initial registration'
+    ORDER BY created_at ASC
+    LIMIT 1
+");
+$famStmt->execute([$client_id]);
+$famRow = $famStmt->fetch(PDO::FETCH_ASSOC);
+$registrationFamily = [];
+if ($famRow && !empty($famRow['family_composition_json'])) {
+    $registrationFamily = json_decode($famRow['family_composition_json'], true) ?? [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -599,102 +614,64 @@ $client_income = (float) ($client['cl_monthly_income'] ?? 0);
                                 <table class="w-full text-[11px]">
                                     <thead>
                                         <tr class="bg-slate-50 border-b border-slate-200">
-                                            <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-6">
-                                                #</th>
-                                            <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-30">
-                                                Name</th>
-                                            <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">
-                                                Relationship</th>
-                                            <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-17">
-                                                Age</th>
-                                            <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-20 ">
-                                                Sex</th>
-                                            <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">
-                                                Civil Status</th>
-                                            <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">
-                                                Education</th>
-                                            <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                                                Occupation</th>
-                                            <th
-                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">
-                                                Income/mo (₱)</th>
-                                            <th class="w-8"></th>
+                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-6">#</th>
+                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Name</th>
+                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-28">Relationship</th>
+                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-14">Age</th>
+                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-16">Sex</th>
+                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">Civil Status</th>
+                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">Education</th>
+                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Occupation</th>
+                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">Income/mo (₱)</th>
                                         </tr>
                                     </thead>
                                     <tbody id="famBody">
+                                        <!-- Row 1: the client (always locked) -->
                                         <tr class="fam-row border-b border-slate-100 bg-navy-50/40">
                                             <td class="px-3 py-2 text-slate-400 font-medium">1</td>
-                                            <td class="px-3 py-2">
-                                                <input class="fam-input font-semibold text-navy-700" type="text"
-                                                    name="family_names[]"
-                                                    value="<?= htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_lastname']) ?>"
-                                                    readonly>
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <input class="fam-input text-navy-500 italic" type="text"
-                                                    name="family_relationships[]" value="Client (Self)" readonly>
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <input class="fam-input" type="number" name="family_age[]"
-                                                    value="<?= $client['cl_age'] ?>" readonly>
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <select class="fam-select" name="family_sex[]" disabled>
-                                                    <option value="<?= htmlspecialchars($client['cl_sex']) ?>" selected>
-                                                        <?= htmlspecialchars($client['cl_sex']) ?>
-                                                    </option>
-                                                </select>
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <select class="fam-select" name="family_civil_status[]" disabled>
-                                                    <option value="<?= htmlspecialchars($client['cl_civilstatus']) ?>"
-                                                        selected>
-                                                        <?= htmlspecialchars($client['cl_civilstatus']) ?>
-                                                    </option>
-                                                </select>
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <input class="fam-input" type="text" name="family_education[]"
-                                                    value="<?= htmlspecialchars($client['cl_educ_attain'] ?? '') ?>"
-                                                    readonly>
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <input class="fam-input" type="text" name="family_occupation[]"
-                                                    value="<?= htmlspecialchars($client['cl_occupation'] ?? '') ?>"
-                                                    readonly>
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                <!-- Client income — readonly; income() picks this up automatically -->
-                                                <input class="fam-input font-medium text-navy-700" type="number"
-                                                    name="family_income[]" value="<?= $client_income ?>" readonly>
-                                            </td>
-                                            <td class="px-3 py-2 text-center text-slate-300 text-[10px]">locked</td>
+                                            <td class="px-3 py-2 font-semibold text-navy-700"><?= htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_lastname']) ?></td>
+                                            <td class="px-3 py-2 text-navy-500 italic">Client (Self)</td>
+                                            <td class="px-3 py-2"><?= htmlspecialchars($client['cl_age'] ?? '—') ?></td>
+                                            <td class="px-3 py-2"><?= htmlspecialchars($client['cl_sex'] ?? '—') ?></td>
+                                            <td class="px-3 py-2"><?= htmlspecialchars($client['cl_civilstatus'] ?? '—') ?></td>
+                                            <td class="px-3 py-2"><?= htmlspecialchars($client['cl_educ_attain'] ?? '—') ?></td>
+                                            <td class="px-3 py-2"><?= htmlspecialchars($client['cl_occupation'] ?? '—') ?></td>
+                                            <td class="px-3 py-2 font-medium text-navy-700">₱<?= number_format($client_income, 2) ?></td>
                                         </tr>
+                                        <!-- Registered family members — view only -->
+                                        <?php if (empty($registrationFamily)): ?>
+                                        <tr>
+                                            <td colspan="9" class="px-3 py-4 text-center text-[11px] text-slate-400 italic">
+                                                No family members were added during registration.
+                                            </td>
+                                        </tr>
+                                        <?php else: ?>
+                                        <?php foreach ($registrationFamily as $i => $member): ?>
+                                        <tr class="fam-row border-b border-slate-100">
+                                            <td class="px-3 py-2 text-slate-400 font-medium"><?= $i + 2 ?></td>
+                                            <td class="px-3 py-2"><?= htmlspecialchars($member['name'] ?? '—') ?></td>
+                                            <td class="px-3 py-2 text-slate-500"><?= htmlspecialchars($member['relation'] ?? $member['relationship'] ?? '—') ?></td>
+                                            <td class="px-3 py-2"><?= htmlspecialchars($member['age'] ?? '—') ?></td>
+                                            <td class="px-3 py-2">—</td>
+                                            <td class="px-3 py-2">—</td>
+                                            <td class="px-3 py-2">—</td>
+                                            <td class="px-3 py-2"><?= htmlspecialchars($member['occupation'] ?? '—') ?></td>
+                                            <td class="px-3 py-2 font-medium">₱<?= number_format((float)($member['income'] ?? 0), 2) ?></td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </tbody>
                                 </table>
                             </div>
 
-                            <div class="flex items-center justify-between">
-                                <button type="button" onclick="addFamRow()"
-                                    class="text-[12px] font-medium text-navy-600 border-2 border-dashed border-navy-200 rounded-xl px-4 py-2 hover:border-navy-400 hover:bg-navy-50 transition-all">
-                                    + Add Family Member
-                                </button>
-                                <div class="flex items-center gap-4 text-[12px]">
-                                    <span class="text-slate-400">Combined monthly income:</span>
-                                    <span id="totalIncome" class="font-bold text-navy-600 text-[14px]">₱0</span>
-                                </div>
+                            <!-- Combined income display -->
+                            <div class="flex items-center justify-end mt-3 gap-4 text-[12px]">
+                                <span class="text-slate-400">Combined monthly income:</span>
+                                <span id="totalIncome" class="font-bold text-navy-600 text-[14px]">₱<?= number_format($client_income, 2) ?></span>
                             </div>
 
                             <!-- Hidden fields submitted to DB -->
-                            <input type="hidden" name="combined_income" id="hiddenIncome" value="0">
+                            <input type="hidden" name="combined_income" id="hiddenIncome" value="<?= $client_income ?>">
                             <input type="hidden" name="monthly_expenses" id="hiddenExpenses" value="0">
                         </div>
                     </div>
@@ -1143,63 +1120,11 @@ $client_income = (float) ($client['cl_monthly_income'] ?? 0);
             document.getElementById('crisisValue').value = values;
         }
 
-        //  Family composition table 
-        let famCount = 1; // row 1 is the locked client row
-
-        function addFamRow() {
-            famCount++;
-            const tr = document.createElement('tr');
-            tr.className = 'fam-row border-b border-slate-100';
-            tr.innerHTML = `
-            <td class="px-3 py-2 text-slate-400 font-medium">${famCount}</td>
-            <td class="px-3 py-2"><input class="fam-input" type="text"   name="family_names[]"        placeholder="Full name"></td>
-            <td class="px-3 py-2"><input class="fam-input" type="text"   name="family_relationships[]" placeholder="e.g. Child"></td>
-            <td class="px-3 py-2"><input class="fam-input" type="number" name="family_age[]"           placeholder="Age" min="0"></td>
-            <td class="px-3 py-2">
-                <select class="fam-select" name="family_sex[]">
-                    <option value="F">F</option>
-                    <option value="M">M</option>
-                </select>
-            </td>
-            <td class="px-3 py-2">
-                <select class="fam-select" name="family_civil_status[]">
-                    <option value="Single">Single</option>
-                    <option value="Married">Married</option>
-                    <option value="Widowed">Widowed</option>
-                    <option value="Separated">Separated</option>
-                </select>
-            </td>
-            <td class="px-3 py-2"><input class="fam-input" type="text"   name="family_education[]"  placeholder="Education"></td>
-            <td class="px-3 py-2"><input class="fam-input" type="text"   name="family_occupation[]" placeholder="Occupation"></td>
-            <td class="px-3 py-2"><input class="fam-input font-medium text-slate-700" type="number" name="family_income[]" placeholder="0" oninput="income()"></td>
-            <td class="px-3 py-2 text-center">
-                <button type="button" onclick="this.closest('tr').remove(); renumber(); income();"
-                    class="text-slate-300 hover:text-red-400 transition-colors">✕</button>
-            </td>
-        `;
-            document.getElementById('famBody').appendChild(tr);
-        }
-
-        function renumber() {
-            document.querySelectorAll('#famBody tr').forEach((tr, i) => {
-                tr.querySelector('td').textContent = i + 1;
-            });
-            famCount = document.querySelectorAll('#famBody tr').length;
-        }
-
+        //  Seed Section 3 combined income field from client income on load 
         function income() {
-            let total = 0;
-            document.querySelectorAll('#famBody input[type=number]').forEach(inp => {
-                if (inp.name === 'family_income[]') {
-                    total += parseFloat(inp.value) || 0;
-                }
-            });
-
-            document.getElementById('totalIncome').textContent = '₱' + total.toLocaleString();
-
+            const clientIncome = <?= $client_income ?>;
             const sec3Input = document.getElementById('sec3CombinedIncome');
-            if (sec3Input) sec3Input.value = total;
-
+            if (sec3Input) sec3Input.value = clientIncome;
             calcNet();
         }
 
