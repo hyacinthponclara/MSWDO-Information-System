@@ -38,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($cl_civilstatus)) $errors[] = 'Civil status is required.';
     if ($brgy_id === 0)         $errors[] = 'Barangay is required.';
 
-    if (!empty($cl_contact_num) && !preg_match('/^09\d{9}$/', $cl_contact_num)) {
-        $errors[] = 'Contact number must be in 09XXXXXXXXX format.';
+    if (!empty($cl_contact_num) && !preg_match('/^(\+?63|0)9\d{9}$/', $cl_contact_num)) {
+        $errors[] = 'Contact number must be a valid format (e.g., 09XX, 639XX, or +639XX).';
     }
 
     if (empty($errors)) {
@@ -403,11 +403,11 @@ try {
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="field-label">Contact Number</label>
-                  <input type="text" name="cl_contact_num"
-                    class="field <?= in_array('Contact number must be in 09XXXXXXXXX format.', $errors) ? 'is-error' : '' ?>"
+                  <input type="text" name="cl_contact_num" maxlength="13" minlength="11"
+                    class="field <?= in_array('Contact number must be a valid format (e.g., 09XX, 639XX, or +639XX).', $errors) ? 'is-error' : '' ?>"
                     placeholder="09XX-XXX-XXXX"
                     value="<?= htmlspecialchars($_POST['cl_contact_num'] ?? '') ?>">
-                  <p class="text-[10px] text-slate-400 mt-1">Format: 09XXXXXXXXX</p>
+                  <p class="text-[10px] text-slate-400 mt-1">Format: Accepts 09XX, 639XX, or +639XX</p>
                 </div>
               </div>
 
