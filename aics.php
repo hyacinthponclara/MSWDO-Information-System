@@ -4,7 +4,7 @@ requireRole(['Admin', 'Social Worker', 'Staff']);
 require 'db_connect.php';
 
 
-$client_id = (int)($_GET['client_id'] ?? 0);
+$client_id = (int) ($_GET['client_id'] ?? 0);
 if ($client_id <= 0) {
     header("Location: clientslist.php");
     exit;
@@ -20,11 +20,12 @@ if (!$client) {
 $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_lastname']);
 
 
-function saveFile($field, $folder) {
+function saveFile($field, $folder)
+{
     if (!isset($_FILES[$field]) || $_FILES[$field]['error'] !== 0) {
-        return null; // No file uploaded → store NULL in database
+        return null; // if wala uploaded store NULL in database
     }
-    $original  = basename($_FILES[$field]['name']);
+    $original = basename($_FILES[$field]['name']);
     $safe_name = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $original);
     if (!is_dir($folder)) {
         mkdir($folder, 0755, true); // Create upload folder if missing
@@ -40,19 +41,22 @@ $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $user_id = $_SESSION['user_id']; // Who is logged in
+    $user_id = $_SESSION['user_id'];
 
     $aics_type = trim($_POST['aics_type'] ?? '');
 
-    $amount        = (float)($_POST['amount']        ?? 0);
-    $date_applied  = trim($_POST['date_applied']     ?? '');
-    $date_released = trim($_POST['date_released']    ?? '') ?: null;
-    $remarks       = trim($_POST['remarks']          ?? '') ?: null;
+    $amount = (float) ($_POST['amount'] ?? 0);
+    $date_applied = trim($_POST['date_applied'] ?? '');
+    $date_released = trim($_POST['date_released'] ?? '') ?: null;
+    $remarks = trim($_POST['remarks'] ?? '') ?: null;
 
     //  Validation 
-    if (empty($aics_type))                $errors[] = 'Please select an assistance type.';
-    if ($amount < 500 || $amount > 5000)  $errors[] = 'Amount must be between ₱500 and ₱5,000.';
-    if (empty($date_applied))             $errors[] = 'Date Applied is required.';
+    if (empty($aics_type))
+        $errors[] = 'Please select an assistance type.';
+    if ($amount < 500 || $amount > 5000)
+        $errors[] = 'Amount must be between ₱500 and ₱5,000.';
+    if (empty($date_applied))
+        $errors[] = 'Date Applied is required.';
 
     if (empty($errors)) {
 
@@ -66,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
         }
         $prog_stmt->execute();
-        $program    = $prog_stmt->fetch(PDO::FETCH_ASSOC);
+        $program = $prog_stmt->fetch(PDO::FETCH_ASSOC);
         $program_id = $program['program_id'] ?? null;
 
 
@@ -92,19 +96,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $remarks
         ]);
 
-        $availment_id = (int)$pdo->lastInsertId();
+        $availment_id = (int) $pdo->lastInsertId();
 
 
         if ($aics_type === 'medical') {
             $folder = 'uploads/aics/medical/';
-            $amed_med_cert          = saveFile('doc_medcert',     $folder);
-            $amed_lab_result        = saveFile('doc_labresults',  $folder);
-            $amed_valid_id          = saveFile('doc_validid',     $folder);
-            $amed_cert_indigency    = saveFile('doc_indigency',   $folder);
-            $amed_hospital_bill     = saveFile('doc_hospitalbill',$folder);
-            $amed_discharge_summary = saveFile('doc_discharge',   $folder);
-            $amed_med_quotation     = saveFile('doc_dialysis',    $folder);
-            $amed_mayors_approval   = saveFile('doc_mayors',      $folder);
+            $amed_med_cert = saveFile('doc_medcert', $folder);
+            $amed_lab_result = saveFile('doc_labresults', $folder);
+            $amed_valid_id = saveFile('doc_validid', $folder);
+            $amed_cert_indigency = saveFile('doc_indigency', $folder);
+            $amed_hospital_bill = saveFile('doc_hospitalbill', $folder);
+            $amed_discharge_summary = saveFile('doc_discharge', $folder);
+            $amed_med_quotation = saveFile('doc_dialysis', $folder);
+            $amed_mayors_approval = saveFile('doc_mayors', $folder);
 
             $stmt = $pdo->prepare("
                 INSERT INTO AICS_MEDICAL (
@@ -114,18 +118,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $availment_id, $amed_med_cert, $amed_valid_id,
-                $amed_cert_indigency, $amed_lab_result, $amed_hospital_bill,
-                $amed_discharge_summary, $amed_med_quotation, $amed_mayors_approval
+                $availment_id,
+                $amed_med_cert,
+                $amed_valid_id,
+                $amed_cert_indigency,
+                $amed_lab_result,
+                $amed_hospital_bill,
+                $amed_discharge_summary,
+                $amed_med_quotation,
+                $amed_mayors_approval
             ]);
 
         } elseif ($aics_type === 'financial') {
-            // Table: AICS_FINANCIAL
-            // Columns: afin_approval, afin_supporting_docs, afin_supporting_docs_2
             $folder = 'uploads/aics/financial/';
-            $afin_approval          = saveFile('fin_doc_mayors',   $folder);
-            $afin_supporting_docs   = saveFile('fin_doc_indigency',$folder);
-            $afin_supporting_docs_2 = saveFile('fin_doc_support',  $folder);
+            $afin_approval = saveFile('fin_doc_mayors', $folder);
+            $afin_supporting_docs = saveFile('fin_doc_indigency', $folder);
+            $afin_supporting_docs_2 = saveFile('fin_doc_support', $folder);
 
             $stmt = $pdo->prepare("
                 INSERT INTO AICS_FINANCIAL (
@@ -134,26 +142,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ) VALUES (?, ?, ?, ?)
             ");
             $stmt->execute([
-                $availment_id, $afin_approval,
-                $afin_supporting_docs, $afin_supporting_docs_2
+                $availment_id,
+                $afin_approval,
+                $afin_supporting_docs,
+                $afin_supporting_docs_2
             ]);
 
         } elseif ($aics_type === 'educational') {
-            // Table: AICS_EDUCATIONAL
-            // Columns: aed_grades, aed_cert_enrollment, aed_cert_indigency,
-            //          aed_cert_residency, aed_student_id, aed_claimant_id,
-            //          aed_school_name, aed_educational_level, aed_purpose
-            $aed_school_name       = trim($_POST['edu_school']  ?? '') ?: null;
-            $aed_educational_level = trim($_POST['edu_level']   ?? '') ?: null;
-            $aed_purpose           = trim($_POST['edu_purpose'] ?? '') ?: null;
+            $aed_school_name = trim($_POST['edu_school'] ?? '') ?: null;
+            $aed_educational_level = trim($_POST['edu_level'] ?? '') ?: null;
+            $aed_purpose = trim($_POST['edu_purpose'] ?? '') ?: null;
 
             $folder = 'uploads/aics/educational/';
-            $aed_grades          = saveFile('edu_doc_card',       $folder);
-            $aed_cert_enrollment = saveFile('edu_doc_enroll',     $folder);
-            $aed_cert_indigency  = saveFile('edu_doc_indigency',  $folder);
-            $aed_cert_residency  = saveFile('edu_doc_residency',  $folder);
-            $aed_student_id      = saveFile('edu_doc_studentid',  $folder);
-            $aed_claimant_id     = saveFile('edu_doc_claimantid', $folder);
+            $aed_grades = saveFile('edu_doc_card', $folder);
+            $aed_cert_enrollment = saveFile('edu_doc_enroll', $folder);
+            $aed_cert_indigency = saveFile('edu_doc_indigency', $folder);
+            $aed_cert_residency = saveFile('edu_doc_residency', $folder);
+            $aed_student_id = saveFile('edu_doc_studentid', $folder);
+            $aed_claimant_id = saveFile('edu_doc_claimantid', $folder);
 
             $stmt = $pdo->prepare("
                 INSERT INTO AICS_EDUCATIONAL (
@@ -164,27 +170,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $availment_id, $aed_grades, $aed_cert_enrollment,
-                $aed_cert_indigency, $aed_cert_residency,
-                $aed_student_id, $aed_claimant_id,
-                $aed_school_name, $aed_educational_level, $aed_purpose
+                $availment_id,
+                $aed_grades,
+                $aed_cert_enrollment,
+                $aed_cert_indigency,
+                $aed_cert_residency,
+                $aed_student_id,
+                $aed_claimant_id,
+                $aed_school_name,
+                $aed_educational_level,
+                $aed_purpose
             ]);
 
         } elseif ($aics_type === 'livelihood') {
-            // Table: AICS_LIVELIHOOD
-            // Columns: aliv_letter_intent, aliv_livelihood_proposal, aliv_valid_id,
-            //          aliv_cert_indigency, aliv_cert_residency,
-            //          aliv_business_name, aliv_business_type, aliv_start_up_cost
             $aliv_business_name = trim($_POST['biz_name'] ?? '') ?: null;
             $aliv_business_type = trim($_POST['biz_type'] ?? '') ?: null;
-            $aliv_start_up_cost = (float)($_POST['biz_cost'] ?? 0);
+            $aliv_start_up_cost = (float) ($_POST['biz_cost'] ?? 0);
 
             $folder = 'uploads/aics/livelihood/';
-            $aliv_letter_intent       = saveFile('liv_doc_intent',   $folder);
+            $aliv_letter_intent = saveFile('liv_doc_intent', $folder);
             $aliv_livelihood_proposal = saveFile('liv_doc_proposal', $folder);
-            $aliv_valid_id            = saveFile('liv_doc_validid',  $folder);
-            $aliv_cert_indigency      = saveFile('liv_doc_indigency',$folder);
-            $aliv_cert_residency      = saveFile('liv_doc_residency',$folder);
+            $aliv_valid_id = saveFile('liv_doc_validid', $folder);
+            $aliv_cert_indigency = saveFile('liv_doc_indigency', $folder);
+            $aliv_cert_residency = saveFile('liv_doc_residency', $folder);
 
             $stmt = $pdo->prepare("
                 INSERT INTO AICS_LIVELIHOOD (
@@ -194,21 +202,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $availment_id, $aliv_letter_intent, $aliv_livelihood_proposal,
-                $aliv_valid_id, $aliv_cert_indigency, $aliv_cert_residency,
-                $aliv_business_name, $aliv_business_type, $aliv_start_up_cost
+                $availment_id,
+                $aliv_letter_intent,
+                $aliv_livelihood_proposal,
+                $aliv_valid_id,
+                $aliv_cert_indigency,
+                $aliv_cert_residency,
+                $aliv_business_name,
+                $aliv_business_type,
+                $aliv_start_up_cost
             ]);
 
         } elseif ($aics_type === 'burial') {
-            // Table: AICS_BURIAL
-            // Columns: ab_death_cert, ab_funeral_contract, ab_valid_id,
-            //          ab_brgy_indigency, ab_mayors_approval
             $folder = 'uploads/aics/burial/';
-            $ab_death_cert       = saveFile('bur_doc_death',    $folder);
+            $ab_death_cert = saveFile('bur_doc_death', $folder);
             $ab_funeral_contract = saveFile('bur_doc_contract', $folder);
-            $ab_valid_id         = saveFile('bur_doc_validid',  $folder);
-            $ab_brgy_indigency   = saveFile('bur_doc_indigency',$folder);
-            $ab_mayors_approval  = saveFile('bur_doc_mayors',   $folder);
+            $ab_valid_id = saveFile('bur_doc_validid', $folder);
+            $ab_brgy_indigency = saveFile('bur_doc_indigency', $folder);
+            $ab_mayors_approval = saveFile('bur_doc_mayors', $folder);
 
             $stmt = $pdo->prepare("
                 INSERT INTO AICS_BURIAL (
@@ -217,17 +228,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ) VALUES (?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
-                $availment_id, $ab_death_cert, $ab_funeral_contract,
-                $ab_valid_id, $ab_brgy_indigency, $ab_mayors_approval
+                $availment_id,
+                $ab_death_cert,
+                $ab_funeral_contract,
+                $ab_valid_id,
+                $ab_brgy_indigency,
+                $ab_mayors_approval
             ]);
         }
 
         header("Location: clientprofile.php?id={$client_id}&saved=aics");
         exit;
 
-    } 
+    }
 
-} 
+}
 
 
 $stmt = $pdo->prepare("
@@ -243,28 +258,28 @@ $stmt = $pdo->prepare("
     LIMIT 1
 ");
 $stmt->execute();
-$budget    = $stmt->fetch(PDO::FETCH_ASSOC);
-$annual    = (float)($budget['prog_annual_budget'] ?? 0);
-$spent     = (float)($budget['spent']              ?? 0);
+$budget = $stmt->fetch(PDO::FETCH_ASSOC);
+$annual = (float) ($budget['prog_annual_budget'] ?? 0);
+$spent = (float) ($budget['spent'] ?? 0);
 $remaining = $annual - $spent;
-$pct_used  = $annual > 0 ? round(($spent / $annual) * 100, 1) : 0;
+$pct_used = $annual > 0 ? round(($spent / $annual) * 100, 1) : 0;
 
 // Budget badge — what to show based on $pct_used
 if ($pct_used >= 90) {
-    $badge_cls  = 'text-red-500 bg-red-50 border-red-200';
+    $badge_cls = 'text-red-500 bg-red-50 border-red-200';
     $badge_icon = 'fa-exclamation-triangle';
     $badge_text = 'Critical — ' . round(100 - $pct_used, 1) . '% remaining';
-    $bar_color  = 'bg-red-400';
+    $bar_color = 'bg-red-400';
 } elseif ($pct_used >= 70) {
-    $badge_cls  = 'text-amber-600 bg-amber-50 border-amber-200';
+    $badge_cls = 'text-amber-600 bg-amber-50 border-amber-200';
     $badge_icon = 'fa-exclamation-circle';
     $badge_text = 'Moderate — ' . round(100 - $pct_used, 1) . '% remaining';
-    $bar_color  = 'bg-amber-400';
+    $bar_color = 'bg-amber-400';
 } else {
-    $badge_cls  = 'text-emerald-600 bg-emerald-50 border-emerald-200';
+    $badge_cls = 'text-emerald-600 bg-emerald-50 border-emerald-200';
     $badge_icon = 'fa-check-circle';
     $badge_text = 'Healthy — ' . round(100 - $pct_used, 1) . '% remaining';
-    $bar_color  = 'bg-emerald-400';
+    $bar_color = 'bg-emerald-400';
 }
 
 
@@ -282,73 +297,141 @@ $stmt = $pdo->prepare("
     LIMIT 1
 ");
 $stmt->execute();
-$edu_budget    = $stmt->fetch(PDO::FETCH_ASSOC);
-$edu_annual    = (float)($edu_budget['prog_annual_budget'] ?? 0);
-$edu_spent     = (float)($edu_budget['spent']              ?? 0);
+$edu_budget = $stmt->fetch(PDO::FETCH_ASSOC);
+$edu_annual = (float) ($edu_budget['prog_annual_budget'] ?? 0);
+$edu_spent = (float) ($edu_budget['spent'] ?? 0);
 $edu_remaining = $edu_annual - $edu_spent;
-$edu_pct_used  = $edu_annual > 0 ? round(($edu_spent / $edu_annual) * 100, 1) : 0;
+$edu_pct_used = $edu_annual > 0 ? round(($edu_spent / $edu_annual) * 100, 1) : 0;
 
 if ($edu_pct_used >= 90) {
-    $edu_badge_cls  = 'text-red-500 bg-red-50 border-red-200';
+    $edu_badge_cls = 'text-red-500 bg-red-50 border-red-200';
     $edu_badge_icon = 'fa-exclamation-triangle';
     $edu_badge_text = 'Critical — ' . round(100 - $edu_pct_used, 1) . '% remaining';
-    $edu_bar_color  = 'bg-red-400';
+    $edu_bar_color = 'bg-red-400';
 } elseif ($edu_pct_used >= 70) {
-    $edu_badge_cls  = 'text-amber-600 bg-amber-50 border-amber-200';
+    $edu_badge_cls = 'text-amber-600 bg-amber-50 border-amber-200';
     $edu_badge_icon = 'fa-exclamation-circle';
     $edu_badge_text = 'Moderate — ' . round(100 - $edu_pct_used, 1) . '% remaining';
-    $edu_bar_color  = 'bg-amber-400';
+    $edu_bar_color = 'bg-amber-400';
 } else {
-    $edu_badge_cls  = 'text-emerald-600 bg-emerald-50 border-emerald-200';
+    $edu_badge_cls = 'text-emerald-600 bg-emerald-50 border-emerald-200';
     $edu_badge_icon = 'fa-check-circle';
     $edu_badge_text = 'Healthy — ' . round(100 - $edu_pct_used, 1) . '% remaining';
-    $edu_bar_color  = 'bg-emerald-400';
+    $edu_bar_color = 'bg-emerald-400';
 }
 
 $edu_budget_ok = $edu_remaining > 0;
-// Denied availments are excluded so a rejected request doesn't block re-application.
-// AICS FBML covers Medical, Financial, Livelihood, and Burial (1×/quarter, 4×/year).
-// AICS Educational has its own limits (2×/year) and its own program row.
-$stmt = $pdo->prepare("
-    SELECT COUNT(*) FROM AVAILMENT
-    WHERE client_id  = ?
-    AND program_id   = (SELECT program_id FROM PROGRAM WHERE program_name = 'AICS FBML' LIMIT 1)
-    AND av_status   != 'Denied'
-    AND QUARTER(av_date_applied) = QUARTER(CURDATE())
-    AND YEAR(av_date_applied)    = YEAR(CURDATE())
-");
-$stmt->execute([$client_id]);
-$q_count = (int)$stmt->fetchColumn();
+
+function getSubtypeDates(PDO $pdo, int $client_id, int $program_id, string $join_table): array
+{
+    $stmt = $pdo->prepare("
+        SELECT a.av_date_applied
+        FROM AVAILMENT a
+        JOIN {$join_table} s ON s.availment_id = a.availment_id
+        WHERE a.client_id  = ?
+          AND a.program_id = ?
+          AND a.av_status != 'Denied'
+        ORDER BY a.av_date_applied ASC
+    ");
+    $stmt->execute([$client_id, $program_id]);
+    return $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
+function getRollingWindowCount(array $dates): array
+{
+    if (empty($dates)) {
+        return ['count' => 0, 'window_start' => null, 'window_end' => null];
+    }
+    $today = new DateTime();
+    $q_count = 0;
+    $current_window_start = null;
+    $current_window_end = null;
+
+    $window_start = new DateTime($dates[0]);
+    $window_end = (clone $window_start)->modify('+3 months');
+    $window_avs = [];
+
+    foreach ($dates as $d) {
+        $dt = new DateTime($d);
+        if ($dt < $window_end) {
+            $window_avs[] = $d;
+        } else {
+            $window_start = $dt;
+            $window_end = (clone $window_start)->modify('+3 months');
+            $window_avs = [$d];
+        }
+        if ($today >= $window_start && $today < $window_end) {
+            $current_window_start = clone $window_start;
+            $current_window_end = clone $window_end;
+            $q_count = count($window_avs);
+        }
+    }
+    return [
+        'count' => $q_count,
+        'window_start' => $current_window_start,
+        'window_end' => $current_window_end,
+    ];
+}
+
+$fbml_pid_stmt = $pdo->prepare("SELECT program_id FROM PROGRAM WHERE program_name = 'AICS FBML' LIMIT 1");
+$fbml_pid_stmt->execute();
+$fbml_program_id = (int) ($fbml_pid_stmt->fetchColumn() ?? 0);
+
+$med_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_MEDICAL'));
+$fin_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_FINANCIAL'));
+$bur_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_BURIAL'));
+$liv_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_LIVELIHOOD'));
+
+//  Per-subtype year counts 
+$med_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_MEDICAL'), fn($d) => date('Y', strtotime($d)) == date('Y')));
+$fin_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_FINANCIAL'), fn($d) => date('Y', strtotime($d)) == date('Y')));
+$bur_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_BURIAL'), fn($d) => date('Y', strtotime($d)) == date('Y')));
+$liv_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_LIVELIHOOD'), fn($d) => date('Y', strtotime($d)) == date('Y')));
+
+//  AICS Educational: separate 2×/year limit 
+$edu_pid_stmt = $pdo->prepare("SELECT program_id FROM PROGRAM WHERE program_name = 'AICS Educational' LIMIT 1");
+$edu_pid_stmt->execute();
+$edu_program_id = (int) ($edu_pid_stmt->fetchColumn() ?? 0);
 
 $stmt = $pdo->prepare("
     SELECT COUNT(*) FROM AVAILMENT
     WHERE client_id  = ?
-    AND program_id   = (SELECT program_id FROM PROGRAM WHERE program_name = 'AICS FBML' LIMIT 1)
-    AND av_status   != 'Denied'
-    AND YEAR(av_date_applied) = YEAR(CURDATE())
+      AND program_id = ?
+      AND av_status != 'Denied'
+      AND YEAR(av_date_applied) = YEAR(CURDATE())
 ");
-$stmt->execute([$client_id]);
-$y_count = (int)$stmt->fetchColumn();
+$stmt->execute([$client_id, $edu_program_id]);
+$edu_y_count = (int) $stmt->fetchColumn();
 
-// AICS Educational: separate 2×/year limit
-$stmt = $pdo->prepare("
-    SELECT COUNT(*) FROM AVAILMENT
-    WHERE client_id  = ?
-    AND program_id   = (SELECT program_id FROM PROGRAM WHERE program_name = 'AICS Educational' LIMIT 1)
-    AND av_status   != 'Denied'
-    AND YEAR(av_date_applied) = YEAR(CURDATE())
-");
-$stmt->execute([$client_id]);
-$edu_y_count = (int)$stmt->fetchColumn();
+// $quarter_ok = true means AT LEAST ONE subtype is still within its quarter limit.
+// The Proceed button is only fully hard-blocked when every FBML subtype is blocked.
+$quarter_ok = ($med_q['count'] < 1)
+    || ($fin_q['count'] < 1)
+    || ($bur_q['count'] < 1)
+    || ($liv_q['count'] < 1);
 
-$quarter_ok   = $q_count < 1;         // FBML: max 1 per quarter
-$year_ok      = $y_count < 4;         // FBML: max 4 per year
-$edu_year_ok  = $edu_y_count < 2;     // Educational: max 2 per year
-$budget_ok    = $remaining > 0;
-$year_left    = max(0, 4 - $y_count);
-$edu_year_left= max(0, 2 - $edu_y_count);
+$edu_year_ok = $edu_y_count < 2;
+$budget_ok = $remaining > 0;
+$edu_year_left = max(0, 2 - $edu_y_count);
 
-// Validation errors from POST (if any)
+// Per-subtype year remaining
+$med_left = max(0, 4 - $med_y_count);
+$fin_left = max(0, 4 - $fin_y_count);
+$bur_left = max(0, 4 - $bur_y_count);
+$liv_left = max(0, 4 - $liv_y_count);
+
+// Soonest window reset date — shown in the block banner when all subtypes are blocked
+$soonest_reset = null;
+foreach ([$med_q, $fin_q, $bur_q, $liv_q] as $qdata) {
+    if ($qdata['window_end'] !== null) {
+        if ($soonest_reset === null || $qdata['window_end'] < $soonest_reset) {
+            $soonest_reset = $qdata['window_end'];
+        }
+    }
+}
+
+$window_reset_text = $soonest_reset ? $soonest_reset->format('F j, Y') : '';
+
 $post_errors = $errors ?? [];
 
 ?>
@@ -360,7 +443,9 @@ $post_errors = $errors ?? [];
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AICS Availment Forms – MSWDO San Enrique</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+        rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script>
         tailwind.config = {
@@ -391,50 +476,273 @@ $post_errors = $errors ?? [];
         }
     </script>
     <style>
-        body { font-family: 'DM Sans', sans-serif; }
-        .sidebar-item { transition: all .15s; }
-        .sidebar-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.95); }
-        .sidebar-item.active { background: rgba(29,111,164,.28); border-left-color: #C49A2A; color: #fff; }
-        .screen-panel { display: none; }
-        .screen-panel.active { display: block; animation: fadeUp 0.3s ease both; }
-        .sub-nav { transition: all .18s ease; }
-        .sub-nav:hover { background: #F1F5F9; }
-        .sub-nav.active { background: #0B2545; color: #fff; }
-        .sub-nav.active .sub-icon { background: rgba(255,255,255,.15); }
-        .sub-nav.active .sub-check { opacity: 1; }
-        .sub-check { opacity: 0; transition: opacity .15s; }
-        .type-card { transition: all .2s ease; cursor: pointer; }
-        .type-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
-        .type-card.active-card { border-color: #0B2545 !important; background: #F8FAFE !important; box-shadow: 0 4px 16px rgba(11,37,69,0.12); }
-        .type-card .card-icon { transition: transform .2s ease; }
-        .type-card:hover .card-icon { transform: scale(1.1); }
-        .field { display: block; width: 100%; border-radius: 0.75rem; border: 1.5px solid #E2E8F0; background: #F8FAFC; padding: 0.625rem 0.875rem; font-size: 13px; color: #1e293b; outline: none; font-family: 'DM Sans', sans-serif; transition: all .2s; }
-        .field:focus { border-color: #3A5F93; background: #fff; box-shadow: 0 0 0 3px rgba(58,95,147,.1); }
-        .field::placeholder { color: #94A3B8; }
-        select.field { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; appearance: none; }
-        .field-label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B; margin-bottom: 6px; }
-        .req::after { content: '*'; color: #EF4444; margin-left: 2px; }
-        .upload-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 130px; border: 2px dashed #CBD5E1; border-radius: 0.875rem; padding: 1.25rem 1rem; text-align: center; cursor: pointer; transition: all .2s; background: #F8FAFC; width: 100%; box-sizing: border-box; }
-        .upload-zone:hover { border-color: #3A5F93; background: #EBF4FB; }
-        .upload-zone.has-file { border-color: #0B2545; background: #E8EDF5; border-style: solid; }
-        .upload-zone input[type=file] { display: none; }
-        .upload-zone .upload-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; gap: 0.25rem; }
-        .upload-zone .upload-icon { font-size: 1.75rem; line-height: 1; margin-bottom: 0.25rem; }
-        .upload-zone .upload-title { font-size: 12px; font-weight: 500; color: #475569; line-height: 1.3; }
-        .upload-zone .upload-hint { font-size: 11px; color: #94A3B8; line-height: 1.3; }
-        .upload-zone.has-file .upload-icon { font-size: 1.5rem; }
-        .upload-zone.has-file .upload-title { color: #0B2545; font-weight: 600; font-size: 12px; word-break: break-all; padding: 0 4px; }
-        .upload-zone.has-file .upload-hint { color: #3A5F93; font-size: 10px; }
-        .copy-badge { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; background: #FEF3C7; color: #92400E; margin-left: 6px; }
-        .opt-badge { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 20px; font-size: 10px; font-weight: 500; background: #F1F5F9; color: #64748B; margin-left: 6px; }
-        .budget-bar-fill { transition: width 1s cubic-bezier(.4,0,.2,1); }
-        .limit-row { transition: background .1s; }
-        .limit-row:hover { background: #F8FAFC; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
-        #toast { transition: all .3s ease; }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body {
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .sidebar-item {
+            transition: all .15s;
+        }
+
+        .sidebar-item:hover {
+            background: rgba(255, 255, 255, .07);
+            color: rgba(255, 255, 255, .95);
+        }
+
+        .sidebar-item.active {
+            background: rgba(29, 111, 164, .28);
+            border-left-color: #C49A2A;
+            color: #fff;
+        }
+
+        .screen-panel {
+            display: none;
+        }
+
+        .screen-panel.active {
+            display: block;
+            animation: fadeUp 0.3s ease both;
+        }
+
+        .sub-nav {
+            transition: all .18s ease;
+        }
+
+        .sub-nav:hover {
+            background: #F1F5F9;
+        }
+
+        .sub-nav.active {
+            background: #0B2545;
+            color: #fff;
+        }
+
+        .sub-nav.active .sub-icon {
+            background: rgba(255, 255, 255, .15);
+        }
+
+        .sub-nav.active .sub-check {
+            opacity: 1;
+        }
+
+        .sub-check {
+            opacity: 0;
+            transition: opacity .15s;
+        }
+
+        .type-card {
+            transition: all .2s ease;
+            cursor: pointer;
+        }
+
+        .type-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .type-card.active-card {
+            border-color: #0B2545 !important;
+            background: #F8FAFE !important;
+            box-shadow: 0 4px 16px rgba(11, 37, 69, 0.12);
+        }
+
+        .type-card .card-icon {
+            transition: transform .2s ease;
+        }
+
+        .type-card:hover .card-icon {
+            transform: scale(1.1);
+        }
+
+        .field {
+            display: block;
+            width: 100%;
+            border-radius: 0.75rem;
+            border: 1.5px solid #E2E8F0;
+            background: #F8FAFC;
+            padding: 0.625rem 0.875rem;
+            font-size: 13px;
+            color: #1e293b;
+            outline: none;
+            font-family: 'DM Sans', sans-serif;
+            transition: all .2s;
+        }
+
+        .field:focus {
+            border-color: #3A5F93;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(58, 95, 147, .1);
+        }
+
+        .field::placeholder {
+            color: #94A3B8;
+        }
+
+        select.field {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 16px;
+            appearance: none;
+        }
+
+        .field-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748B;
+            margin-bottom: 6px;
+        }
+
+        .req::after {
+            content: '*';
+            color: #EF4444;
+            margin-left: 2px;
+        }
+
+        .upload-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 130px;
+            border: 2px dashed #CBD5E1;
+            border-radius: 0.875rem;
+            padding: 1.25rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all .2s;
+            background: #F8FAFC;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .upload-zone:hover {
+            border-color: #3A5F93;
+            background: #EBF4FB;
+        }
+
+        .upload-zone.has-file {
+            border-color: #0B2545;
+            background: #E8EDF5;
+            border-style: solid;
+        }
+
+        .upload-zone input[type=file] {
+            display: none;
+        }
+
+        .upload-zone .upload-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            gap: 0.25rem;
+        }
+
+        .upload-zone .upload-icon {
+            font-size: 1.75rem;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+        }
+
+        .upload-zone .upload-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: #475569;
+            line-height: 1.3;
+        }
+
+        .upload-zone .upload-hint {
+            font-size: 11px;
+            color: #94A3B8;
+            line-height: 1.3;
+        }
+
+        .upload-zone.has-file .upload-icon {
+            font-size: 1.5rem;
+        }
+
+        .upload-zone.has-file .upload-title {
+            color: #0B2545;
+            font-weight: 600;
+            font-size: 12px;
+            word-break: break-all;
+            padding: 0 4px;
+        }
+
+        .upload-zone.has-file .upload-hint {
+            color: #3A5F93;
+            font-size: 10px;
+        }
+
+        .copy-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 1px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+            background: #FEF3C7;
+            color: #92400E;
+            margin-left: 6px;
+        }
+
+        .opt-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 1px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 500;
+            background: #F1F5F9;
+            color: #64748B;
+            margin-left: 6px;
+        }
+
+        .budget-bar-fill {
+            transition: width 1s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .limit-row {
+            transition: background .1s;
+        }
+
+        .limit-row:hover {
+            background: #F8FAFC;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .15);
+            border-radius: 2px;
+        }
+
+        #toast {
+            transition: all .3s ease;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 
@@ -443,13 +751,16 @@ $post_errors = $errors ?? [];
     <?php require 'sidebar.php'; ?>
 
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
-        <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
                 <a href="clientslist.php" class="text-slate-400 hover:text-navy-600">Clients</a>
                 <span class="text-slate-300">/</span>
-                <a href="clientprofile.php?id=<?= $client_id ?>" class="text-slate-400 hover:text-navy-600"><?= $client_name ?></a>
+                <a href="clientprofile.php?id=<?= $client_id ?>"
+                    class="text-slate-400 hover:text-navy-600"><?= $client_name ?></a>
                 <span class="text-slate-300">/</span>
-                <a href="programavailmentselection.php?client_id=<?= $client_id ?>" class="text-slate-400 hover:text-navy-600">Program Selection</a>
+                <a href="programavailmentselection.php?client_id=<?= $client_id ?>"
+                    class="text-slate-400 hover:text-navy-600">Program Selection</a>
                 <span class="text-slate-300">/</span>
                 <span class="text-navy-600 font-semibold" id="breadcrumbLast">AICS Availment</span>
             </div>
@@ -459,738 +770,1166 @@ $post_errors = $errors ?? [];
             <main class="flex-1 p-6 overflow-y-auto">
 
                 <?php if (!empty($post_errors)): ?>
-                <!-- Error banner — shown when validation fails -->
-                <div class="max-w-3xl mx-auto mb-4 bg-red-50 border border-red-200 rounded-xl px-5 py-3.5 flex items-start gap-3">
-                    <i class="fas fa-exclamation-circle text-red-400 text-lg mt-0.5"></i>
-                    <div>
-                        <p class="text-[13px] font-semibold text-red-700 mb-1">Please fix the following:</p>
-                        <ul class="list-disc list-inside text-[12px] text-red-600 space-y-0.5">
-                            <?php foreach ($post_errors as $e): ?>
-                                <li><?= htmlspecialchars($e) ?></li>
-                            <?php endforeach; ?>
-                        </ul>
+                    <div
+                        class="max-w-3xl mx-auto mb-4 bg-red-50 border border-red-200 rounded-xl px-5 py-3.5 flex items-start gap-3">
+                        <i class="fas fa-exclamation-circle text-red-400 text-lg mt-0.5"></i>
+                        <div>
+                            <p class="text-[13px] font-semibold text-red-700 mb-1">Please fix the following:</p>
+                            <ul class="list-disc list-inside text-[12px] text-red-600 space-y-0.5">
+                                <?php foreach ($post_errors as $e): ?>
+                                    <li><?= htmlspecialchars($e) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
                     </div>
-                </div>
                 <?php endif; ?>
 
-                <form method="POST"
-                      action="aics.php?client_id=<?= $client_id ?>"
-                      enctype="multipart/form-data"
-                      id="aicsForm">
+                <form method="POST" action="aics.php?client_id=<?= $client_id ?>" enctype="multipart/form-data"
+                    id="aicsForm">
 
-                    <input type="hidden" name="aics_type"     id="hiddenType"    value="">
-                    <input type="hidden" name="amount"         id="hiddenAmount"  value="">
-                    <input type="hidden" name="date_applied"   id="hiddenApplied" value="">
-                    <input type="hidden" name="date_released"  id="hiddenReleased" value="">
-                    <input type="hidden" name="remarks"        id="hiddenRemarks" value="">
+                    <input type="hidden" name="aics_type" id="hiddenType" value="">
+                    <input type="hidden" name="amount" id="hiddenAmount" value="">
+                    <input type="hidden" name="date_applied" id="hiddenApplied" value="">
+                    <input type="hidden" name="date_released" id="hiddenReleased" value="">
+                    <input type="hidden" name="remarks" id="hiddenRemarks" value="">
 
-                <!-- MAIN FORM PANEL -->
-                <div class="screen-panel active" id="panel-main">
-                    <div class="max-w-3xl mx-auto space-y-5">
-                        <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-slate-300">·</span>
-                                <span class="text-[12px] text-slate-400">Common fields for all AICS subtypes</span>
+                    <!-- MAIN FORM PANEL -->
+                    <div class="screen-panel active" id="panel-main">
+                        <div class="max-w-3xl mx-auto space-y-5">
+                            <div class="animate-fade-up">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-slate-300">·</span>
+                                    <span class="text-[12px] text-slate-400">Common fields for all AICS subtypes</span>
+                                </div>
+                                <h1 class="text-xl font-serif text-navy-600">AICS Availment — Main Form</h1>
+                                <p class="text-[13px] text-slate-500 mt-1">Complete the transaction details, then
+                                    proceed to the subtype-specific requirements form.</p>
                             </div>
-                            <h1 class="text-xl font-serif text-navy-600">AICS Availment — Main Form</h1>
-                            <p class="text-[13px] text-slate-500 mt-1">Complete the transaction details, then proceed to the subtype-specific requirements form.</p>
-                        </div>
 
-                        <div class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="px-5 py-4 border-b border-slate-100 flex items-center">
-                                <h2 class="text-[13px] font-semibold text-navy-600" id="budgetTitle">AICS Budget Status — <span id="budgetProgramLabel">AICS FBML</span></h2>
-                            </div>
-                            <div class="px-5 py-4 grid grid-cols-3 gap-4">
-                                <div>
-                                    <p class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">Annual Budget</p>
-                                    <p class="text-[18px] font-bold text-navy-600" id="budgetAnnual">₱<?= number_format($annual) ?></p>
+                            <div class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div class="px-5 py-4 border-b border-slate-100 flex items-center">
+                                    <h2 class="text-[13px] font-semibold text-navy-600" id="budgetTitle">AICS Budget
+                                        Status — <span id="budgetProgramLabel">AICS FBML</span></h2>
                                 </div>
-                                <div>
-                                    <p class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">Spent This Year</p>
-                                    <p class="text-[18px] font-bold text-slate-700" id="budgetSpent">₱<?= number_format($spent) ?></p>
-                                </div>
-                                <div>
-                                    <p class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">Remaining</p>
-                                    <p class="text-[18px] font-bold" id="budgetRemaining">₱<?= number_format($remaining) ?></p>
-                                </div>
-                            </div>
-                            <div class="px-5 pb-4">
-                                <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                    <div class="budget-bar-fill h-2 rounded-full" id="budgetBar"
-                                         style="width:0%"
-                                         data-target="<?= $pct_used ?>%"></div>
-                                </div>
-                                <div class="flex justify-between text-[10px] text-slate-400 mt-1.5">
-                                    <span>0%</span>
-                                    <span class="font-semibold" id="budgetPct"><?= $pct_used ?>% utilized</span>
-                                    <span>100%</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Transaction Details -->
-                        <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold">1</div>
-                                <div>
-                                    <h2 class="text-[14px] font-semibold text-navy-600">Transaction Details</h2>
-                                    <p class="text-[11px] text-slate-400">Amount, dates, and limit verification</p>
-                                </div>
-                            </div>
-                            <div class="p-6 space-y-5">
-                                <div class="grid grid-cols-3 gap-4">
+                                <div class="px-5 py-4 grid grid-cols-3 gap-4">
                                     <div>
-                                        <label class="field-label req">Amount (₱)</label>
-                                        <div class="relative">
-                                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[13px]">₱</span>
-                                            <input type="number" min="500" max="5000" class="field pl-7"
-                                                placeholder="500 – 5,000" oninput="checkAmount(this)" id="amountField">
-                                        </div>
-                                        <p class="text-[10px] text-slate-400 mt-1.5">Min ₱500 · Max ₱5,000</p>
+                                        <p
+                                            class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">
+                                            Annual Budget</p>
+                                        <p class="text-[18px] font-bold text-navy-600" id="budgetAnnual">
+                                            ₱<?= number_format($annual) ?></p>
                                     </div>
-                                    <div><label class="field-label req">Date Applied</label><input type="date" class="field" id="dateApplied"></div>
-                                    <div><label class="field-label">Date Released</label><input type="date" class="field" id="dateReleased"></div>
-                                </div>
-
-                                <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden" id="limitPanel">
-                                    <div class="px-4 py-2.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
-                                        <p class="text-[11px] font-semibold text-navy-600">Automatic Limit Check — <?= $client_name ?> · AICS</p>
+                                    <div>
+                                        <p
+                                            class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">
+                                            Spent This Year</p>
+                                        <p class="text-[18px] font-bold text-slate-700" id="budgetSpent">
+                                            ₱<?= number_format($spent) ?></p>
                                     </div>
-                                    <div id="limitRows" class="divide-y divide-slate-100">
-
-                                        <!-- FBML rows (Medical / Financial / Livelihood / Burial) -->
-                                        <div id="row-fbml-quarter" class="limit-row flex items-center justify-between px-4 py-2.5">
-                                            <div class="flex items-center gap-2"><i class="fas fa-calendar-alt text-slate-500 text-sm"></i><span class="text-[12px] text-slate-600">Availments this quarter</span></div>
-                                            <span class="text-[12px] font-semibold flex items-center gap-1 <?= $quarter_ok ? 'text-emerald-600' : 'text-red-500' ?>">
-                                                <?= $quarter_ok ? '✓' : '✗' ?>
-                                                <?= $q_count ?> of 1 — <?= $quarter_ok ? 'eligible' : 'limit reached' ?>
-                                            </span>
-                                        </div>
-                                        <div id="row-fbml-year" class="limit-row flex items-center justify-between px-4 py-2.5">
-                                            <div class="flex items-center gap-2"><i class="fas fa-calendar-week text-slate-500 text-sm"></i><span class="text-[12px] text-slate-600">Availments this year</span></div>
-                                            <span class="text-[12px] font-semibold flex items-center gap-1 <?= $year_ok ? 'text-emerald-600' : 'text-red-500' ?>">
-                                                <?= $year_ok ? '✓' : '✗' ?>
-                                                <?= $y_count ?> of 4 — <?= $year_ok ? "{$year_left} remaining" : 'limit reached' ?>
-                                            </span>
-                                        </div>
-
-                                        <!-- Educational row (shown only when Educational type is selected) -->
-                                        <div id="row-edu-year" class="limit-row items-center justify-between px-4 py-2.5 hidden">
-                                            <div class="flex items-center gap-2"><i class="fas fa-calendar-week text-slate-500 text-sm"></i><span class="text-[12px] text-slate-600">Educational availments this year</span></div>
-                                            <span class="text-[12px] font-semibold flex items-center gap-1 <?= $edu_year_ok ? 'text-emerald-600' : 'text-red-500' ?>">
-                                                <?= $edu_year_ok ? '✓' : '✗' ?>
-                                                <?= $edu_y_count ?> of 2 — <?= $edu_year_ok ? "{$edu_year_left} remaining" : 'limit reached' ?>
-                                            </span>
-                                        </div>
-
-                                        <div class="limit-row flex items-center justify-between px-4 py-2.5" id="row-budget">
-                                            <div class="flex items-center gap-2"><i class="fas fa-chart-line text-slate-500 text-sm"></i><span class="text-[12px] text-slate-600">Budget sufficient</span></div>
-                                            <span class="text-[12px] font-semibold <?= $budget_ok ? 'text-emerald-600' : 'text-red-500' ?>" id="budgetSufficientText">
-                                                <?= $budget_ok ? '✓ ₱' . number_format($remaining) . ' available' : '✗ No budget remaining' ?>
-                                            </span>
-                                        </div>
-                                        <div class="limit-row flex items-center justify-between px-4 py-2.5" id="amountCheck">
-                                            <div class="flex items-center gap-2"><i class="fas fa-dollar-sign text-slate-500 text-sm"></i><span class="text-[12px] text-slate-600">Amount within range</span></div>
-                                            <span class="text-[12px] font-semibold text-slate-400">— Enter amount above</span>
-                                        </div>
+                                    <div>
+                                        <p
+                                            class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">
+                                            Remaining</p>
+                                        <p class="text-[18px] font-bold" id="budgetRemaining">
+                                            ₱<?= number_format($remaining) ?></p>
                                     </div>
                                 </div>
+                                <div class="px-5 pb-4">
+                                    <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <div class="budget-bar-fill h-2 rounded-full" id="budgetBar" style="width:0%"
+                                            data-target="<?= $pct_used ?>%"></div>
+                                    </div>
+                                    <div class="flex justify-between text-[10px] text-slate-400 mt-1.5">
+                                        <span>0%</span>
+                                        <span class="font-semibold" id="budgetPct"><?= $pct_used ?>% utilized</span>
+                                        <span>100%</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                                <div><label class="field-label">Remarks</label><textarea class="field resize-none" rows="3" id="remarksInput" placeholder="Optional notes about this transaction..."></textarea></div>
+                            <!-- Transaction Details -->
+                            <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-600 flex items-center justify-center text-white text-[11px] font-bold">
+                                        1</div>
+                                    <div>
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Transaction Details</h2>
+                                        <p class="text-[11px] text-slate-400">Amount, dates, and limit verification</p>
+                                    </div>
+                                </div>
+                                <div class="p-6 space-y-5">
+                                    <div class="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <label class="field-label req">Amount (₱)</label>
+                                            <div class="relative">
+                                                <span
+                                                    class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[13px]">₱</span>
+                                                <input type="number" min="500" max="5000" class="field pl-7"
+                                                    placeholder="500 – 5,000" oninput="checkAmount(this)"
+                                                    id="amountField">
+                                            </div>
+                                            <p class="text-[10px] text-slate-400 mt-1.5">Min ₱500 · Max ₱5,000</p>
+                                        </div>
+                                        <div><label class="field-label req">Date Applied</label><input type="date"
+                                                class="field" id="dateApplied"></div>
+                                        <div><label class="field-label">Date Released</label><input type="date"
+                                                class="field" id="dateReleased"></div>
+                                    </div>
+
+                                    <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden"
+                                        id="limitPanel">
+                                        <div
+                                            class="px-4 py-2.5 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                                            <p class="text-[11px] font-semibold text-navy-600">Automatic Limit Check —
+                                                <?= $client_name ?> · AICS
+                                            </p>
+                                        </div>
+                                        <div id="limitRows" class="divide-y divide-slate-100">
+
+                                            <!-- Quarter row -->
+                                            <div id="row-fbml-quarter"
+                                                class="limit-row flex items-center justify-between px-4 py-2.5">
+                                                <div class="flex items-center gap-2">
+                                                    <i class="fas fa-calendar-alt text-slate-500 text-sm"></i>
+                                                    <div>
+                                                        <span class="text-[12px] text-slate-600">Availments this
+                                                            quarter</span>
+                                                        <span class="ml-2 text-[10px] text-slate-400"
+                                                            id="quarter-window-label"></span>
+                                                    </div>
+                                                </div>
+                                                <span class="text-[12px] font-semibold text-slate-400"
+                                                    id="quarter-status-text">— Select assistance type below</span>
+                                            </div>
+
+                                            <!-- Year row  -->
+                                            <div id="row-fbml-year"
+                                                class="limit-row flex items-center justify-between px-4 py-2.5">
+                                                <div class="flex items-center gap-2"><i
+                                                        class="fas fa-calendar-week text-slate-500 text-sm"></i><span
+                                                        class="text-[12px] text-slate-600">Availments this year</span>
+                                                </div>
+                                                <span class="text-[12px] font-semibold text-slate-400"
+                                                    id="fbml-year-text">—</span>
+                                            </div>
+
+                                            <!-- Per-subtype year breakdown (shown when any FBML type selected) -->
+                                            <div id="row-subtype-breakdown" class="hidden px-4 py-2.5 bg-slate-50/80">
+                                                <p
+                                                    class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">
+                                                    This year by subtype</p>
+                                                <div class="grid grid-cols-4 gap-2 text-[11px]">
+                                                    <div class="bg-white rounded-lg px-3 py-2 border border-slate-200">
+                                                        <p class="text-slate-400 mb-0.5">Medical</p>
+                                                        <p
+                                                            class="font-semibold <?= $med_y_count >= 4 ? 'text-red-500' : 'text-navy-600' ?>">
+                                                            <?= $med_y_count ?>/4
+                                                        </p>
+                                                    </div>
+                                                    <div class="bg-white rounded-lg px-3 py-2 border border-slate-200">
+                                                        <p class="text-slate-400 mb-0.5">Financial</p>
+                                                        <p
+                                                            class="font-semibold <?= $fin_y_count >= 4 ? 'text-red-500' : 'text-navy-600' ?>">
+                                                            <?= $fin_y_count ?>/4
+                                                        </p>
+                                                    </div>
+                                                    <div class="bg-white rounded-lg px-3 py-2 border border-slate-200">
+                                                        <p class="text-slate-400 mb-0.5">Burial</p>
+                                                        <p
+                                                            class="font-semibold <?= $bur_y_count >= 4 ? 'text-red-500' : 'text-navy-600' ?>">
+                                                            <?= $bur_y_count ?>/4
+                                                        </p>
+                                                    </div>
+                                                    <div class="bg-white rounded-lg px-3 py-2 border border-slate-200">
+                                                        <p class="text-slate-400 mb-0.5">Livelihood</p>
+                                                        <p
+                                                            class="font-semibold <?= $liv_y_count >= 4 ? 'text-red-500' : 'text-navy-600' ?>">
+                                                            <?= $liv_y_count ?>/4
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Educational row -->
+                                            <div id="row-edu-year"
+                                                class="limit-row items-center justify-between px-4 py-2.5 hidden">
+                                                <div class="flex items-center gap-2"><i
+                                                        class="fas fa-calendar-week text-slate-500 text-sm"></i><span
+                                                        class="text-[12px] text-slate-600">Educational availments this
+                                                        year</span></div>
+                                                <span
+                                                    class="text-[12px] font-semibold flex items-center gap-1 <?= $edu_year_ok ? 'text-emerald-600' : 'text-red-500' ?>">
+                                                    <?= $edu_year_ok ? '✓' : '✗' ?>
+                                                    <?= $edu_y_count ?> of 2 —
+                                                    <?= $edu_year_ok ? "{$edu_year_left} remaining" : 'limit reached' ?>
+                                                </span>
+                                            </div>
+
+                                            <div class="limit-row flex items-center justify-between px-4 py-2.5"
+                                                id="row-budget">
+                                                <div class="flex items-center gap-2"><i
+                                                        class="fas fa-chart-line text-slate-500 text-sm"></i><span
+                                                        class="text-[12px] text-slate-600">Budget sufficient</span>
+                                                </div>
+                                                <span
+                                                    class="text-[12px] font-semibold <?= $budget_ok ? 'text-emerald-600' : 'text-red-500' ?>"
+                                                    id="budgetSufficientText">
+                                                    <?= $budget_ok ? '✓ ₱' . number_format($remaining) . ' available' : '✗ No budget remaining' ?>
+                                                </span>
+                                            </div>
+                                            <div class="limit-row flex items-center justify-between px-4 py-2.5"
+                                                id="amountCheck">
+                                                <div class="flex items-center gap-2"><i
+                                                        class="fas fa-dollar-sign text-slate-500 text-sm"></i><span
+                                                        class="text-[12px] text-slate-600">Amount within range</span>
+                                                </div>
+                                                <span class="text-[12px] font-semibold text-slate-400">— Enter amount
+                                                    above</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Block banner — only shown when the SELECTED subtype is at its quarter limit -->
+                                        <div id="quarterBlockBanner"
+                                            class="hidden mx-4 mb-4 mt-1 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                                            <i class="fas fa-ban text-red-500 text-base mt-0.5 flex-shrink-0"></i>
+                                            <div>
+                                                <p class="text-[12px] font-semibold text-red-700">Quarter limit reached
+                                                    for this type — Select a different type or wait until the quarter
+                                                    resets</p>
+                                                <p class="text-[11px] text-red-600 mt-0.5" id="quarterBlockMsg"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div><label class="field-label">Remarks</label><textarea class="field resize-none"
+                                            rows="3" id="remarksInput"
+                                            placeholder="Optional notes about this transaction..."></textarea></div>
+                                </div>
+                            </div>
+
+                            <!-- Assistance Type Selection Cards -->
+                            <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-6">
+                                <h2 class="text-[14px] font-semibold text-navy-600 mb-1">Select Assistance Type</h2>
+                                <p class="text-[12px] text-slate-400 mb-5">Choose the AICS program subtype to proceed
+                                    with the corresponding requirements.</p>
+                                <div class="grid grid-cols-5 gap-3" id="typeSelector">
+                                    <div onclick="selectType(this,'medical')"
+                                        class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
+                                        <div
+                                            class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
+                                            <i class="fas fa-capsules text-navy-500"></i>
+                                        </div>
+                                        <p class="text-[13px] font-semibold text-slate-700">Medical</p>
+                                        <p class="text-[10px] text-slate-400 mt-1">9 documents</p>
+                                        <?php if ($med_q['count'] >= 1): ?>
+                                            <p class="text-[10px] text-red-400 font-semibold mt-1">Quarter full</p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div onclick="selectType(this,'financial')"
+                                        class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
+                                        <div
+                                            class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
+                                            <i class="fas fa-coins text-navy-600"></i>
+                                        </div>
+                                        <p class="text-[13px] font-semibold text-slate-700">Financial</p>
+                                        <p class="text-[10px] text-slate-400 mt-1">4 documents</p>
+                                        <?php if ($fin_q['count'] >= 1): ?>
+                                            <p class="text-[10px] text-red-400 font-semibold mt-1">Quarter full</p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div onclick="selectType(this,'educational')"
+                                        class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
+                                        <div
+                                            class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
+                                            <i class="fas fa-graduation-cap text-navy-600"></i>
+                                        </div>
+                                        <p class="text-[13px] font-semibold text-slate-700">Educational</p>
+                                        <p class="text-[10px] text-slate-400 mt-1">6 documents</p>
+                                        <?php if (!$edu_year_ok): ?>
+                                            <p class="text-[10px] text-red-400 font-semibold mt-1">Year limit reached</p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div onclick="selectType(this,'livelihood')"
+                                        class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
+                                        <div
+                                            class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
+                                            <i class="fas fa-briefcase text-navy-600"></i>
+                                        </div>
+                                        <p class="text-[13px] font-semibold text-slate-700">Livelihood</p>
+                                        <p class="text-[10px] text-slate-400 mt-1">6 documents</p>
+                                        <?php if ($liv_q['count'] >= 1): ?>
+                                            <p class="text-[10px] text-red-400 font-semibold mt-1">Quarter full</p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div onclick="selectType(this,'burial')"
+                                        class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
+                                        <div
+                                            class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
+                                            <i class="fas fa-dove text-navy-600"></i>
+                                        </div>
+                                        <p class="text-[13px] font-semibold text-slate-700">Burial</p>
+                                        <p class="text-[10px] text-slate-400 mt-1">5 documents</p>
+                                        <?php if ($bur_q['count'] >= 1): ?>
+                                            <p class="text-[10px] text-red-400 font-semibold mt-1">Quarter full</p>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="animate-fade-up-4 flex justify-end gap-3">
+                                <button type="button" id="proceedToSubtype"
+                                    class="flex items-center gap-2 text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-3 hover:bg-navy-500 transition-all">
+                                    Proceed to Requirements →
+                                </button>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Assistance Type Selection Cards -->
-                        <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-6">
-                            <h2 class="text-[14px] font-semibold text-navy-600 mb-1">Select Assistance Type</h2>
-                            <p class="text-[12px] text-slate-400 mb-5">Choose the AICS program subtype to proceed with the corresponding requirements.</p>
-                            <div class="grid grid-cols-5 gap-3" id="typeSelector">
-                                <!--
+                    <!-- MEDICAL -->
+                    <div class="screen-panel" id="panel-medical">
+                        <div class="max-w-3xl mx-auto space-y-5">
+                            <div class="animate-fade-up">
+                                <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS
+                                        Medical Requirements</span></div>
+                                <h1 class="text-xl font-serif text-navy-600">Medical Assistance — Requirements</h1>
+                                <p class="text-[13px] text-slate-500 mt-1">Upload all required documents. Copy counts
+                                    follow DSWD guidelines.</p>
+                            </div>
+                            <div
+                                class="animate-fade-up-1 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-start gap-3">
+                                <i class="fas fa-info-circle text-blue-400 text-lg mt-0.5"></i>
+                                <div class="text-[12px] text-blue-800"><strong class="font-semibold">DSWD Document
+                                        Standard:</strong> All required documents must be submitted as <strong>1
+                                        original + 2 photocopies</strong> each, unless otherwise noted.</div>
+                            </div>
+                            <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                        1</div>
+                                    <div>
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Patient Information</h2>
+                                        <p class="text-[11px] text-slate-400">Fill in only if the patient is different
+                                            from the client/claimant</p>
+                                    </div>
+                                    <label class="ml-auto flex items-center gap-2 cursor-pointer">
+                                        <span class="text-[12px] text-slate-500">Different patient</span>
+                                        <div class="relative w-9 h-5 bg-slate-200 rounded-full transition-colors"
+                                            id="patientToggleTrack" onclick="togglePatient()">
+                                            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"
+                                                id="patientToggleThumb"></div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div id="patientFields" class="p-6 hidden">
+                                    <div class="grid grid-cols-3 gap-4">
+                                        <div><label class="field-label req">Patient Name</label><input type="text"
+                                                class="field" placeholder="Full name of patient"></div>
+                                        <div><label class="field-label">Age</label><input type="number" class="field"
+                                                placeholder="Age" min="0"></div>
+                                        <div><label class="field-label">Relationship to Client</label><input type="text"
+                                                class="field" placeholder="e.g. Child, Spouse"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                        2</div>
+                                    <div>
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Required Documents</h2>
+                                        <p class="text-[11px] text-slate-400">Upload scanned copies or photos of each
+                                            document</p>
+                                    </div>
+                                </div>
+                                <div class="p-6 grid grid-cols-2 gap-4">
+                                    <!--
                                 -->
-                                <div onclick="selectType(this,'medical')" class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
-                                    <div class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl"><i class="fas fa-capsules text-navy-500"></i></div>
-                                    <p class="text-[13px] font-semibold text-slate-700">Medical</p>
-                                    <p class="text-[10px] text-slate-400 mt-1">9 documents</p>
-                                </div>
-                                <div onclick="selectType(this,'financial')" class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
-                                    <div class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl"><i class="fas fa-coins text-navy-600"></i></div>
-                                    <p class="text-[13px] font-semibold text-slate-700">Financial</p>
-                                    <p class="text-[10px] text-slate-400 mt-1">4 documents</p>
-                                </div>
-                                <div onclick="selectType(this,'educational')" class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
-                                    <div class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl"><i class="fas fa-graduation-cap text-navy-600"></i></div>
-                                    <p class="text-[13px] font-semibold text-slate-700">Educational</p>
-                                    <p class="text-[10px] text-slate-400 mt-1">6 documents</p>
-                                </div>
-                                <div onclick="selectType(this,'livelihood')" class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
-                                    <div class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl"><i class="fas fa-briefcase text-navy-600"></i></div>
-                                    <p class="text-[13px] font-semibold text-slate-700">Livelihood</p>
-                                    <p class="text-[10px] text-slate-400 mt-1">6 documents</p>
-                                </div>
-                                <div onclick="selectType(this,'burial')" class="type-card bg-white border-2 border-slate-200 rounded-2xl p-4 text-center hover:border-navy-600 group">
-                                    <div class="card-icon w-12 h-12 mx-auto mb-3 rounded-xl bg-slate-100 flex items-center justify-center text-2xl"><i class="fas fa-dove text-navy-600"></i></div>
-                                    <p class="text-[13px] font-semibold text-slate-700">Burial</p>
-                                    <p class="text-[10px] text-slate-400 mt-1">5 documents</p>
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Medical Certificate /
+                                            Abstract <span class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-medcert">
+                                            <input type="file" name="doc_medcert[]" accept=".pdf,.jpg,.jpeg,.png"
+                                                multiple required onchange="fileSelected(this,'uz-medcert')">
+                                            <div class="upload-content"><i
+                                                    class="fas fa-paperclip upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="doc_labresults" → DB: amed_lab_result -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Laboratory Results /
+                                            Resita <span class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-labresults">
+                                            <input type="file" name="doc_labresults[]" accept=".pdf,.jpg,.jpeg,.png"
+                                                multiple required onchange="fileSelected(this,'uz-labresults')">
+                                            <div class="upload-content"><i class="fas fa-flask upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="doc_validid" → DB: amed_valid_id -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Valid ID <span
+                                                class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-validid">
+                                            <input type="file" name="doc_validid[]" accept=".pdf,.jpg,.jpeg,.png"
+                                                multiple required onchange="fileSelected(this,'uz-validid')">
+                                            <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="doc_indigency" → DB: amed_cert_indigency -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Barangay Indigency
+                                            Certificate <span class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-indigency">
+                                            <input type="file" name="doc_indigency[]" accept=".pdf,.jpg,.jpeg,.png"
+                                                multiple required onchange="fileSelected(this,'uz-indigency')">
+                                            <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="doc_hospitalbill" → DB: amed_hospital_bill -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Hospital Bill <span
+                                                class="opt-badge">Optional — if admitted</span></div>
+                                        <label class="upload-zone" id="uz-hospitalbill">
+                                            <input type="file" name="doc_hospitalbill" accept=".pdf,.jpg,.jpeg,.png"
+                                                onchange="fileSelected(this,'uz-hospitalbill')">
+                                            <div class="upload-content"><i
+                                                    class="fas fa-hospital-user upload-icon"></i><span
+                                                    class="upload-title">Click to upload</span><span
+                                                    class="upload-hint">PDF, JPG, PNG</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="doc_discharge" → DB: amed_discharge_summary -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Discharge Summary
+                                            <span class="opt-badge">Optional</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-discharge">
+                                            <input type="file" name="doc_discharge" accept=".pdf,.jpg,.jpeg,.png"
+                                                onchange="fileSelected(this,'uz-discharge')">
+                                            <div class="upload-content"><i
+                                                    class="fas fa-clipboard-list upload-icon"></i><span
+                                                    class="upload-title">Click to upload</span><span
+                                                    class="upload-hint">PDF, JPG, PNG</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="doc_dialysis" → DB: amed_med_quotation -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Medical Quotation
+                                            (Dialysis) <span class="opt-badge">Optional</span></div>
+                                        <label class="upload-zone" id="uz-dialysis">
+                                            <input type="file" name="doc_dialysis" accept=".pdf,.jpg,.jpeg,.png"
+                                                onchange="fileSelected(this,'uz-dialysis')">
+                                            <div class="upload-content"><i class="fas fa-syringe upload-icon"></i><span
+                                                    class="upload-title">Click to upload</span><span
+                                                    class="upload-hint">PDF, JPG, PNG</span></div>
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Medical Protocol
+                                            (Chemo) <span class="opt-badge">Optional</span></div>
+                                        <label class="upload-zone" id="uz-chemo">
+                                            <input type="file" name="doc_chemo" accept=".pdf,.jpg,.jpeg,.png"
+                                                onchange="fileSelected(this,'uz-chemo')">
+                                            <div class="upload-content"><i class="fas fa-flask upload-icon"></i><span
+                                                    class="upload-title">Click to upload</span><span
+                                                    class="upload-hint">PDF, JPG, PNG</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="doc_mayors" → DB: amed_mayors_approval -->
+                                    <div class="col-span-2">
+                                        <div class="field-label flex items-center flex-wrap gap-1">Mayor's Approval
+                                            <span class="opt-badge">LGU AICS only</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-mayors">
+                                            <input type="file" name="doc_mayors" accept=".pdf,.jpg,.jpeg,.png"
+                                                onchange="fileSelected(this,'uz-mayors')">
+                                            <div class="upload-content"><i class="fas fa-landmark upload-icon"></i><span
+                                                    class="upload-title">Click to upload Mayor's Approval</span><span
+                                                    class="upload-hint">PDF, JPG, PNG</span></div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="animate-fade-up-4 flex justify-end gap-3">
-                            <button type="button" id="proceedToSubtype"
-                                class="flex items-center gap-2 text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-3 hover:bg-navy-500 transition-all">
-                                Proceed to Requirements →
-                            </button>
+                            <div class="flex justify-between">
+                                <button type="button" onclick="switchSub('main')"
+                                    class="text-[13px] font-medium text-slate-500 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">←
+                                    Back to Main Form</button>
+                                <!-- saveComplete() fills hidden inputs then submits the form -->
+                                <button type="button" onclick="saveComplete()"
+                                    class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">Save
+                                    & Complete ✓</button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- MEDICAL -->
-                <div class="screen-panel" id="panel-medical">
-                    <div class="max-w-3xl mx-auto space-y-5">
-                        <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS Medical Requirements</span></div>
-                            <h1 class="text-xl font-serif text-navy-600">Medical Assistance — Requirements</h1>
-                            <p class="text-[13px] text-slate-500 mt-1">Upload all required documents. Copy counts follow DSWD guidelines.</p>
-                        </div>
-                        <div class="animate-fade-up-1 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 flex items-start gap-3">
-                            <i class="fas fa-info-circle text-blue-400 text-lg mt-0.5"></i>
-                            <div class="text-[12px] text-blue-800"><strong class="font-semibold">DSWD Document Standard:</strong> All required documents must be submitted as <strong>1 original + 2 photocopies</strong> each, unless otherwise noted.</div>
-                        </div>
-                        <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">1</div>
-                                <div>
-                                    <h2 class="text-[14px] font-semibold text-navy-600">Patient Information</h2>
-                                    <p class="text-[11px] text-slate-400">Fill in only if the patient is different from the client/claimant</p>
-                                </div>
-                                <label class="ml-auto flex items-center gap-2 cursor-pointer">
-                                    <span class="text-[12px] text-slate-500">Different patient</span>
-                                    <div class="relative w-9 h-5 bg-slate-200 rounded-full transition-colors" id="patientToggleTrack" onclick="togglePatient()">
-                                        <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform" id="patientToggleThumb"></div>
+                    <!-- FINANCIAL -->
+                    <div class="screen-panel" id="panel-financial">
+                        <div class="max-w-3xl mx-auto space-y-5">
+                            <div class="animate-fade-up">
+                                <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS
+                                        Financial Requirements</span></div>
+                                <h1 class="text-xl font-serif text-navy-600">Financial Assistance — Requirements</h1>
+                                <p class="text-[13px] text-slate-500 mt-1">Upload the Mayor's approval and any
+                                    supporting documents for this financial assistance request.</p>
+                            </div>
+                            <div
+                                class="animate-fade-up-1 bg-navy-50 border border-navy-100 rounded-xl px-4 py-3 flex items-start gap-3">
+                                <i class="fas fa-exclamation-triangle text-navy-400 text-lg mt-0.5"></i>
+                                <p class="text-[12px] text-navy-800">Financial assistance requires <strong
+                                        class="font-semibold">Mayor's approval</strong> before release. Ensure the
+                                    approval letter is signed and dated before submission.</p>
+                            </div>
+                            <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                        1</div>
+                                    <div>
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Required Documents</h2>
                                     </div>
-                                </label>
-                            </div>
-                            <div id="patientFields" class="p-6 hidden">
-                                <div class="grid grid-cols-3 gap-4">
-                                    <div><label class="field-label req">Patient Name</label><input type="text" class="field" placeholder="Full name of patient"></div>
-                                    <div><label class="field-label">Age</label><input type="number" class="field" placeholder="Age" min="0"></div>
-                                    <div><label class="field-label">Relationship to Client</label><input type="text" class="field" placeholder="e.g. Child, Spouse"></div>
+                                </div>
+                                <div class="p-6 grid grid-cols-2 gap-4">
+                                    <!-- name="fin_doc_mayors" → saveFile('fin_doc_mayors',...) → DB: afin_approval -->
+                                    <div class="col-span-2">
+                                        <div class="field-label flex items-center flex-wrap gap-1">Mayor's Approval
+                                            <span class="copy-badge">1 original required</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-fin-mayors">
+                                            <input type="file" name="fin_doc_mayors" accept=".pdf,.jpg,.jpeg,.png"
+                                                required onchange="fileSelected(this,'uz-fin-mayors')">
+                                            <div class="upload-content"><i class="fas fa-landmark upload-icon"></i><span
+                                                    class="upload-title">Click to upload Mayor's Approval</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="fin_doc_id" → (stored with afin_supporting_docs) -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Valid ID <span
+                                                class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-fin-id">
+                                            <input type="file" name="fin_doc_id[]" accept=".pdf,.jpg,.jpeg,.png"
+                                                multiple required onchange="fileSelected(this,'uz-fin-id')">
+                                            <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="fin_doc_indigency" → DB: afin_supporting_docs -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Barangay Indigency
+                                            <span class="copy-badge">1 orig + 2 copies</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-fin-indigency">
+                                            <input type="file" name="fin_doc_indigency[]" accept=".pdf,.jpg,.jpeg,.png"
+                                                multiple required onchange="fileSelected(this,'uz-fin-indigency')">
+                                            <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="fin_doc_support" → DB: afin_supporting_docs_2 -->
+                                    <div class="col-span-2">
+                                        <div class="field-label flex items-center flex-wrap gap-1">Supporting Documents
+                                            <span class="opt-badge">Multiple files allowed</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-fin-support">
+                                            <input type="file" name="fin_doc_support" accept=".pdf,.jpg,.jpeg,.png"
+                                                multiple onchange="fileSelected(this,'uz-fin-support')">
+                                            <div class="upload-content"><i
+                                                    class="fas fa-folder-open upload-icon"></i><span
+                                                    class="upload-title">Click to upload (multiple files
+                                                    accepted)</span><span class="upload-hint">PDF, JPG, PNG</span></div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">2</div>
-                                <div>
-                                    <h2 class="text-[14px] font-semibold text-navy-600">Required Documents</h2>
-                                    <p class="text-[11px] text-slate-400">Upload scanned copies or photos of each document</p>
+                            <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                        2</div>
+                                    <div>
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Additional Notes</h2>
+                                    </div>
+                                </div>
+                                <div class="p-6"><label class="field-label">Remarks</label><textarea
+                                        class="field resize-none" rows="3"
+                                        placeholder="Describe the financial need and purpose of assistance..."></textarea>
                                 </div>
                             </div>
-                            <div class="p-6 grid grid-cols-2 gap-4">
-                                <!--
-                                -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Medical Certificate / Abstract <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-medcert">
-                                        <input type="file" name="doc_medcert" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-medcert')">
-                                        <div class="upload-content"><i class="fas fa-paperclip upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="doc_labresults" → DB: amed_lab_result -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Laboratory Results / Resita <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-labresults">
-                                        <input type="file" name="doc_labresults" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-labresults')">
-                                        <div class="upload-content"><i class="fas fa-flask upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="doc_validid" → DB: amed_valid_id -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Valid ID <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-validid">
-                                        <input type="file" name="doc_validid" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-validid')">
-                                        <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="doc_indigency" → DB: amed_cert_indigency -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Barangay Indigency Certificate <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-indigency">
-                                        <input type="file" name="doc_indigency" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-indigency')">
-                                        <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="doc_hospitalbill" → DB: amed_hospital_bill -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Hospital Bill <span class="opt-badge">Optional — if admitted</span></div>
-                                    <label class="upload-zone" id="uz-hospitalbill">
-                                        <input type="file" name="doc_hospitalbill" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-hospitalbill')">
-                                        <div class="upload-content"><i class="fas fa-hospital-user upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="doc_discharge" → DB: amed_discharge_summary -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Discharge Summary <span class="opt-badge">Optional</span></div>
-                                    <label class="upload-zone" id="uz-discharge">
-                                        <input type="file" name="doc_discharge" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-discharge')">
-                                        <div class="upload-content"><i class="fas fa-clipboard-list upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="doc_dialysis" → DB: amed_med_quotation -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Medical Quotation (Dialysis) <span class="opt-badge">Optional</span></div>
-                                    <label class="upload-zone" id="uz-dialysis">
-                                        <input type="file" name="doc_dialysis" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-dialysis')">
-                                        <div class="upload-content"><i class="fas fa-syringe upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Medical Protocol (Chemo) <span class="opt-badge">Optional</span></div>
-                                    <label class="upload-zone" id="uz-chemo">
-                                        <input type="file" name="doc_chemo" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-chemo')">
-                                        <div class="upload-content"><i class="fas fa-flask upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="doc_mayors" → DB: amed_mayors_approval -->
-                                <div class="col-span-2">
-                                    <div class="field-label flex items-center flex-wrap gap-1">Mayor's Approval <span class="opt-badge">LGU AICS only</span></div>
-                                    <label class="upload-zone" id="uz-mayors">
-                                        <input type="file" name="doc_mayors" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-mayors')">
-                                        <div class="upload-content"><i class="fas fa-landmark upload-icon"></i><span class="upload-title">Click to upload Mayor's Approval</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
+                            <div class="flex justify-between">
+                                <button type="button" onclick="switchSub('main')"
+                                    class="text-[13px] font-medium text-slate-500 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">←
+                                    Back to Main Form</button>
+                                <button type="button" onclick="saveComplete()"
+                                    class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">Save
+                                    & Complete ✓</button>
                             </div>
-                        </div>
-                        <div class="flex justify-between">
-                            <button type="button" onclick="switchSub('main')" class="text-[13px] font-medium text-slate-500 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">← Back to Main Form</button>
-                            <!-- saveComplete() fills hidden inputs then submits the form -->
-                            <button type="button" onclick="saveComplete()" class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">Save & Complete ✓</button>
                         </div>
                     </div>
-                </div>
 
-                <!-- FINANCIAL -->
-                <div class="screen-panel" id="panel-financial">
-                    <div class="max-w-3xl mx-auto space-y-5">
-                        <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS Financial Requirements</span></div>
-                            <h1 class="text-xl font-serif text-navy-600">Financial Assistance — Requirements</h1>
-                            <p class="text-[13px] text-slate-500 mt-1">Upload the Mayor's approval and any supporting documents for this financial assistance request.</p>
-                        </div>
-                        <div class="animate-fade-up-1 bg-navy-50 border border-navy-100 rounded-xl px-4 py-3 flex items-start gap-3">
-                            <i class="fas fa-exclamation-triangle text-navy-400 text-lg mt-0.5"></i>
-                            <p class="text-[12px] text-navy-800">Financial assistance requires <strong class="font-semibold">Mayor's approval</strong> before release. Ensure the approval letter is signed and dated before submission.</p>
-                        </div>
-                        <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">1</div>
-                                <div><h2 class="text-[14px] font-semibold text-navy-600">Required Documents</h2></div>
+                    <!-- EDUCATIONAL -->
+                    <div class="screen-panel" id="panel-educational">
+                        <div class="max-w-3xl mx-auto space-y-5">
+                            <div class="animate-fade-up">
+                                <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS
+                                        Educational Requirements</span></div>
+                                <h1 class="text-xl font-serif text-navy-600">Educational Assistance — Requirements</h1>
+                                <p class="text-[13px] text-slate-500 mt-1">Maximum twice per school year · Max ₱20,000
+                                    per year total.</p>
                             </div>
-                            <div class="p-6 grid grid-cols-2 gap-4">
-                                <!-- name="fin_doc_mayors" → saveFile('fin_doc_mayors',...) → DB: afin_approval -->
-                                <div class="col-span-2">
-                                    <div class="field-label flex items-center flex-wrap gap-1">Mayor's Approval <span class="copy-badge">1 original required</span></div>
-                                    <label class="upload-zone" id="uz-fin-mayors">
-                                        <input type="file" name="fin_doc_mayors" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-fin-mayors')">
-                                        <div class="upload-content"><i class="fas fa-landmark upload-icon"></i><span class="upload-title">Click to upload Mayor's Approval</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
+                            <div
+                                class="animate-fade-up-1 bg-navy-50 border border-navy-100 rounded-xl px-4 py-3 flex items-start gap-3">
+                                <i class="fas fa-info-circle text-navy-400 text-lg mt-0.5"></i>
+                                <p class="text-[12px] text-navy-800">Educational assistance is limited to <strong>2
+                                        times per school year</strong> with a maximum of <strong>₱20,000/year</strong>.
+                                </p>
+                            </div>
+                            <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                        1</div>
+                                    <div>
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Education Details</h2>
+                                    </div>
                                 </div>
-                                <!-- name="fin_doc_id" → (stored with afin_supporting_docs) -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Valid ID <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-fin-id">
-                                        <input type="file" name="fin_doc_id" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-fin-id')">
-                                        <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="fin_doc_indigency" → DB: afin_supporting_docs -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Barangay Indigency <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-fin-indigency">
-                                        <input type="file" name="fin_doc_indigency" accept=".pdf,.jpg,.jpeg,.png" onchange="fileSelected(this,'uz-fin-indigency')">
-                                        <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="fin_doc_support" → DB: afin_supporting_docs_2 -->
-                                <div class="col-span-2">
-                                    <div class="field-label flex items-center flex-wrap gap-1">Supporting Documents <span class="opt-badge">Multiple files allowed</span></div>
-                                    <label class="upload-zone" id="uz-fin-support">
-                                        <input type="file" name="fin_doc_support" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="fileSelected(this,'uz-fin-support')">
-                                        <div class="upload-content"><i class="fas fa-folder-open upload-icon"></i><span class="upload-title">Click to upload (multiple files accepted)</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
+                                <div class="p-6 space-y-4">
+                                    <div class="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <label class="field-label req">Educational Level</label>
+                                            <!-- name="edu_level" → $_POST['edu_level'] → $aed_educational_level in PHP -->
+                                            <select class="field" name="edu_level">
+                                                <option value="">Select</option>
+                                                <option value="K-12">K-12</option>
+                                                <option value="College">College</option>
+                                                <option value="Vocational">Vocational / Technical</option>
+                                                <option value="Graduate">Graduate Studies</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="field-label req">Purpose</label>
+                                            <!-- name="edu_purpose" → $_POST['edu_purpose'] → $aed_purpose -->
+                                            <select class="field" name="edu_purpose">
+                                                <option value="">Select</option>
+                                                <option>Tuition Fee</option>
+                                                <option>Field Trip</option>
+                                                <option>Diploma Processing</option>
+                                                <option>School Supplies</option>
+                                                <option>Miscellaneous Fees</option>
+                                                <option>Other</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="field-label req">School / Institution Name</label>
+                                            <!-- name="edu_school" → $_POST['edu_school'] → $aed_school_name -->
+                                            <input type="text" class="field" name="edu_school"
+                                                placeholder="Name of school or university">
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div><label class="field-label">School Year</label><select class="field">
+                                                <option>2025–2026</option>
+                                                <option>2024–2025</option>
+                                            </select></div>
+                                        <div><label class="field-label">Semester / Term</label><select class="field">
+                                                <option>1st Semester</option>
+                                                <option>2nd Semester</option>
+                                                <option>Summer</option>
+                                            </select></div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">2</div>
-                                <div><h2 class="text-[14px] font-semibold text-navy-600">Additional Notes</h2></div>
+                            <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                        2</div>
+                                    <div>
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Required Documents</h2>
+                                    </div>
+                                </div>
+                                <div class="p-6 grid grid-cols-2 gap-4">
+                                    <!-- name="edu_doc_card" → saveFile('edu_doc_card',...) → DB: aed_grades -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Report Card / Grades
+                                            <span class="copy-badge">1 orig + 2 copies</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-edu-card">
+                                            <input type="file" name="edu_doc_card[]" multiple required
+                                                onchange="fileSelected(this,'uz-edu-card')">
+                                            <div class="upload-content"><i
+                                                    class="fas fa-chart-line upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="edu_doc_enroll" → DB: aed_cert_enrollment -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Certificate of
+                                            Enrollment <span class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-edu-enroll">
+                                            <input type="file" name="edu_doc_enroll[]" multiple required
+                                                onchange="fileSelected(this,'uz-edu-enroll')">
+                                            <div class="upload-content"><i
+                                                    class="fas fa-graduation-cap upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="edu_doc_indigency" → DB: aed_cert_indigency -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Certificate of
+                                            Indigency <span class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-edu-indigency">
+                                            <input type="file" name="edu_doc_indigency[]" multiple required
+                                                onchange="fileSelected(this,'uz-edu-indigency')">
+                                            <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="edu_doc_residency" → DB: aed_cert_residency -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Certificate of
+                                            Residency <span class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-edu-residency">
+                                            <input type="file" name="edu_doc_residency[]" multiple required
+                                                onchange="fileSelected(this,'uz-edu-residency')">
+                                            <div class="upload-content"><i class="fas fa-home upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="edu_doc_studentid" → DB: aed_student_id -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Student ID <span
+                                                class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-edu-studentid">
+                                            <input type="file" name="edu_doc_studentid[]" multiple required
+                                                onchange="fileSelected(this,'uz-edu-studentid')">
+                                            <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="edu_doc_claimantid" → DB: aed_claimant_id -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Claimant's Valid ID
+                                            <span class="copy-badge">1 orig + 2 copies</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-edu-claimantid">
+                                            <input type="file" name="edu_doc_claimantid[]" multiple required
+                                                onchange="fileSelected(this,'uz-edu-claimantid')">
+                                            <div class="upload-content"><i
+                                                    class="fas fa-user-check upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="p-6"><label class="field-label">Remarks</label><textarea class="field resize-none" rows="3" placeholder="Describe the financial need and purpose of assistance..."></textarea></div>
-                        </div>
-                        <div class="flex justify-between">
-                            <button type="button" onclick="switchSub('main')" class="text-[13px] font-medium text-slate-500 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">← Back to Main Form</button>
-                            <button type="button" onclick="saveComplete()" class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">Save & Complete ✓</button>
+                            <div class="flex justify-between">
+                                <button type="button" onclick="switchSub('main')"
+                                    class="text-[13px] font-medium text-slate-500 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">←
+                                    Back to Main Form</button>
+                                <button type="button" onclick="saveComplete()"
+                                    class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">Save
+                                    & Complete ✓</button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- EDUCATIONAL -->
-                <div class="screen-panel" id="panel-educational">
-                    <div class="max-w-3xl mx-auto space-y-5">
-                        <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS Educational Requirements</span></div>
-                            <h1 class="text-xl font-serif text-navy-600">Educational Assistance — Requirements</h1>
-                            <p class="text-[13px] text-slate-500 mt-1">Maximum twice per school year · Max ₱20,000 per year total.</p>
-                        </div>
-                        <div class="animate-fade-up-1 bg-navy-50 border border-navy-100 rounded-xl px-4 py-3 flex items-start gap-3">
-                            <i class="fas fa-info-circle text-navy-400 text-lg mt-0.5"></i>
-                            <p class="text-[12px] text-navy-800">Educational assistance is limited to <strong>2 times per school year</strong> with a maximum of <strong>₱20,000/year</strong>.</p>
-                        </div>
-                        <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">1</div>
-                                <div><h2 class="text-[14px] font-semibold text-navy-600">Education Details</h2></div>
+                    <!-- LIVELIHOOD -->
+                    <div class="screen-panel" id="panel-livelihood">
+                        <div class="max-w-3xl mx-auto space-y-5">
+                            <div class="animate-fade-up">
+                                <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS
+                                        Livelihood Requirements</span></div>
+                                <h1 class="text-xl font-serif text-navy-600">Livelihood Assistance — Requirements</h1>
+                                <p class="text-[13px] text-slate-500 mt-1">Provide business details and upload all
+                                    required documents for livelihood assistance.</p>
                             </div>
-                            <div class="p-6 space-y-4">
-                                <div class="grid grid-cols-3 gap-4">
+                            <div class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                        1</div>
                                     <div>
-                                        <label class="field-label req">Educational Level</label>
-                                        <!-- name="edu_level" → $_POST['edu_level'] → $aed_educational_level in PHP -->
-                                        <select class="field" name="edu_level">
-                                            <option value="">Select</option>
-                                            <option value="K-12">K-12</option>
-                                            <option value="College">College</option>
-                                            <option value="Vocational">Vocational / Technical</option>
-                                            <option value="Graduate">Graduate Studies</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="field-label req">Purpose</label>
-                                        <!-- name="edu_purpose" → $_POST['edu_purpose'] → $aed_purpose -->
-                                        <select class="field" name="edu_purpose">
-                                            <option value="">Select</option>
-                                            <option>Tuition Fee</option>
-                                            <option>Field Trip</option>
-                                            <option>Diploma Processing</option>
-                                            <option>School Supplies</option>
-                                            <option>Miscellaneous Fees</option>
-                                            <option>Other</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="field-label req">School / Institution Name</label>
-                                        <!-- name="edu_school" → $_POST['edu_school'] → $aed_school_name -->
-                                        <input type="text" class="field" name="edu_school" placeholder="Name of school or university">
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Business Information</h2>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="field-label">School Year</label><select class="field"><option>2025–2026</option><option>2024–2025</option></select></div>
-                                    <div><label class="field-label">Semester / Term</label><select class="field"><option>1st Semester</option><option>2nd Semester</option><option>Summer</option></select></div>
+                                <div class="p-6 space-y-4">
+                                    <div class="grid grid-cols-3 gap-4">
+                                        <!-- name="biz_name" → $_POST['biz_name'] → $aliv_business_name -->
+                                        <div><label class="field-label req">Business Name</label><input type="text"
+                                                class="field" name="biz_name" placeholder="Proposed business name">
+                                        </div>
+                                        <div>
+                                            <label class="field-label req">Business Type</label>
+                                            <!-- name="biz_type" → $_POST['biz_type'] → $aliv_business_type -->
+                                            <select class="field" name="biz_type">
+                                                <option value="">Select type</option>
+                                                <option>Sari-sari Store</option>
+                                                <option>Rice Retailing</option>
+                                                <option>Frozen Goods</option>
+                                                <option>Food Vending / Catering</option>
+                                                <option>Farming / Gardening</option>
+                                                <option>Livestock Raising</option>
+                                                <option>Handicrafts</option>
+                                                <option>Other</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="field-label req">Start-up Cost (₱)</label>
+                                            <div class="relative">
+                                                <span
+                                                    class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[13px]">₱</span>
+                                                <!-- name="biz_cost" → $_POST['biz_cost'] → $aliv_start_up_cost -->
+                                                <input type="number" min="0" class="field pl-7" name="biz_cost"
+                                                    placeholder="0.00">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div><label class="field-label">Business Location</label><input type="text"
+                                                class="field" placeholder="Street, barangay, or stall location"></div>
+                                        <div><label class="field-label">Target Start Date</label><input type="date"
+                                                class="field"></div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="animate-fade-up-3 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">2</div>
-                                <div><h2 class="text-[14px] font-semibold text-navy-600">Required Documents</h2></div>
+                            <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                        2</div>
+                                    <div>
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Required Documents</h2>
+                                    </div>
+                                </div>
+                                <div class="p-6 grid grid-cols-2 gap-4">
+                                    <!-- name="liv_doc_intent" → DB: aliv_letter_intent -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Letter of Intent
+                                            <span class="copy-badge">1 orig + 2 copies</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-liv-intent">
+                                            <input type="file" name="liv_doc_intent[]" multiple required
+                                                onchange="fileSelected(this,'uz-liv-intent')">
+                                            <div class="upload-content"><i class="fas fa-pen-alt upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="liv_doc_proposal" → DB: aliv_livelihood_proposal -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Business Proposal
+                                            <span class="copy-badge">1 orig + 2 copies</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-liv-proposal">
+                                            <input type="file" name="liv_doc_proposal[]" multiple required
+                                                onchange="fileSelected(this,'uz-liv-proposal')">
+                                            <div class="upload-content"><i
+                                                    class="fas fa-chart-pie upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="liv_doc_validid" → DB: aliv_valid_id -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Valid ID <span
+                                                class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-liv-id">
+                                            <input type="file" name="liv_doc_validid[]" multiple required
+                                                onchange="fileSelected(this,'uz-liv-id')">
+                                            <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="liv_doc_indigency" → DB: aliv_cert_indigency -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Certificate of
+                                            Indigency <span class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-liv-indigency">
+                                            <input type="file" name="liv_doc_indigency[]" multiple required
+                                                onchange="fileSelected(this,'uz-liv-indigency')">
+                                            <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="liv_doc_residency" → DB: aliv_cert_residency -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Certificate of
+                                            Residency <span class="copy-badge">1 orig + 2 copies</span></div>
+                                        <label class="upload-zone" id="uz-liv-residency">
+                                            <input type="file" name="liv_doc_residency[]" multiple required
+                                                onchange="fileSelected(this,'uz-liv-residency')">
+                                            <div class="upload-content"><i class="fas fa-home upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 3 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Training Certificate
+                                            <span class="opt-badge">If completed</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-liv-training">
+                                            <input type="file" name="liv_doc_training"
+                                                onchange="fileSelected(this,'uz-liv-training')">
+                                            <div class="upload-content"><i
+                                                    class="fas fa-certificate upload-icon"></i><span
+                                                    class="upload-title">Click to upload</span><span
+                                                    class="upload-hint">PDF, JPG, PNG</span></div>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="p-6 grid grid-cols-2 gap-4">
-                                <!-- name="edu_doc_card" → saveFile('edu_doc_card',...) → DB: aed_grades -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Report Card / Grades <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-edu-card">
-                                        <input type="file" name="edu_doc_card" onchange="fileSelected(this,'uz-edu-card')">
-                                        <div class="upload-content"><i class="fas fa-chart-line upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="edu_doc_enroll" → DB: aed_cert_enrollment -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Certificate of Enrollment <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-edu-enroll">
-                                        <input type="file" name="edu_doc_enroll" onchange="fileSelected(this,'uz-edu-enroll')">
-                                        <div class="upload-content"><i class="fas fa-graduation-cap upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="edu_doc_indigency" → DB: aed_cert_indigency -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Certificate of Indigency <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-edu-indigency">
-                                        <input type="file" name="edu_doc_indigency" onchange="fileSelected(this,'uz-edu-indigency')">
-                                        <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="edu_doc_residency" → DB: aed_cert_residency -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Certificate of Residency <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-edu-residency">
-                                        <input type="file" name="edu_doc_residency" onchange="fileSelected(this,'uz-edu-residency')">
-                                        <div class="upload-content"><i class="fas fa-home upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="edu_doc_studentid" → DB: aed_student_id -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Student ID <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-edu-studentid">
-                                        <input type="file" name="edu_doc_studentid" onchange="fileSelected(this,'uz-edu-studentid')">
-                                        <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="edu_doc_claimantid" → DB: aed_claimant_id -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Claimant's Valid ID <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-edu-claimantid">
-                                        <input type="file" name="edu_doc_claimantid" onchange="fileSelected(this,'uz-edu-claimantid')">
-                                        <div class="upload-content"><i class="fas fa-user-check upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
+                            <div class="flex justify-between">
+                                <button type="button" onclick="switchSub('main')"
+                                    class="text-[13px] font-medium text-slate-500 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">←
+                                    Back to Main Form</button>
+                                <button type="button" onclick="saveComplete()"
+                                    class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">Save
+                                    & Complete ✓</button>
                             </div>
-                        </div>
-                        <div class="flex justify-between">
-                            <button type="button" onclick="switchSub('main')" class="text-[13px] font-medium text-slate-500 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">← Back to Main Form</button>
-                            <button type="button" onclick="saveComplete()" class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">Save & Complete ✓</button>
                         </div>
                     </div>
-                </div>
 
-                <!-- LIVELIHOOD -->
-                <div class="screen-panel" id="panel-livelihood">
-                    <div class="max-w-3xl mx-auto space-y-5">
-                        <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-slate-400">AICS Livelihood Requirements</span></div>
-                            <h1 class="text-xl font-serif text-navy-600">Livelihood Assistance — Requirements</h1>
-                            <p class="text-[13px] text-slate-500 mt-1">Provide business details and upload all required documents for livelihood assistance.</p>
-                        </div>
-                        <div class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">1</div>
-                                <div><h2 class="text-[14px] font-semibold text-navy-600">Business Information</h2></div>
+                    <!-- BURIAL -->
+                    <div class="screen-panel" id="panel-burial">
+                        <div class="max-w-3xl mx-auto space-y-5">
+                            <div class="animate-fade-up">
+                                <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-navy-400">AICS
+                                        Burial Requirements</span></div>
+                                <h1 class="text-xl font-serif text-navy-600">Burial Assistance — Requirements</h1>
+                                <p class="text-[13px] text-navy-500 mt-1">Documents for burial assistance require
+                                    <strong>1 original + 1 photocopy</strong> only (not 2).
+                                </p>
                             </div>
-                            <div class="p-6 space-y-4">
-                                <div class="grid grid-cols-3 gap-4">
-                                    <!-- name="biz_name" → $_POST['biz_name'] → $aliv_business_name -->
-                                    <div><label class="field-label req">Business Name</label><input type="text" class="field" name="biz_name" placeholder="Proposed business name"></div>
+                            <div
+                                class="animate-fade-up-1 bg-navy-50 border border-navy-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                                <i class="fas fa-info-circle text-navy-400 text-lg mt-0.5"></i>
+                                <p class="text-[12px] text-navy-700">Burial assistance has a <strong
+                                        class="font-semibold">reduced copy requirement</strong> — only <strong>1
+                                        original + 1 photocopy</strong> is needed for each document.</p>
+                            </div>
+                            <div class="animate-fade-up-2 bg-white rounded-2xl border border-navy-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                        1</div>
                                     <div>
-                                        <label class="field-label req">Business Type</label>
-                                        <!-- name="biz_type" → $_POST['biz_type'] → $aliv_business_type -->
-                                        <select class="field" name="biz_type">
-                                            <option value="">Select type</option>
-                                            <option>Sari-sari Store</option>
-                                            <option>Rice Retailing</option>
-                                            <option>Frozen Goods</option>
-                                            <option>Food Vending / Catering</option>
-                                            <option>Farming / Gardening</option>
-                                            <option>Livestock Raising</option>
-                                            <option>Handicrafts</option>
-                                            <option>Other</option>
-                                        </select>
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Deceased Information</h2>
                                     </div>
-                                    <div>
-                                        <label class="field-label req">Start-up Cost (₱)</label>
-                                        <div class="relative">
-                                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[13px]">₱</span>
-                                            <!-- name="biz_cost" → $_POST['biz_cost'] → $aliv_start_up_cost -->
-                                            <input type="number" min="0" class="field pl-7" name="biz_cost" placeholder="0.00">
+                                </div>
+                                <div class="p-6 space-y-4">
+                                    <div class="grid grid-cols-3 gap-4">
+                                        <div><label class="field-label req">Name of Deceased</label><input type="text"
+                                                class="field" placeholder="Full legal name"></div>
+                                        <div><label class="field-label req">Date of Death</label><input type="date"
+                                                class="field"></div>
+                                        <div><label class="field-label req">Relationship to Claimant</label><select
+                                                class="field">
+                                                <option value="">Select</option>
+                                                <option>Spouse</option>
+                                                <option>Parent</option>
+                                                <option>Child</option>
+                                                <option>Sibling</option>
+                                                <option>Grandparent</option>
+                                                <option>Other</option>
+                                            </select></div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div><label class="field-label">Funeral Home / Parlor</label><input type="text"
+                                                class="field" placeholder="Name of funeral establishment"></div>
+                                        <div><label class="field-label">Funeral Contract Amount (₱)</label>
+                                            <div class="relative"><span
+                                                    class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[13px]">₱</span><input
+                                                    type="number" min="0" class="field pl-7" placeholder="0.00"></div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="field-label">Business Location</label><input type="text" class="field" placeholder="Street, barangay, or stall location"></div>
-                                    <div><label class="field-label">Target Start Date</label><input type="date" class="field"></div>
+                            </div>
+                            <div class="animate-fade-up-3 bg-white rounded-2xl border border-navy-200 overflow-hidden">
+                                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                                    <div
+                                        class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">
+                                        2</div>
+                                    <div>
+                                        <h2 class="text-[14px] font-semibold text-navy-600">Required Documents</h2>
+                                        <p class="text-[11px] text-slate-400">Note: Burial only requires 1 original + 1
+                                            photocopy each</p>
+                                    </div>
+                                </div>
+                                <div class="p-6 grid grid-cols-2 gap-4">
+                                    <!-- name="bur_doc_death" → saveFile('bur_doc_death',...) → DB: ab_death_cert -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Death Certificate
+                                            (PSA/LCR) <span class="copy-badge">1 orig + 1 copy</span></div>
+                                        <label class="upload-zone" id="uz-bur-death">
+                                            <input type="file" name="bur_doc_death[]" multiple required
+                                                onchange="fileSelected(this,'uz-bur-death')">
+                                            <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 2 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="bur_doc_contract" → DB: ab_funeral_contract -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Funeral Contract
+                                            <span class="copy-badge">1 orig + 1 copy</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-bur-contract">
+                                            <input type="file" name="bur_doc_contract[]" multiple required
+                                                onchange="fileSelected(this,'uz-bur-contract')">
+                                            <div class="upload-content"><i
+                                                    class="fas fa-file-signature upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 2 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="bur_doc_validid" → DB: ab_valid_id -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Valid ID of Claimant
+                                            <span class="copy-badge">1 orig + 1 copy</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-bur-id">
+                                            <input type="file" name="bur_doc_validid[]" multiple required
+                                                onchange="fileSelected(this,'uz-bur-id')">
+                                            <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 2 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="bur_doc_indigency" → DB: ab_brgy_indigency -->
+                                    <div>
+                                        <div class="field-label flex items-center flex-wrap gap-1">Barangay Indigency
+                                            <span class="copy-badge">1 orig + 1 copy</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-bur-indigency">
+                                            <input type="file" name="bur_doc_indigency[]" multiple required
+                                                onchange="fileSelected(this,'uz-bur-indigency')">
+                                            <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span
+                                                    class="upload-title">Click to upload (up to 2 files)</span><span
+                                                    class="upload-hint">PDF, JPG, PNG — Required</span></div>
+                                        </label>
+                                    </div>
+                                    <!-- name="bur_doc_mayors" → DB: ab_mayors_approval -->
+                                    <div class="col-span-2">
+                                        <div class="field-label flex items-center flex-wrap gap-1">Mayor's Approval
+                                            <span class="opt-badge">LGU AICS only</span>
+                                        </div>
+                                        <label class="upload-zone" id="uz-bur-mayors">
+                                            <input type="file" name="bur_doc_mayors"
+                                                onchange="fileSelected(this,'uz-bur-mayors')">
+                                            <div class="upload-content"><i class="fas fa-landmark upload-icon"></i><span
+                                                    class="upload-title">Click to upload Mayor's Approval</span><span
+                                                    class="upload-hint">PDF, JPG, PNG</span></div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="animate-fade-up-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">2</div>
-                                <div><h2 class="text-[14px] font-semibold text-navy-600">Required Documents</h2></div>
+                            <div class="flex justify-between">
+                                <button type="button" onclick="switchSub('main')"
+                                    class="text-[13px] font-medium text-slate-500 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">←
+                                    Back to Main Form</button>
+                                <button type="button" onclick="saveComplete()"
+                                    class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">Save
+                                    & Complete ✓</button>
                             </div>
-                            <div class="p-6 grid grid-cols-2 gap-4">
-                                <!-- name="liv_doc_intent" → DB: aliv_letter_intent -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Letter of Intent <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-liv-intent">
-                                        <input type="file" name="liv_doc_intent" onchange="fileSelected(this,'uz-liv-intent')">
-                                        <div class="upload-content"><i class="fas fa-pen-alt upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="liv_doc_proposal" → DB: aliv_livelihood_proposal -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Business Proposal <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-liv-proposal">
-                                        <input type="file" name="liv_doc_proposal" onchange="fileSelected(this,'uz-liv-proposal')">
-                                        <div class="upload-content"><i class="fas fa-chart-pie upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="liv_doc_validid" → DB: aliv_valid_id -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Valid ID <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-liv-id">
-                                        <input type="file" name="liv_doc_validid" onchange="fileSelected(this,'uz-liv-id')">
-                                        <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="liv_doc_indigency" → DB: aliv_cert_indigency -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Certificate of Indigency <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-liv-indigency">
-                                        <input type="file" name="liv_doc_indigency" onchange="fileSelected(this,'uz-liv-indigency')">
-                                        <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="liv_doc_residency" → DB: aliv_cert_residency -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Certificate of Residency <span class="copy-badge">1 orig + 2 copies</span></div>
-                                    <label class="upload-zone" id="uz-liv-residency">
-                                        <input type="file" name="liv_doc_residency" onchange="fileSelected(this,'uz-liv-residency')">
-                                        <div class="upload-content"><i class="fas fa-home upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Training Certificate <span class="opt-badge">If completed</span></div>
-                                    <label class="upload-zone" id="uz-liv-training">
-                                        <input type="file" name="liv_doc_training" onchange="fileSelected(this,'uz-liv-training')">
-                                        <div class="upload-content"><i class="fas fa-certificate upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex justify-between">
-                            <button type="button" onclick="switchSub('main')" class="text-[13px] font-medium text-slate-500 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">← Back to Main Form</button>
-                            <button type="button" onclick="saveComplete()" class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">Save & Complete ✓</button>
                         </div>
                     </div>
-                </div>
 
-                <!-- BURIAL -->
-                <div class="screen-panel" id="panel-burial">
-                    <div class="max-w-3xl mx-auto space-y-5">
-                        <div class="animate-fade-up">
-                            <div class="flex items-center gap-2 mb-1"><span class="text-[12px] text-navy-400">AICS Burial Requirements</span></div>
-                            <h1 class="text-xl font-serif text-navy-600">Burial Assistance — Requirements</h1>
-                            <p class="text-[13px] text-navy-500 mt-1">Documents for burial assistance require <strong>1 original + 1 photocopy</strong> only (not 2).</p>
-                        </div>
-                        <div class="animate-fade-up-1 bg-navy-50 border border-navy-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                            <i class="fas fa-info-circle text-navy-400 text-lg mt-0.5"></i>
-                            <p class="text-[12px] text-navy-700">Burial assistance has a <strong class="font-semibold">reduced copy requirement</strong> — only <strong>1 original + 1 photocopy</strong> is needed for each document.</p>
-                        </div>
-                        <div class="animate-fade-up-2 bg-white rounded-2xl border border-navy-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">1</div>
-                                <div><h2 class="text-[14px] font-semibold text-navy-600">Deceased Information</h2></div>
-                            </div>
-                            <div class="p-6 space-y-4">
-                                <div class="grid grid-cols-3 gap-4">
-                                    <div><label class="field-label req">Name of Deceased</label><input type="text" class="field" placeholder="Full legal name"></div>
-                                    <div><label class="field-label req">Date of Death</label><input type="date" class="field"></div>
-                                    <div><label class="field-label req">Relationship to Claimant</label><select class="field"><option value="">Select</option><option>Spouse</option><option>Parent</option><option>Child</option><option>Sibling</option><option>Grandparent</option><option>Other</option></select></div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="field-label">Funeral Home / Parlor</label><input type="text" class="field" placeholder="Name of funeral establishment"></div>
-                                    <div><label class="field-label">Funeral Contract Amount (₱)</label><div class="relative"><span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[13px]">₱</span><input type="number" min="0" class="field pl-7" placeholder="0.00"></div></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="animate-fade-up-3 bg-white rounded-2xl border border-navy-200 overflow-hidden">
-                            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
-                                <div class="w-7 h-7 rounded-full bg-navy-500 flex items-center justify-center text-white text-[11px] font-bold">2</div>
-                                <div><h2 class="text-[14px] font-semibold text-navy-600">Required Documents</h2><p class="text-[11px] text-slate-400">Note: Burial only requires 1 original + 1 photocopy each</p></div>
-                            </div>
-                            <div class="p-6 grid grid-cols-2 gap-4">
-                                <!-- name="bur_doc_death" → saveFile('bur_doc_death',...) → DB: ab_death_cert -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Death Certificate (PSA/LCR) <span class="copy-badge">1 orig + 1 copy</span></div>
-                                    <label class="upload-zone" id="uz-bur-death">
-                                        <input type="file" name="bur_doc_death" onchange="fileSelected(this,'uz-bur-death')">
-                                        <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="bur_doc_contract" → DB: ab_funeral_contract -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Funeral Contract <span class="copy-badge">1 orig + 1 copy</span></div>
-                                    <label class="upload-zone" id="uz-bur-contract">
-                                        <input type="file" name="bur_doc_contract" onchange="fileSelected(this,'uz-bur-contract')">
-                                        <div class="upload-content"><i class="fas fa-file-signature upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="bur_doc_validid" → DB: ab_valid_id -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Valid ID of Claimant <span class="copy-badge">1 orig + 1 copy</span></div>
-                                    <label class="upload-zone" id="uz-bur-id">
-                                        <input type="file" name="bur_doc_validid" onchange="fileSelected(this,'uz-bur-id')">
-                                        <div class="upload-content"><i class="fas fa-id-card upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="bur_doc_indigency" → DB: ab_brgy_indigency -->
-                                <div>
-                                    <div class="field-label flex items-center flex-wrap gap-1">Barangay Indigency <span class="copy-badge">1 orig + 1 copy</span></div>
-                                    <label class="upload-zone" id="uz-bur-indigency">
-                                        <input type="file" name="bur_doc_indigency" onchange="fileSelected(this,'uz-bur-indigency')">
-                                        <div class="upload-content"><i class="fas fa-file-alt upload-icon"></i><span class="upload-title">Click to upload</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                                <!-- name="bur_doc_mayors" → DB: ab_mayors_approval -->
-                                <div class="col-span-2">
-                                    <div class="field-label flex items-center flex-wrap gap-1">Mayor's Approval <span class="opt-badge">LGU AICS only</span></div>
-                                    <label class="upload-zone" id="uz-bur-mayors">
-                                        <input type="file" name="bur_doc_mayors" onchange="fileSelected(this,'uz-bur-mayors')">
-                                        <div class="upload-content"><i class="fas fa-landmark upload-icon"></i><span class="upload-title">Click to upload Mayor's Approval</span><span class="upload-hint">PDF, JPG, PNG</span></div>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex justify-between">
-                            <button type="button" onclick="switchSub('main')" class="text-[13px] font-medium text-slate-500 border border-slate-200 rounded-xl px-5 py-2.5 hover:border-navy-400 hover:text-navy-600 transition-all">← Back to Main Form</button>
-                            <button type="button" onclick="saveComplete()" class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">Save & Complete ✓</button>
-                        </div>
-                    </div>
-                </div>
-
-                </form><!-- end #aicsForm -->
+                </form>
 
             </main>
         </div>
 
-        <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+        <footer
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
             <span>MSWDO San Enrique Information System</span>
         </footer>
     </div>
 
-    <div id="toast" class="fixed bottom-6 right-6 bg-navy-600 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
+    <div id="toast"
+        class="fixed bottom-6 right-6 bg-navy-600 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
         <i class="fas fa-check-circle text-emerald-400 text-base"></i><span id="toastMsg">Saved successfully!</span>
     </div>
 
     <script>
-        const FBML_QUARTER_OK  = <?= $quarter_ok  ? 'true' : 'false' ?>;
-        const FBML_YEAR_OK     = <?= $year_ok     ? 'true' : 'false' ?>;
-        const EDU_YEAR_OK      = <?= $edu_year_ok ? 'true' : 'false' ?>;
-        const BUDGET_OK        = <?= $budget_ok   ? 'true' : 'false' ?>;
+        const EDU_YEAR_OK = <?= $edu_year_ok ? 'true' : 'false' ?>;
+        const BUDGET_OK = <?= $budget_ok ? 'true' : 'false' ?>;
+
+        // (how many times this client has availed each type this year)
+        const SUBTYPE_YEAR = {
+            medical: <?= $med_y_count ?>,
+            financial: <?= $fin_y_count ?>,
+            burial: <?= $bur_y_count ?>,
+            livelihood: <?= $liv_y_count ?>,
+        };
+
+        // (how many in the current 3-month window)
+        const SUBTYPE_QUARTER = {
+            medical: <?= $med_q['count'] ?>,
+            financial: <?= $fin_q['count'] ?>,
+            burial: <?= $bur_q['count'] ?>,
+            livelihood: <?= $liv_q['count'] ?>,
+        };
+
+        // (when each subtype's current window resets)
+        const SUBTYPE_WINDOW_END = {
+            medical: '<?= $med_q['window_end'] ? $med_q['window_end']->format('M j, Y') : '' ?>',
+            financial: '<?= $fin_q['window_end'] ? $fin_q['window_end']->format('M j, Y') : '' ?>',
+            burial: '<?= $bur_q['window_end'] ? $bur_q['window_end']->format('M j, Y') : '' ?>',
+            livelihood: '<?= $liv_q['window_end'] ? $liv_q['window_end']->format('M j, Y') : '' ?>',
+        };
+
+        // Per-subtype window labels (start – end) for the "Availments this quarter" row
+        const SUBTYPE_WINDOW_LABEL = {
+            medical: '<?= ($med_q['window_start'] && $med_q['window_end']) ? '(' . $med_q['window_start']->format('M j') . ' – ' . $med_q['window_end']->format('M j, Y') . ')' : '' ?>',
+            financial: '<?= ($fin_q['window_start'] && $fin_q['window_end']) ? '(' . $fin_q['window_start']->format('M j') . ' – ' . $fin_q['window_end']->format('M j, Y') . ')' : '' ?>',
+            burial: '<?= ($bur_q['window_start'] && $bur_q['window_end']) ? '(' . $bur_q['window_start']->format('M j') . ' – ' . $bur_q['window_end']->format('M j, Y') . ')' : '' ?>',
+            livelihood: '<?= ($liv_q['window_start'] && $liv_q['window_end']) ? '(' . $liv_q['window_start']->format('M j') . ' – ' . $liv_q['window_end']->format('M j, Y') . ')' : '' ?>',
+        };
 
         // Budget data for both programs
         const BUDGETS = {
             fbml: {
-                label:     'AICS FBML',
-                annual:    <?= $annual ?>,
-                spent:     <?= $spent ?>,
+                label: 'AICS FBML',
+                annual: <?= $annual ?>,
+                spent: <?= $spent ?>,
                 remaining: <?= $remaining ?>,
-                pct:       <?= $pct_used ?>,
-                badgeCls:  '<?= $badge_cls ?>',
+                pct: <?= $pct_used ?>,
+                badgeCls: '<?= $badge_cls ?>',
                 badgeIcon: '<?= $badge_icon ?>',
                 badgeText: '<?= $badge_text ?>',
-                barColor:  '<?= $bar_color ?>',
-                ok:        <?= $budget_ok ? 'true' : 'false' ?>,
+                barColor: '<?= $bar_color ?>',
+                ok: <?= $budget_ok ? 'true' : 'false' ?>,
             },
             edu: {
-                label:     'AICS Educational',
-                annual:    <?= $edu_annual ?>,
-                spent:     <?= $edu_spent ?>,
+                label: 'AICS Educational',
+                annual: <?= $edu_annual ?>,
+                spent: <?= $edu_spent ?>,
                 remaining: <?= $edu_remaining ?>,
-                pct:       <?= $edu_pct_used ?>,
-                badgeCls:  '<?= $edu_badge_cls ?>',
+                pct: <?= $edu_pct_used ?>,
+                badgeCls: '<?= $edu_badge_cls ?>',
                 badgeIcon: '<?= $edu_badge_icon ?>',
                 badgeText: '<?= $edu_badge_text ?>',
-                barColor:  '<?= $edu_bar_color ?>',
-                ok:        <?= $edu_budget_ok ? 'true' : 'false' ?>,
+                barColor: '<?= $edu_bar_color ?>',
+                ok: <?= $edu_budget_ok ? 'true' : 'false' ?>,
             },
         };
 
@@ -1199,29 +1938,27 @@ $post_errors = $errors ?? [];
             const fmt = n => '₱' + Math.round(n).toLocaleString();
 
             document.getElementById('budgetProgramLabel').textContent = b.label;
-            document.getElementById('budgetAnnual').textContent    = fmt(b.annual);
-            document.getElementById('budgetSpent').textContent     = fmt(b.spent);
+            document.getElementById('budgetAnnual').textContent = fmt(b.annual);
+            document.getElementById('budgetSpent').textContent = fmt(b.spent);
 
             const remEl = document.getElementById('budgetRemaining');
-            remEl.textContent  = fmt(b.remaining);
-            remEl.className    = 'text-[18px] font-bold ' + (b.remaining <= 0 ? 'text-red-500' : 'text-emerald-600');
+            remEl.textContent = fmt(b.remaining);
+            remEl.className = 'text-[18px] font-bold ' + (b.remaining <= 0 ? 'text-red-500' : 'text-emerald-600');
 
             const bar = document.getElementById('budgetBar');
-            bar.className      = 'budget-bar-fill h-2 rounded-full ' + b.barColor;
-            bar.style.width    = b.pct + '%';
+            bar.className = 'budget-bar-fill h-2 rounded-full ' + b.barColor;
+            bar.style.width = b.pct + '%';
             document.getElementById('budgetPct').textContent = b.pct + '% utilized';
 
             const budgetRow = document.getElementById('budgetSufficientText');
-            budgetRow.textContent  = b.ok ? '✓ ' + fmt(b.remaining) + ' available' : '✗ No budget remaining';
-            budgetRow.className    = 'text-[12px] font-semibold ' + (b.ok ? 'text-emerald-600' : 'text-red-500');
+            budgetRow.textContent = b.ok ? '✓ ' + fmt(b.remaining) + ' available' : '✗ No budget remaining';
+            budgetRow.className = 'text-[12px] font-semibold ' + (b.ok ? 'text-emerald-600' : 'text-red-500');
         }
 
         const subNames = {
             main: 'AICS Availment', medical: 'AICS — Medical', financial: 'AICS — Financial',
             educational: 'AICS — Educational', livelihood: 'AICS — Livelihood', burial: 'AICS — Burial'
         };
-
-        let currentSubtype = '';
 
         function switchSub(id) {
             document.querySelectorAll('.screen-panel').forEach(p => p.classList.remove('active'));
@@ -1233,107 +1970,9 @@ $post_errors = $errors ?? [];
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function selectType(card, sub) {
-            document.querySelectorAll('.type-card').forEach(c => {
-                c.classList.remove('active-card', 'border-navy-600', 'bg-navy-50', 'shadow-md');
-                c.classList.add('border-slate-200');
-            });
-            card.classList.add('active-card', 'border-navy-600', 'bg-navy-50', 'shadow-md');
-            card.classList.remove('border-slate-200');
-            currentSubtype = sub;
-
-            const isEdu = sub === 'educational';
-            document.getElementById('row-fbml-quarter').classList.toggle('hidden', isEdu);
-            document.getElementById('row-fbml-quarter').classList.toggle('flex', !isEdu);
-            document.getElementById('row-fbml-year').classList.toggle('hidden', isEdu);
-            document.getElementById('row-fbml-year').classList.toggle('flex', !isEdu);
-            document.getElementById('row-edu-year').classList.toggle('hidden', !isEdu);
-            document.getElementById('row-edu-year').classList.toggle('flex', isEdu);
-
-            switchBudgetDisplay(isEdu ? 'edu' : 'fbml');
-        }
-
-        // Live validation of the amount — updates the limit check row.
-        function checkAmount(input) {
-            const val = parseFloat(input.value);
-            const el  = document.getElementById('amountCheck').querySelector('span');
-            if (!val || isNaN(val)) {
-                el.innerHTML = '— Enter amount above';
-                el.className = 'text-[12px] font-semibold text-slate-400';
-            } else if (val < 500) {
-                el.innerHTML = '<i class="fas fa-times-circle text-red-500 mr-1"></i> Below minimum ₱500';
-                el.className = 'text-[12px] font-semibold text-red-500';
-            } else if (val > 5000) {
-                el.innerHTML = '<i class="fas fa-times-circle text-red-500 mr-1"></i> Exceeds maximum ₱5,000';
-                el.className = 'text-[12px] font-semibold text-red-500';
-            } else {
-                el.innerHTML = `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> ₱${val.toLocaleString()} — within range`;
-                el.className = 'text-[12px] font-semibold text-emerald-600';
-            }
-        }
-
-        // Shows/hides patient fields in Medical panel.
-        let patientOn = false;
-        function togglePatient() {
-            patientOn = !patientOn;
-            const track  = document.getElementById('patientToggleTrack');
-            const thumb  = document.getElementById('patientToggleThumb');
-            const fields = document.getElementById('patientFields');
-            track.classList.toggle('bg-navy-600', patientOn);
-            track.classList.toggle('bg-slate-200', !patientOn);
-            thumb.style.transform = patientOn ? 'translateX(16px)' : '';
-            fields.classList.toggle('hidden', !patientOn);
-        }
-
-        //  fileSelected(input, zoneId) 
-        // When a file is chosen, shows the filename in the upload zone.
-        function fileSelected(input, zoneId) {
-            if (!input.files || !input.files[0]) return;
-            const zone = document.getElementById(zoneId);
-            const name = input.files[0].name;
-            zone.classList.add('has-file');
-            zone.querySelector('.upload-content').innerHTML =
-                `<i class="fas fa-check-circle upload-icon text-navy-600"></i><span class="upload-title">${name}</span><span class="upload-hint">File uploaded</span>`;
-        }
-
-        function showToast(msg) {
-            document.getElementById('toastMsg').textContent = msg;
-            const t = document.getElementById('toast');
-            t.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
-            t.classList.add('opacity-100', 'translate-y-0');
-            setTimeout(() => {
-                t.classList.add('opacity-0', 'translate-y-4');
-                t.classList.remove('opacity-100', 'translate-y-0');
-            }, 3000);
-        }
-
-        function saveComplete() {
-            document.getElementById('hiddenType').value    = currentSubtype;
-            document.getElementById('hiddenAmount').value  = document.getElementById('amountField').value;
-            document.getElementById('hiddenApplied').value = document.getElementById('dateApplied').value;
-            document.getElementById('hiddenReleased').value= document.getElementById('dateReleased').value;
-            document.getElementById('hiddenRemarks').value = document.getElementById('remarksInput')?.value || '';
-            document.getElementById('aicsForm').submit();
-        }
-
-        //  Date Released cannot be before Date Applied 
-        document.getElementById('dateApplied').addEventListener('change', function () {
-            const appliedVal    = this.value;
-            const releasedInput = document.getElementById('dateReleased');
-            releasedInput.min   = appliedVal;
-            if (releasedInput.value && releasedInput.value < appliedVal) {
-                releasedInput.value = '';
-                showToast('Date Released was cleared — cannot be before Date Applied.');
-            }
-        });
-        window.addEventListener('load', function () {
-            const applied = document.getElementById('dateApplied').value;
-            if (applied) document.getElementById('dateReleased').min = applied;
-        });
-
         document.getElementById('proceedToSubtype')?.addEventListener('click', () => {
             const amountInput = document.getElementById('amountField');
-            const amountVal   = parseFloat(amountInput.value);
+            const amountVal = parseFloat(amountInput.value);
             if (!amountInput.value.trim() || isNaN(amountVal) || amountVal < 500 || amountVal > 5000) {
                 showToast('Please enter a valid amount (₱500 – ₱5,000).');
                 amountInput.focus();
@@ -1353,7 +1992,186 @@ $post_errors = $errors ?? [];
                 showToast('Please select an assistance type first.');
                 return;
             }
+
+            if (currentSubtype === 'educational') {
+                if (!EDU_YEAR_OK) {
+                    showToast('Educational year limit reached — max 2 per year.');
+                    return;
+                }
+            } else {
+                // Check THIS subtype's own quarter limit
+                if ((SUBTYPE_QUARTER[currentSubtype] ?? 0) >= 1) {
+                    showToast('Quarter limit reached for ' + currentSubtype + '. Select a different type or wait until the quarter resets.');
+                    return;
+                }
+                // Check THIS subtype's own year limit
+                if ((SUBTYPE_YEAR[currentSubtype] ?? 0) >= 4) {
+                    showToast('Year limit reached for ' + currentSubtype + ' — max 4 per year.');
+                    return;
+                }
+            }
+
             switchSub(currentSubtype);
+        });
+
+        let currentSubtype = '';
+
+        function selectType(card, sub) {
+            document.querySelectorAll('.type-card').forEach(c => {
+                c.classList.remove('active-card', 'border-navy-600', 'bg-navy-50', 'shadow-md');
+                c.classList.add('border-slate-200');
+            });
+            card.classList.add('active-card', 'border-navy-600', 'bg-navy-50', 'shadow-md');
+            card.classList.remove('border-slate-200');
+            currentSubtype = sub;
+
+            const isEdu = sub === 'educational';
+
+            // Show/hide the right rows in the limit panel
+            document.getElementById('row-fbml-quarter').classList.toggle('hidden', isEdu);
+            document.getElementById('row-fbml-quarter').classList.toggle('flex', !isEdu);
+            document.getElementById('row-fbml-year').classList.toggle('hidden', isEdu);
+            document.getElementById('row-fbml-year').classList.toggle('flex', !isEdu);
+            document.getElementById('row-edu-year').classList.toggle('hidden', !isEdu);
+            document.getElementById('row-edu-year').classList.toggle('flex', isEdu);
+            document.getElementById('row-subtype-breakdown').classList.toggle('hidden', isEdu);
+
+            if (!isEdu) {
+                // Quarter row: show this subtype's own count and window
+                const qCount = SUBTYPE_QUARTER[sub] ?? 0;
+                const qOk = qCount < 1;
+                const qLabel = SUBTYPE_WINDOW_LABEL[sub] || '';
+                const qEl = document.getElementById('quarter-status-text');
+                qEl.className = 'text-[12px] font-semibold ' + (qOk ? 'text-emerald-600' : 'text-red-500');
+                qEl.textContent = (qOk ? '✓' : '✗') + ' ' + qCount + ' of 1 — ' + (qOk ? 'eligible' : 'limit reached');
+                document.getElementById('quarter-window-label').textContent = qLabel;
+
+                // Year row: show this subtype's own count
+                const yCount = SUBTYPE_YEAR[sub] ?? 0;
+                const yLeft = Math.max(0, 4 - yCount);
+                const yOk = yCount < 4;
+                const yEl = document.getElementById('fbml-year-text');
+                yEl.className = 'text-[12px] font-semibold ' + (yOk ? 'text-emerald-600' : 'text-red-500');
+                yEl.textContent = (yOk ? '✓' : '✗') + ' ' + yCount + ' of 4 — ' + (yOk ? yLeft + ' remaining' : 'limit reached');
+
+                // Block banner: show only if THIS subtype is at its quarter limit
+                const banner = document.getElementById('quarterBlockBanner');
+                const msgEl = document.getElementById('quarterBlockMsg');
+                if (!qOk) {
+                    const resetDate = SUBTYPE_WINDOW_END[sub] || '';
+                    msgEl.innerHTML = '<?= htmlspecialchars($client_name) ?> has already availed ' + sub + ' assistance once this quarter.'
+                        + (resetDate ? ' This window resets on <strong>' + resetDate + '</strong>.' : '')
+                        + ' Select a different type or wait until the quarter resets.';
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                }
+            } else {
+                // Educational: hide FBML-only elements
+                document.getElementById('quarter-status-text').textContent = '— Select a type below';
+                document.getElementById('quarter-window-label').textContent = '';
+                document.getElementById('fbml-year-text').textContent = '— Select a type below';
+                document.getElementById('quarterBlockBanner').classList.add('hidden');
+            }
+
+            switchBudgetDisplay(isEdu ? 'edu' : 'fbml');
+        }
+
+        // Live validation of the amount — updates the limit check row.
+        function checkAmount(input) {
+            const val = parseFloat(input.value);
+            const el = document.getElementById('amountCheck').querySelector('span');
+            if (!val || isNaN(val)) {
+                el.innerHTML = '— Enter amount above';
+                el.className = 'text-[12px] font-semibold text-slate-400';
+            } else if (val < 500) {
+                el.innerHTML = '<i class="fas fa-times-circle text-red-500 mr-1"></i> Below minimum ₱500';
+                el.className = 'text-[12px] font-semibold text-red-500';
+            } else if (val > 5000) {
+                el.innerHTML = '<i class="fas fa-times-circle text-red-500 mr-1"></i> Exceeds maximum ₱5,000';
+                el.className = 'text-[12px] font-semibold text-red-500';
+            } else {
+                el.innerHTML = `<i class="fas fa-check-circle text-emerald-600 mr-1"></i> ₱${val.toLocaleString()} — within range`;
+                el.className = 'text-[12px] font-semibold text-emerald-600';
+            }
+        }
+
+        // Shows/hides patient fields in Medical panel.
+        let patientOn = false;
+        function togglePatient() {
+            patientOn = !patientOn;
+            const track = document.getElementById('patientToggleTrack');
+            const thumb = document.getElementById('patientToggleThumb');
+            const fields = document.getElementById('patientFields');
+            track.classList.toggle('bg-navy-600', patientOn);
+            track.classList.toggle('bg-slate-200', !patientOn);
+            thumb.style.transform = patientOn ? 'translateX(16px)' : '';
+            fields.classList.toggle('hidden', !patientOn);
+        }
+
+        // When a file is chosen, shows the filename in the upload zone.
+        function fileSelected(input, zoneId) {
+            if (!input.files || !input.files[0]) return;
+            const zone = document.getElementById(zoneId);
+            const count = input.files.length;
+            const name = count === 1 ? input.files[0].name : `${count} files selected`;
+            zone.classList.add('has-file');
+            zone.classList.remove('border-red-400', 'bg-red-50');
+            zone.querySelector('.upload-content').innerHTML =
+                `<i class="fas fa-check-circle upload-icon text-navy-600"></i><span class="upload-title">${name}</span><span class="upload-hint">${count > 1 ? count + ' files uploaded' : 'File uploaded'}</span>`;
+        }
+
+        function showToast(msg) {
+            document.getElementById('toastMsg').textContent = msg;
+            const t = document.getElementById('toast');
+            t.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+            t.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                t.classList.add('opacity-0', 'translate-y-4');
+                t.classList.remove('opacity-100', 'translate-y-0');
+            }, 3000);
+        }
+
+        function saveComplete() {
+            // Validate that all required file inputs in the active panel have at least one file - one of the panel's req.
+            const activePanel = document.querySelector('.screen-panel.active');
+            const requiredFiles = activePanel ? activePanel.querySelectorAll('input[type=file][required]') : [];
+            const missing = [];
+            requiredFiles.forEach(inp => {
+                if (!inp.files || inp.files.length === 0) {
+                    // Get the label text for this input
+                    const labelEl = inp.closest('div')?.previousElementSibling || inp.closest('div');
+                    const labelText = labelEl?.querySelector('.field-label')?.textContent?.trim() || inp.name;
+                    missing.push(labelText.replace(/\s*\d+ orig.*$/, '').trim());
+                    inp.closest('label')?.classList.add('border-red-400', 'bg-red-50');
+                }
+            });
+            if (missing.length > 0) {
+                showToast('Please upload all required documents before submitting.');
+                return;
+            }
+
+            document.getElementById('hiddenType').value = currentSubtype;
+            document.getElementById('hiddenAmount').value = document.getElementById('amountField').value;
+            document.getElementById('hiddenApplied').value = document.getElementById('dateApplied').value;
+            document.getElementById('hiddenReleased').value = document.getElementById('dateReleased').value;
+            document.getElementById('hiddenRemarks').value = document.getElementById('remarksInput')?.value || '';
+            document.getElementById('aicsForm').submit();
+        }
+
+        //  Date Released cannot be before Date Applied 
+        document.getElementById('dateApplied').addEventListener('change', function () {
+            const appliedVal = this.value;
+            const releasedInput = document.getElementById('dateReleased');
+            releasedInput.min = appliedVal;
+            if (releasedInput.value && releasedInput.value < appliedVal) {
+                releasedInput.value = '';
+                showToast('Date Released was cleared — cannot be before Date Applied.');
+            }
+        });
+        window.addEventListener('load', function () {
+            const applied = document.getElementById('dateApplied').value;
+            if (applied) document.getElementById('dateReleased').min = applied;
         });
 
         requestAnimationFrame(() => setTimeout(() => {
@@ -1361,4 +2179,5 @@ $post_errors = $errors ?? [];
         }, 400));
     </script>
 </body>
+
 </html>
