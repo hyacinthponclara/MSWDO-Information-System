@@ -57,6 +57,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
     }
 </script>
 
+<style>
+    #sidebar summary { list-style: none; cursor: pointer; }
+    #sidebar summary::-webkit-details-marker { display: none; }
+</style>
+
 <aside id="sidebar" class="fixed top-0 left-0 w-64 h-screen flex flex-col overflow-y-auto z-50"
     style="background: #0B2545;">
 
@@ -86,43 +91,50 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-list text-sm"></i> Barangay
         </a>
 
-        <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-capsules text-sm"></i> AICS
-        </a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-home text-sm"></i> 4Ps
-        </a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-briefcase text-sm"></i> SLP
-        </a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-utensils text-sm"></i> SFP
-        </a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-school text-sm"></i> Day Care
-        </a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-user-friends text-sm"></i> Senior Citizen
-        </a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-wheelchair text-sm"></i> PWD
-        </a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-user text-sm"></i> Solo Parent
-        </a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-lock text-sm"></i> Women &amp; Child
-        </a>
+        <details class="group" open>
+            <summary
+                class="flex items-center justify-between px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">
+                <span>Programs</span>
+                <!-- group-open:rotate-180 spins this chevron when <details> is open -->
+                <i class="fas fa-chevron-down text-[8px] transition-transform duration-200 group-open:rotate-180"></i>
+            </summary>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-capsules text-sm"></i> AICS
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-home text-sm"></i> 4Ps
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-briefcase text-sm"></i> SLP
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-utensils text-sm"></i> SFP
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-school text-sm"></i> Day Care
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-user-friends text-sm"></i> Senior Citizen
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-wheelchair text-sm"></i> PWD
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-user text-sm"></i> Solo Parent
+            </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-lock text-sm"></i> Women &amp; Child
+            </a>
+        </details>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Analytics</p>
         <a href="#"
@@ -189,43 +201,55 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-book text-sm"></i> Case Study
         </a>
  -->
-        <!-- Confidential section — violet tinted -->
-        <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-violet-300/60 font-medium">Confidential
-        </p>
-        <a href="#" class="sidebar-conf active-conf flex items-center justify-between px-3 py-2 rounded text-[13px]">
+        <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Confidential</p>
+        <a href="#"
+            class="sidebar-item flex items-center justify-between px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <span class="flex items-center gap-2.5"><i class="fas fa-lock text-sm"></i> Confidential Cases</span>
             <span
-                class="badge-ring relative bg-red-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">3</span>
+                class="relative bg-red-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">3</span>
         </a>
-        <a href="#" class="sidebar-conf flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-violet-200/50">
+        <a href="#"
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-search text-sm"></i> Case Search
         </a>
 
-        <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-capsules text-sm"></i> AICS</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-home text-sm"></i> 4Ps</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-briefcase text-sm"></i> SLP</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-utensils text-sm"></i> SFP</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-school text-sm"></i> Day Care</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-user-friends text-sm"></i> Senior Citizen</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-wheelchair text-sm"></i> PWD</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-user text-sm"></i> Solo Parent</a>
+        <details class="group" open>
+            <summary
+                class="flex items-center justify-between px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">
+                <span>Programs</span>
+                <i class="fas fa-chevron-down text-[8px] transition-transform duration-200 group-open:rotate-180"></i>
+            </summary>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-capsules text-sm"></i> AICS</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-home text-sm"></i> 4Ps</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-briefcase text-sm"></i> SLP</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-utensils text-sm"></i> SFP</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-school text-sm"></i> Day Care</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-user-friends text-sm"></i> Senior Citizen</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-wheelchair text-sm"></i> PWD</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-user text-sm"></i> Solo Parent</a>
+                        </a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                <i class="fas fa-lock text-sm"></i> Women &amp; Child
+            </a>
+
+        </details>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Reports</p>
         <a href="#"
@@ -269,31 +293,37 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-list text-sm"></i> Barangay
         </a>
 
-        <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Programs</p>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-capsules text-sm"></i> AICS</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-home text-sm"></i> 4Ps</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-briefcase text-sm"></i> SLP</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-utensils text-sm"></i> SFP</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-school text-sm"></i> Day Care</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-user-friends text-sm"></i> Senior Citizen</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-wheelchair text-sm"></i> PWD</a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-user text-sm"></i> Solo Parent</a>
+        <details class="group" open>
+            <summary
+                class="flex items-center justify-between px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">
+                <span>Programs</span>
+                <i class="fas fa-chevron-down text-[8px] transition-transform duration-200 group-open:rotate-180"></i>
+            </summary>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-capsules text-sm"></i> AICS</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-home text-sm"></i> 4Ps</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-briefcase text-sm"></i> SLP</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-utensils text-sm"></i> SFP</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-school text-sm"></i> Day Care</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-user-friends text-sm"></i> Senior Citizen</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-wheelchair text-sm"></i> PWD</a>
+            <a href="#"
+                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
+                    class="fas fa-user text-sm"></i> Solo Parent</a>
+        </details>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Reports</p>
         <a href="#"
