@@ -68,10 +68,12 @@
         .sidebar-item {
             transition: all .15s ease;
         }
+
         .sidebar-item:hover {
             background: rgba(255, 255, 255, .07);
             color: rgba(255, 255, 255, .95);
         }
+
         .sidebar-item.active {
             background: rgba(26, 92, 58, .25);
             border-left-color: #C49A2A;
@@ -82,6 +84,7 @@
         .stat-card {
             transition: transform .2s ease, box-shadow .2s ease;
         }
+
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(26, 92, 58, .1);
@@ -90,6 +93,7 @@
         .btn-action {
             transition: all .15s ease;
         }
+
         .btn-action:hover {
             transform: translateY(-1px);
         }
@@ -97,6 +101,7 @@
         .case-row {
             transition: background .12s;
         }
+
         .case-row:hover {
             background: #EEF6F0;
             cursor: pointer;
@@ -109,6 +114,7 @@
         ::-webkit-scrollbar {
             width: 4px;
         }
+
         ::-webkit-scrollbar-thumb {
             background: rgba(26, 92, 58, .2);
             border-radius: 2px;
@@ -137,7 +143,7 @@
         <main class="flex-1 p-6 space-y-5 overflow-y-auto">
 
             <!-- Stat Cards -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
                 <div
                     class="stat-card animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-green-500 rounded-t-2xl"></div>
@@ -145,15 +151,6 @@
                         Cases</p>
                     <p class="text-3xl font-semibold text-green-600 leading-none">412</p>
                     <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-file-alt"></i></div>
-                </div>
-
-                <div
-                    class="stat-card animate-fade-up-2 bg-white rounded-2xl border border-green-100 p-4 relative overflow-hidden">
-                    <div class="absolute top-0 left-0 right-0 h-0.5 bg-green-600 rounded-t-2xl"></div>
-                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Pending
-                        Confidential</p>
-                    <p class="text-3xl font-semibold text-green-700 leading-none">3</p>
-                    <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-lock"></i></div>
                 </div>
 
                 <div
@@ -169,14 +166,14 @@
                     class="stat-card animate-fade-up-4 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-2xl"></div>
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Pending
-                        Availments</p>
+                        Approvals</p>
                     <p class="text-3xl font-semibold text-green-600 leading-none">7</p>
                     <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-clock"></i></div>
                 </div>
             </div>
 
             <!-- Quick Actions -->
-            <div class="animate-fade-up grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div class="animate-fade-up grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <button
                     class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
                     <div
@@ -194,6 +191,16 @@
                     </div>
                     <span class="text-[12px] font-medium text-slate-700 group-hover:text-green-600">New Availment</span>
                 </button>
+                <a href="pending_approvals.html"
+                    <button
+                        class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
+                        <div
+                            class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-base group-hover:bg-emerald-100 transition-colors flex-shrink-0">
+                            <i class="fas fa-clock text-green-600"></i>
+                        </div>
+                        <span class="text-[12px] font-medium text-slate-700 group-hover:text-green-600">Pending
+                            Approvals</span>
+                    </button></a>
                 <button
                     class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
                     <div
@@ -211,7 +218,8 @@
                     <div class="flex items-center gap-2">
                         <h2 class="text-[13px] font-semibold text-green-600">Budget Summary — All Programs</h2>
                         <span
-                            class="bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">View Only</span>
+                            class="bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">View
+                            Only</span>
                     </div>
                     <a href="#" class="text-[11px] text-green-500 font-medium hover:text-green-700">View full budget
                         →</a>
@@ -340,15 +348,15 @@
     <script>
         // Full budget data
         const budgetFullData = [
-            { name: 'AICS', annual: 2800000, remaining: 1540000, used: 1260000},
-            { name: '4Ps', annual: 30000, remaining: 28500, used: 1500},
-            { name: 'SLP', annual: 450000, remaining: 320000, used: 130000},
-            { name: 'SFP', annual: 800000, remaining: 620000, used: 180000},
-            { name: 'Day Care', annual: 350000, remaining: 280000, used: 70000},
-            { name: 'Senior Citizen', annual: 1500000, remaining: 1050000, used: 450000},
-            { name: 'PWD', annual: 200000, remaining: 144000, used: 56000},
-            { name: 'Solo Parent', annual: 300000, remaining: 228000, used: 72000},
-            { name: 'Women & Child', annual: 100000, remaining: 72000, used: 28000},
+            { name: 'AICS', annual: 2800000, remaining: 1540000, used: 1260000 },
+            { name: '4Ps', annual: 30000, remaining: 28500, used: 1500 },
+            { name: 'SLP', annual: 450000, remaining: 320000, used: 130000 },
+            { name: 'SFP', annual: 800000, remaining: 620000, used: 180000 },
+            { name: 'Day Care', annual: 350000, remaining: 280000, used: 70000 },
+            { name: 'Senior Citizen', annual: 1500000, remaining: 1050000, used: 450000 },
+            { name: 'PWD', annual: 200000, remaining: 144000, used: 56000 },
+            { name: 'Solo Parent', annual: 300000, remaining: 228000, used: 72000 },
+            { name: 'Women & Child', annual: 100000, remaining: 72000, used: 28000 },
         ];
 
         const container = document.getElementById('budgetFull');
