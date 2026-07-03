@@ -47,7 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $amount = (float) ($_POST['amount'] ?? 0);
     $date_applied = trim($_POST['date_applied'] ?? '');
-    $date_released = trim($_POST['date_released'] ?? '') ?: null;
     $remarks = trim($_POST['remarks'] ?? '') ?: null;
 
     //  Validation 
@@ -80,18 +79,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 program_id,
                 user_id,
                 av_date_applied,
-                av_date_released,
                 av_amount,
                 av_status,
                 av_remarks
-            ) VALUES (?, ?, ?, ?, ?, ?, 'Approved', ?)
+            ) VALUES (?, ?, ?, ?, ?, 'Approved', ?)
         ");
         $stmt->execute([
             $client_id,
             $program_id,
             $user_id,
             $date_applied,
-            $date_released,
             $amount,
             $remarks
         ]);
@@ -152,6 +149,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $aed_school_name = trim($_POST['edu_school'] ?? '') ?: null;
             $aed_educational_level = trim($_POST['edu_level'] ?? '') ?: null;
             $aed_purpose = trim($_POST['edu_purpose'] ?? '') ?: null;
+            if ($aed_purpose === 'Other') {
+                $aed_purpose_other = trim($_POST['edu_purpose_other'] ?? '');
+                if ($aed_purpose_other !== '') {
+                    $aed_purpose = $aed_purpose_other;
+                }
+            }
 
             $folder = 'uploads/aics/educational/';
             $aed_grades = saveFile('edu_doc_card', $folder);
@@ -283,7 +286,7 @@ if ($pct_used >= 90) {
 }
 
 
-//  AICS Educational budget (separate program) 
+//  AICS Educational budget (separate budget) 
 $stmt = $pdo->prepare("
     SELECT
         p.prog_annual_budget,
@@ -790,7 +793,6 @@ $post_errors = $errors ?? [];
                     <input type="hidden" name="aics_type" id="hiddenType" value="">
                     <input type="hidden" name="amount" id="hiddenAmount" value="">
                     <input type="hidden" name="date_applied" id="hiddenApplied" value="">
-                    <input type="hidden" name="date_released" id="hiddenReleased" value="">
                     <input type="hidden" name="remarks" id="hiddenRemarks" value="">
 
                     <!-- MAIN FORM PANEL -->
@@ -859,7 +861,7 @@ $post_errors = $errors ?? [];
                                     </div>
                                 </div>
                                 <div class="p-6 space-y-5">
-                                    <div class="grid grid-cols-3 gap-4">
+                                    <div class="grid grid-cols-2 gap-4">
                                         <div>
                                             <label class="field-label req">Amount (₱)</label>
                                             <div class="relative">
@@ -873,8 +875,6 @@ $post_errors = $errors ?? [];
                                         </div>
                                         <div><label class="field-label req">Date Applied</label><input type="date"
                                                 class="field" id="dateApplied"></div>
-                                        <div><label class="field-label">Date Released</label><input type="date"
-                                                class="field" id="dateReleased"></div>
                                     </div>
 
                                     <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden"
@@ -1420,7 +1420,8 @@ $post_errors = $errors ?? [];
                                         <div>
                                             <label class="field-label req">Purpose</label>
                                             <!-- name="edu_purpose" → $_POST['edu_purpose'] → $aed_purpose -->
-                                            <select class="field" name="edu_purpose">
+                                            <select class="field" name="edu_purpose" id="eduPurposeSelect"
+                                                onchange="toggleEduPurposeOther(this.value)">
                                                 <option value="">Select</option>
                                                 <option>Tuition Fee</option>
                                                 <option>Field Trip</option>
@@ -1429,6 +1430,9 @@ $post_errors = $errors ?? [];
                                                 <option>Miscellaneous Fees</option>
                                                 <option>Other</option>
                                             </select>
+                                            <!-- Shown only when "Other" is selected above -->
+                                            <input type="text" class="field mt-2 hidden" name="edu_purpose_other"
+                                                id="eduPurposeOther" placeholder="Please specify purpose">
                                         </div>
                                         <div>
                                             <label class="field-label req">School / Institution Name</label>
@@ -1438,11 +1442,19 @@ $post_errors = $errors ?? [];
                                         </div>
                                     </div>
                                     <div class="grid grid-cols-2 gap-4">
-                                        <div><label class="field-label">School Year</label><select class="field">
-                                                <option>2025–2026</option>
-                                                <option>2024–2025</option>
+                                        <div><label class="field-label">School Year</label><select class="field"
+                                                name="edu_school_year">
+                                                <?php
+                                                // Generate a rolling range of school years instead of hardcoding
+                                                // just two: 1 year ahead through 5 years back, most recent first.
+                                                $sy_start = (int) date('Y') + 1;
+                                                for ($sy = $sy_start; $sy >= $sy_start - 6; $sy--) {
+                                                    echo '<option>' . $sy . '–' . ($sy + 1) . '</option>';
+                                                }
+                                                ?>
                                             </select></div>
-                                        <div><label class="field-label">Semester / Term</label><select class="field">
+                                        <div><label class="field-label">Semester / Term</label><select class="field"
+                                                name="edu_semester">
                                                 <option>1st Semester</option>
                                                 <option>2nd Semester</option>
                                                 <option>Summer</option>
@@ -1983,11 +1995,6 @@ $post_errors = $errors ?? [];
                 document.getElementById('dateApplied').focus();
                 return;
             }
-            if (!document.getElementById('dateReleased').value) {
-                showToast('Please select Date Released.');
-                document.getElementById('dateReleased').focus();
-                return;
-            }
             if (!currentSubtype) {
                 showToast('Please select an assistance type first.');
                 return;
@@ -2067,7 +2074,6 @@ $post_errors = $errors ?? [];
                     banner.classList.add('hidden');
                 }
             } else {
-                // Educational: hide FBML-only elements
                 document.getElementById('quarter-status-text').textContent = '— Select a type below';
                 document.getElementById('quarter-window-label').textContent = '';
                 document.getElementById('fbml-year-text').textContent = '— Select a type below';
@@ -2077,7 +2083,6 @@ $post_errors = $errors ?? [];
             switchBudgetDisplay(isEdu ? 'edu' : 'fbml');
         }
 
-        // Live validation of the amount — updates the limit check row.
         function checkAmount(input) {
             const val = parseFloat(input.value);
             const el = document.getElementById('amountCheck').querySelector('span');
@@ -2109,6 +2114,16 @@ $post_errors = $errors ?? [];
             fields.classList.toggle('hidden', !patientOn);
         }
 
+        function toggleEduPurposeOther(value) {
+            const other = document.getElementById('eduPurposeOther');
+            if (value === 'Other') {
+                other.classList.remove('hidden');
+            } else {
+                other.classList.add('hidden');
+                other.value = '';
+            }
+        }
+
         // When a file is chosen, shows the filename in the upload zone.
         function fileSelected(input, zoneId) {
             if (!input.files || !input.files[0]) return;
@@ -2133,6 +2148,17 @@ $post_errors = $errors ?? [];
         }
 
         function saveComplete() {
+            // If Education panel has "Other" purpose selected, the free-text field is required.
+            const eduPurposeSelect = document.getElementById('eduPurposeSelect');
+            if (currentSubtype === 'educational' && eduPurposeSelect && eduPurposeSelect.value === 'Other') {
+                const other = document.getElementById('eduPurposeOther');
+                if (!other.value.trim()) {
+                    showToast('Please specify the purpose.');
+                    other.focus();
+                    return;
+                }
+            }
+
             // Validate that all required file inputs in the active panel have at least one file - one of the panel's req.
             const activePanel = document.querySelector('.screen-panel.active');
             const requiredFiles = activePanel ? activePanel.querySelectorAll('input[type=file][required]') : [];
@@ -2154,25 +2180,9 @@ $post_errors = $errors ?? [];
             document.getElementById('hiddenType').value = currentSubtype;
             document.getElementById('hiddenAmount').value = document.getElementById('amountField').value;
             document.getElementById('hiddenApplied').value = document.getElementById('dateApplied').value;
-            document.getElementById('hiddenReleased').value = document.getElementById('dateReleased').value;
             document.getElementById('hiddenRemarks').value = document.getElementById('remarksInput')?.value || '';
             document.getElementById('aicsForm').submit();
         }
-
-        //  Date Released cannot be before Date Applied 
-        document.getElementById('dateApplied').addEventListener('change', function () {
-            const appliedVal = this.value;
-            const releasedInput = document.getElementById('dateReleased');
-            releasedInput.min = appliedVal;
-            if (releasedInput.value && releasedInput.value < appliedVal) {
-                releasedInput.value = '';
-                showToast('Date Released was cleared — cannot be before Date Applied.');
-            }
-        });
-        window.addEventListener('load', function () {
-            const applied = document.getElementById('dateApplied').value;
-            if (applied) document.getElementById('dateReleased').min = applied;
-        });
 
         requestAnimationFrame(() => setTimeout(() => {
             switchBudgetDisplay('fbml');
