@@ -3,7 +3,6 @@ require 'auth.php';
 requireRole('Social Worker');
 ?>
 
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -385,15 +384,8 @@ requireRole('Social Worker');
             class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
                 <span class="text-slate-400">Women &amp; Child Protection</span>
-                <span class="text-slate-300">/</span>
-                <span class="text-navy-600 font-semibold" id="breadcrumb">New Case Intake</span>
-                <span class="bg-navy-50 text-navy-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full ml-1"><i
-                        class="fas fa-lock mr-1"></i> Restricted</span>
             </div>
             <div class="flex items-center gap-2" id="topbarActions">
-                <button onclick="saveDraft()"
-                    class="text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-3 py-1.5 hover:bg-navy-100 transition-all">Save
-                    Draft</button>
             </div>
         </header>
 
@@ -509,47 +501,39 @@ requireRole('Social Worker');
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="col-span-2">
-                                    <label class="field-label req">Case Type</label>
-                                    <div class="grid grid-cols-4 gap-2 mt-1" id="caseTypeSelector">
-                                        <div onclick="setCaseType(this)"
-                                            class="case-type-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                            <div class="text-xl mb-1.5"><i
-                                                    class="fas fa-exclamation-triangle text-navy-600"></i></div>
-                                            <p class="ct-label text-[11px] font-bold text-navy-700">VAWC</p>
-                                            <p class="text-[9px] text-slate-400 mt-0.5 leading-tight">Violence Against
-                                                Women &amp; Children</p>
-                                        </div>
-                                        <div onclick="setCaseType(this)"
-                                            class="case-type-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                            <div class="text-xl mb-1.5"><i class="fas fa-child text-navy-500"></i></div>
-                                            <p class="ct-label text-[11px] font-semibold text-slate-600">CICL</p>
-                                            <p class="text-[9px] text-slate-400 mt-0.5 leading-tight">Child in Conflict
-                                                with the Law</p>
-                                        </div>
-                                        <div onclick="setCaseType(this)"
-                                            class="case-type-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                            <div class="text-xl mb-1.5"><i class="fas fa-shield-alt text-navy-500"></i>
-                                            </div>
-                                            <p class="ct-label text-[11px] font-semibold text-slate-600">CAR</p>
-                                            <p class="text-[9px] text-slate-400 mt-0.5 leading-tight">Child at Risk</p>
-                                        </div>
-                                        <div onclick="setCaseType(this)"
-                                            class="case-type-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                            <div class="text-xl mb-1.5"><i
-                                                    class="fas fa-exclamation-circle text-navy-500"></i></div>
-                                            <p class="ct-label text-[11px] font-semibold text-slate-600">Child Abuse</p>
-                                            <p class="text-[9px] text-slate-400 mt-0.5 leading-tight">Physical / Sexual
-                                                / Emotional</p>
-                                        </div>
+                            <!-- ============ NEW: TWO-STEP CASE TYPE (Victim / Offender) ============ -->
+                            <div class="col-span-2">
+                                <label class="field-label req">Case Category</label>
+                                <div class="grid grid-cols-2 gap-3 mt-1" id="caseCategorySelector">
+                                    <!-- Victim -->
+                                    <div onclick="setCaseCategory(this, 'victim')"
+                                        class="case-type-opt border-2 border-slate-200 rounded-xl p-4 text-center">
+                                        <p class="ct-label text-[13px] font-bold text-slate-700">Victim Case</p>
+                                        <p class="text-[10px] text-slate-400 mt-1 leading-tight">VAWC · Child
+                                            Abuse<br>Women & Children subjected to violence</p>
+                                    </div>
+                                    <!-- Offender -->
+                                    <div onclick="setCaseCategory(this, 'offender')"
+                                        class="case-type-opt border-2 border-slate-200 rounded-xl p-4 text-center">
+                                        <p class="ct-label text-[13px] font-bold text-slate-700">Offender / At‑Risk Case
+                                        </p>
+                                        <p class="text-[10px] text-slate-400 mt-1 leading-tight">CICL · Child at
+                                            Risk<br>Children in conflict or at risk of offending</p>
                                     </div>
                                 </div>
-                                <div>
-                                    <label class="field-label">Case Number</label>
-                                    <input type="text" class="field" placeholder="Auto-generated" value="CV-2026-019">
-                                    <p class="text-[10px] text-slate-400 mt-1.5">Auto-assigned on save</p>
+
+                                <!-- Case Type – hidden until category chosen -->
+                                <div id="caseTypeGroup" class="hidden mt-4">
+                                    <label class="field-label req">Specific Case Type</label>
+                                    <div class="grid grid-cols-2 gap-2 mt-1" id="caseTypeSelector"></div>
                                 </div>
+                            </div>
+                            <!-- ============ END NEW CASE TYPE SELECTOR ============ -->
+
+                            <div>
+                                <label class="field-label">Case Number</label>
+                                <input type="text" class="field" placeholder="Auto-generated" value="CV-2026-019">
+                                <p class="text-[10px] text-slate-400 mt-1.5">Auto-assigned on save</p>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
@@ -819,7 +803,7 @@ requireRole('Social Worker');
 
                     <div class="flex justify-end gap-3">
                         <button onclick="saveCase()"
-                            class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all"></i>
+                            class="text-[13px] font-semibold text-white bg-navy-600 rounded-xl px-6 py-2.5 hover:bg-navy-500 transition-all">
                             Save Case</button>
                     </div>
 
@@ -1054,6 +1038,7 @@ requireRole('Social Worker');
 
     <script>
         const CASES = [
+            // sample cases if needed
         ];
 
         let filteredCases = [...CASES];
@@ -1118,13 +1103,63 @@ requireRole('Social Worker');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function setCaseType(el) {
+        // ====== NEW: Two-step Victim / Offender case type logic ======
+        let currentCategory = null;
+
+        const caseTypesByCategory = {
+            victim: [
+                { icon: 'fas fa-exclamation-triangle', label: 'VAWC', desc: 'Violence Against Women & Children', color: 'text-navy-600' },
+                { icon: 'fas fa-exclamation-circle', label: 'Child Abuse', desc: 'Physical / Sexual / Emotional', color: 'text-navy-600' }
+            ],
+            offender: [
+                { icon: 'fas fa-child', label: 'CICL', desc: 'Child in Conflict with the Law', color: 'text-navy-600' },
+                { icon: 'fas fa-shield-alt', label: 'CAR', desc: 'Child at Risk', color: 'text-navy-600' }
+            ]
+        };
+
+        function setCaseCategory(el, category) {
+            // Update UI for category selector
+            document.querySelectorAll('#caseCategorySelector .case-type-opt').forEach(e => e.classList.remove('active'));
+            el.classList.add('active');
+            currentCategory = category;
+
+            // Build the sub‑type options
+            const types = caseTypesByCategory[category];
+            const container = document.getElementById('caseTypeSelector');
+            container.innerHTML = types.map(t => `
+                <div onclick="setCaseType(this, '${t.label}')"
+                     class="case-type-opt border-2 border-slate-200 rounded-xl p-3 text-center">
+                    <div class="text-xl mb-1.5"><i class="${t.icon} ${t.color}"></i></div>
+                    <p class="ct-label text-[11px] font-semibold text-slate-600">${t.label}</p>
+                    <p class="text-[9px] text-slate-400 mt-0.5 leading-tight">${t.desc}</p>
+                </div>
+            `).join('');
+
+            // Show the sub‑type group
+            document.getElementById('caseTypeGroup').classList.remove('hidden');
+            // Clear any previous sub‑type selection
+            document.querySelectorAll('#caseTypeSelector .case-type-opt').forEach(btn => btn.classList.remove('active'));
+        }
+
+        function setCaseType(el, typeLabel) {
+            // Remove active from all sub‑type options
             document.querySelectorAll('#caseTypeSelector .case-type-opt').forEach(e => {
                 e.classList.remove('active');
                 e.querySelector('.ct-label').className = 'ct-label text-[11px] font-semibold text-slate-600';
             });
+            // Mark clicked as active
             el.classList.add('active');
+            el.querySelector('.ct-label').className = 'ct-label text-[11px] font-bold text-navy-700';
+            // (Optional) store the selected type in a hidden input if needed
         }
+
+        function resetCaseTypeSelection() {
+            currentCategory = null;
+            document.querySelectorAll('#caseCategorySelector .case-type-opt').forEach(e => e.classList.remove('active'));
+            document.getElementById('caseTypeSelector').innerHTML = '';
+            document.getElementById('caseTypeGroup').classList.add('hidden');
+        }
+        // ====== END NEW CASE TYPE LOGIC ======
 
         function setCaseStatus(el) {
             document.querySelectorAll('#caseStatusSelector .status-opt').forEach(e => {
@@ -1157,6 +1192,7 @@ requireRole('Social Worker');
         function clearClient() {
             document.getElementById('selectedClientChip').classList.add('hidden');
             document.getElementById('selectedClientChip').classList.remove('flex');
+            resetCaseTypeSelection(); // reset case category/type when client cleared
         }
 
         function countChars(id, countId, max) {
