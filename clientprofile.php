@@ -5,10 +5,11 @@ require 'db_connect.php';
 
 $client_id = intval($_GET['id'] ?? 0);
 if ($client_id === 0) {
-  header('Location: clientslist.php');
-  exit;
+    header('Location: clientslist.php');
+    exit;
 }
 
+// fetch main client data
 $stmt = $pdo->prepare("
     SELECT
         c.*,
@@ -22,10 +23,16 @@ $stmt->execute([':id' => $client_id]);
 $client = $stmt->fetch();
 
 if (!$client) {
-  header('Location: clientslist.php');
-  exit;
+    header('Location: clientslist.php');
+    exit;
 }
 
+// fetch availment history for client
+// AICS FBML is one shared program covering 4 subtypes (Financial, Burial, Medical,
+// Livelihood), each recorded in its own subtype table keyed by availment_id — same
+// pattern used in aics.php. We LEFT JOIN each subtype table and CASE off whichever
+// one has a matching row to build a specific label instead of the generic
+// "AICS FBML" program name. AICS Educational is its own separate program already.
 $avStmt = $pdo->prepare("
     SELECT
         a.availment_id,
@@ -63,11 +70,21 @@ $avStmt = $pdo->prepare("
 $avStmt->execute([':id' => $client_id]);
 $availments = $avStmt->fetchAll();
 
+// fetch family composition from CASE_STUDY table
+// Family composition is meant to be a single, read-only fact set from client
+// registration — not something that forks every time a new case study is
+// submitted. Each case study submission inserts its OWN new CASE_STUDY row
+// (with its own snapshot of family_composition_json), so filtering only by
+// "most recent" here could accidentally show a later case study's snapshot
+// instead of the true registration data. We filter to the same
+// 'Initial registration' row that casestudy.php reads from, so both pages
+// always agree.
 $famStmt = $pdo->prepare("
     SELECT family_composition_json
     FROM CASE_STUDY
     WHERE client_id = :id
-    ORDER BY created_at DESC
+      AND problem_presented = 'Initial registration'
+    ORDER BY created_at ASC
     LIMIT 1
 ");
 $famStmt->execute([':id' => $client_id]);
@@ -75,93 +92,100 @@ $caseRow = $famStmt->fetch();
 
 $familyMembers = [];
 if ($caseRow && !empty($caseRow['family_composition_json'])) {
-  $familyMembers = json_decode($caseRow['family_composition_json'], true) ?? [];
+    $familyMembers = json_decode($caseRow['family_composition_json'], true) ?? [];
 }
 
 $totalAvailments = count($availments);
 
+// add up amounts by status — Released is money already in the client's hands;
+// Approved is money that's been cleared but not yet released; Pending is still
+// awaiting mayor review/approval. Keeping these separate avoids the "why is
+// released ₱0.00" confusion when everything is still sitting at Approved.
 $totalAssistance = 0;
-$totalApproved = 0;
-$totalPending = 0;
+$totalApproved   = 0;
+$totalPending    = 0;
 foreach ($availments as $av) {
-  $amt = floatval($av['av_amount']);
-  if ($av['av_status'] === 'Released') {
-    $totalAssistance += $amt;
-  } elseif ($av['av_status'] === 'Approved') {
-    $totalApproved += $amt;
-  } elseif ($av['av_status'] === 'Pending') {
-    $totalPending += $amt;
-  }
+    $amt = floatval($av['av_amount']);
+    if ($av['av_status'] === 'Released') {
+        $totalAssistance += $amt;
+    } elseif ($av['av_status'] === 'Approved') {
+        $totalApproved += $amt;
+    } elseif ($av['av_status'] === 'Pending') {
+        $totalPending += $amt;
+    }
 }
 
 // count how many availments this year
-$thisYear = date('Y');
+$thisYear    = date('Y');
 $thisYearCount = 0;
 foreach ($availments as $av) {
-  if (date('Y', strtotime($av['av_date_applied'])) === $thisYear) {
-    $thisYearCount++;
-  }
+    if (date('Y', strtotime($av['av_date_applied'])) === $thisYear) {
+        $thisYearCount++;
+    }
 }
 
 // count how many this quarter
-$thisQuarter = ceil(date('n') / 3); // month / 3 rounded up = quarter number
+$thisQuarter   = ceil(date('n') / 3); // month / 3 rounded up = quarter number
 $thisQuarterCount = 0;
 foreach ($availments as $av) {
-  $avQuarter = ceil(date('n', strtotime($av['av_date_applied'])) / 3);
-  $avYear = date('Y', strtotime($av['av_date_applied']));
-  if ($avYear === $thisYear && $avQuarter === $thisQuarter) {
-    $thisQuarterCount++;
-  }
+    $avQuarter = ceil(date('n', strtotime($av['av_date_applied'])) / 3);
+    $avYear    = date('Y', strtotime($av['av_date_applied']));
+    if ($avYear === $thisYear && $avQuarter === $thisQuarter) {
+        $thisQuarterCount++;
+    }
 }
 
 // combined family income (client + family members)
 $combinedIncome = floatval($client['cl_monthly_income'] ?? 0);
 foreach ($familyMembers as $member) {
-  $combinedIncome += floatval($member['income'] ?? 0);
+    $combinedIncome += floatval($member['income'] ?? 0);
 }
 
-$regYear = date('Y', strtotime($client['cl_date_registered'] ?? 'now'));
+$regYear   = date('Y', strtotime($client['cl_date_registered'] ?? 'now'));
 $clientIdStr = 'CLT-' . $regYear . '-' . str_pad($client['client_id'], 5, '0', STR_PAD_LEFT);
 
 $initials = strtoupper(
-  substr($client['cl_firstname'], 0, 1) .
-  substr($client['cl_lastname'], 0, 1)
+    substr($client['cl_firstname'], 0, 1) .
+    substr($client['cl_lastname'],  0, 1)
 );
 
 $fullName = $client['cl_firstname'];
 if (!empty($client['cl_middlename'])) {
-  $fullName .= ' ' . $client['cl_middlename'][0] . '.';
+    $fullName .= ' ' . $client['cl_middlename'][0] . '.';
 }
 $fullName .= ' ' . $client['cl_lastname'];
 if (!empty($client['cl_suffix'])) {
-  $fullName .= ' ' . $client['cl_suffix'];
+    $fullName .= ' ' . $client['cl_suffix'];
 }
 
 $sectorMap = [
-  'cl_is_4ps' => ['label' => '4Ps', 'icon' => 'fa-home', 'cls' => 'bg-purple-100 text-purple-700'],
-  'cl_is_pwd' => ['label' => 'PWD', 'icon' => 'fa-wheelchair', 'cls' => 'bg-blue-100 text-blue-700'],
-  'cl_is_senior' => ['label' => 'Senior Citizen', 'icon' => 'fa-user-friends', 'cls' => 'bg-amber-100 text-amber-700'],
-  'cl_is_soloparent' => ['label' => 'Solo Parent', 'icon' => 'fa-user', 'cls' => 'bg-teal-100 text-teal-700'],
-  'cl_is_indigent' => ['label' => 'Indigent', 'icon' => 'fa-list', 'cls' => 'bg-emerald-100 text-emerald-700'],
+    'cl_is_4ps'        => ['label' => '4Ps',          'icon' => 'fa-home',         'cls' => 'bg-purple-100 text-purple-700'],
+    'cl_is_pwd'        => ['label' => 'PWD',           'icon' => 'fa-wheelchair',   'cls' => 'bg-blue-100 text-blue-700'],
+    'cl_is_senior'     => ['label' => 'Senior Citizen','icon' => 'fa-user-friends', 'cls' => 'bg-amber-100 text-amber-700'],
+    'cl_is_soloparent' => ['label' => 'Solo Parent',   'icon' => 'fa-user',         'cls' => 'bg-teal-100 text-teal-700'],
+    'cl_is_indigent'   => ['label' => 'Indigent',      'icon' => 'fa-list',         'cls' => 'bg-emerald-100 text-emerald-700'],
 ];
 
+// status badge colors for availment history
 $statusColors = [
-  'Pending' => 'bg-yellow-50 text-yellow-600',
-  'Approved' => 'bg-blue-50 text-blue-600',
-  'Released' => 'bg-emerald-50 text-emerald-600',
-  'Denied' => 'bg-red-50 text-red-600',
+    'Pending'  => 'bg-yellow-50 text-yellow-600',
+    'Approved' => 'bg-blue-50 text-blue-600',
+    'Released' => 'bg-emerald-50 text-emerald-600',
+    'Denied'   => 'bg-red-50 text-red-600',
 ];
 
+// program tag colors — keyed by program_label, so each AICS FBML subtype
+// (Financial/Burial/Medical/Livelihood) and AICS Educational get their own color
 $progColors = [
-  'AICS' => 'bg-blue-100 text-blue-700',
-  'AICS - Financial' => 'bg-blue-100 text-blue-700',
-  'AICS - Burial' => 'bg-slate-200 text-slate-700',
-  'AICS - Medical' => 'bg-rose-100 text-rose-700',
-  'AICS - Livelihood' => 'bg-emerald-100 text-emerald-700',
-  'AICS - Educational' => 'bg-indigo-100 text-indigo-700',
-  'Senior Citizen' => 'bg-amber-100 text-amber-700',
-  '4Ps' => 'bg-purple-100 text-purple-700',
-  'SLP' => 'bg-teal-100 text-teal-700',
+    'AICS'              => 'bg-blue-100 text-blue-700',
+    'AICS - Financial'  => 'bg-blue-100 text-blue-700',
+    'AICS - Burial'     => 'bg-slate-200 text-slate-700',
+    'AICS - Medical'    => 'bg-rose-100 text-rose-700',
+    'AICS - Livelihood' => 'bg-emerald-100 text-emerald-700',
+    'AICS - Educational'=> 'bg-indigo-100 text-indigo-700',
+    'Senior Citizen'    => 'bg-amber-100 text-amber-700',
+    '4Ps'               => 'bg-purple-100 text-purple-700',
+    'SLP'               => 'bg-teal-100 text-teal-700',
 ];
 ?>
 <!DOCTYPE html>
@@ -172,9 +196,7 @@ $progColors = [
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><?= htmlspecialchars($fullName) ?> – MSWDO Client Profile</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link
-    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
-    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script>
     tailwind.config = {
@@ -183,14 +205,14 @@ $progColors = [
           fontFamily: { sans: ['DM Sans', 'sans-serif'], serif: ['DM Serif Display', 'serif'] },
           colors: {
             navy: { DEFAULT: '#0B2545', 50: '#E8EDF5', 100: '#C5D1E6', 400: '#3A5F93', 500: '#163566', 600: '#0B2545', 700: '#091D38' },
-            gold: { DEFAULT: '#C49A2A' },
+            gold:   { DEFAULT: '#C49A2A' },
             slate2: '#F4F7FC',
           },
           keyframes: {
             fadeUp: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
           },
           animation: {
-            'fade-up': 'fadeUp 0.35s ease both',
+            'fade-up':   'fadeUp 0.35s ease both',
             'fade-up-1': 'fadeUp 0.35s ease 0.05s both',
             'fade-up-2': 'fadeUp 0.35s ease 0.10s both',
             'fade-up-3': 'fadeUp 0.35s ease 0.15s both',
@@ -200,80 +222,31 @@ $progColors = [
     }
   </script>
   <style>
-    body {
-      font-family: 'DM Sans', sans-serif;
-    }
+    body { font-family: 'DM Sans', sans-serif; }
 
-    .sidebar-item {
-      transition: all .15s ease;
-    }
+    .sidebar-item { transition: all .15s ease; }
+    .sidebar-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.95); }
+    .sidebar-item.active { background: rgba(29,111,164,.28); border-left-color: #C49A2A; color: #fff; }
 
-    .sidebar-item:hover {
-      background: rgba(255, 255, 255, .07);
-      color: rgba(255, 255, 255, .95);
-    }
+    .tab-btn { transition: all .18s ease; }
+    .tab-btn.active { color: #0B2545; border-bottom-color: #0B2545; }
 
-    .sidebar-item.active {
-      background: rgba(29, 111, 164, .28);
-      border-left-color: #C49A2A;
-      color: #fff;
-    }
+    .table-row { transition: background .1s; cursor: pointer; }
+    .table-row:hover { background: #F8FAFC; }
 
-    .tab-btn {
-      transition: all .18s ease;
-    }
+    .btn-act { transition: all .15s ease; }
+    .btn-act:hover { transform: translateY(-1px); }
 
-    .tab-btn.active {
-      color: #0B2545;
-      border-bottom-color: #0B2545;
-    }
-
-    .table-row {
-      transition: background .1s;
-      cursor: pointer;
-    }
-
-    .table-row:hover {
-      background: #F8FAFC;
-    }
-
-    .btn-act {
-      transition: all .15s ease;
-    }
-
-    .btn-act:hover {
-      transform: translateY(-1px);
-    }
-
-    .tab-panel {
-      display: none;
-    }
-
-    .tab-panel.active {
-      display: block;
-      animation: fadeUp 0.3s ease both;
-    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeUp 0.3s ease both; }
 
     @keyframes fadeUp {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    ::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, .15);
-      border-radius: 2px;
-    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
   </style>
 </head>
 
@@ -309,8 +282,7 @@ $progColors = [
         <div class="p-6 flex flex-col sm:flex-row items-start gap-5">
 
           <div class="flex-shrink-0">
-            <div
-              class="w-16 h-16 rounded-2xl bg-navy-600 flex items-center justify-center text-white font-serif text-2xl">
+            <div class="w-16 h-16 rounded-2xl bg-navy-600 flex items-center justify-center text-white font-serif text-2xl">
               <?= htmlspecialchars($initials) ?>
             </div>
           </div>
@@ -322,8 +294,7 @@ $progColors = [
                 <h1 class="text-xl font-serif text-navy-600"><?= htmlspecialchars($fullName) ?></h1>
                 <p class="text-[12px] text-slate-400 mt-0.5">
                   Client ID: <?= htmlspecialchars($clientIdStr) ?> &nbsp;·&nbsp;
-                  Registered:
-                  <?= $client['cl_date_registered'] ? date('F j, Y', strtotime($client['cl_date_registered'])) : '—' ?>
+                  Registered: <?= $client['cl_date_registered'] ? date('F j, Y', strtotime($client['cl_date_registered'])) : '—' ?>
                 </p>
               </div>
 
@@ -402,6 +373,7 @@ $progColors = [
           <button onclick="showTab('history',this)"
             class="tab-btn px-5 py-3 text-[13px] font-medium border-b-2 -mb-0.5 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2">
             Availment History
+            <!-- real count badge -->
             <span class="bg-navy-100 text-navy-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
               <?= $totalAvailments ?>
             </span>
@@ -432,46 +404,38 @@ $progColors = [
                 </div>
                 <div class="flex justify-between items-center py-2 border-b border-slate-100">
                   <span class="text-[12px] text-slate-400">Sex</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_sex'] ?? '—') ?></span>
+                  <span class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_sex'] ?? '—') ?></span>
                 </div>
                 <div class="flex justify-between items-center py-2 border-b border-slate-100">
                   <span class="text-[12px] text-slate-400">Civil Status</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_civilstatus'] ?? '—') ?></span>
+                  <span class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_civilstatus'] ?? '—') ?></span>
                 </div>
                 <div class="flex justify-between items-center py-2">
                   <span class="text-[12px] text-slate-400">Contact Number</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_contact_num'] ?? '—') ?></span>
+                  <span class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_contact_num'] ?? '—') ?></span>
                 </div>
               </div>
             </div>
 
             <!-- Address & Economic Status card -->
             <div class="bg-white rounded-2xl border border-slate-200 p-5">
-              <h3 class="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-4">Address &amp; Economic
-                Status</h3>
+              <h3 class="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-4">Address &amp; Economic Status</h3>
               <div class="space-y-3">
                 <div class="flex justify-between items-center py-2 border-b border-slate-100">
                   <span class="text-[12px] text-slate-400">Barangay</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['barangay_name'] ?? '—') ?></span>
+                  <span class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['barangay_name'] ?? '—') ?></span>
                 </div>
                 <div class="flex justify-between items-center py-2 border-b border-slate-100">
                   <span class="text-[12px] text-slate-400">Street / House No.</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_street'] ?? '—') ?></span>
+                  <span class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_street'] ?? '—') ?></span>
                 </div>
                 <div class="flex justify-between items-center py-2 border-b border-slate-100">
                   <span class="text-[12px] text-slate-400">Municipality</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_city_municipality'] ?? 'San Enrique') ?></span>
+                  <span class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_city_municipality'] ?? 'San Enrique') ?></span>
                 </div>
                 <div class="flex justify-between items-center py-2 border-b border-slate-100">
                   <span class="text-[12px] text-slate-400">Occupation</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_occupation'] ?? '—') ?></span>
+                  <span class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_occupation'] ?? '—') ?></span>
                 </div>
                 <div class="flex justify-between items-center py-2 border-b border-slate-100">
                   <span class="text-[12px] text-slate-400">Monthly Income</span>
@@ -481,16 +445,14 @@ $progColors = [
                 </div>
                 <div class="flex justify-between items-center py-2 border-b border-slate-100">
                   <span class="text-[12px] text-slate-400">Education</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_educ_attain'] ?? '—') ?></span>
+                  <span class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_educ_attain'] ?? '—') ?></span>
                 </div>
                 <div class="flex justify-between items-center py-2">
                   <span class="text-[12px] text-slate-400">Indigency Status</span>
                   <?php if ($client['cl_is_indigent']): ?>
                     <span class="bg-red-100 text-red-700 text-[11px] font-bold px-2.5 py-0.5 rounded-full">Indigent</span>
                   <?php else: ?>
-                    <span class="bg-slate-100 text-slate-500 text-[11px] font-bold px-2.5 py-0.5 rounded-full">Not
-                      Indigent</span>
+                    <span class="bg-slate-100 text-slate-500 text-[11px] font-bold px-2.5 py-0.5 rounded-full">Not Indigent</span>
                   <?php endif; ?>
                 </div>
               </div>
@@ -520,18 +482,12 @@ $progColors = [
               <table class="w-full text-[12px]">
                 <thead>
                   <tr class="bg-slate-50 border-b border-slate-100">
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">#
-                    </th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Name
-                    </th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Relationship</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Age
-                    </th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Occupation</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Income/mo</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">#</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Name</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Relationship</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Age</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Occupation</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Income/mo</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -542,8 +498,7 @@ $progColors = [
                     <td class="px-5 py-3 text-slate-600">Self</td>
                     <td class="px-5 py-3"><?= $client['cl_age'] ?? '—' ?></td>
                     <td class="px-5 py-3"><?= htmlspecialchars($client['cl_occupation'] ?? '—') ?></td>
-                    <td class="px-5 py-3 font-medium">
-                      ₱<?= number_format(floatval($client['cl_monthly_income'] ?? 0), 2) ?></td>
+                    <td class="px-5 py-3 font-medium">₱<?= number_format(floatval($client['cl_monthly_income'] ?? 0), 2) ?></td>
                   </tr>
 
                   <?php foreach ($familyMembers as $i => $member): ?>
@@ -565,10 +520,8 @@ $progColors = [
                 </tbody>
                 <tfoot>
                   <tr class="bg-slate-50 border-t border-slate-200">
-                    <td colspan="5" class="px-5 py-3 text-[11px] font-semibold text-slate-500 text-right">Combined Monthly
-                      Income</td>
-                    <td class="px-5 py-3 text-[13px] font-bold text-navy-600">₱<?= number_format($combinedIncome, 2) ?>
-                    </td>
+                    <td colspan="5" class="px-5 py-3 text-[11px] font-semibold text-slate-500 text-right">Combined Monthly Income</td>
+                    <td class="px-5 py-3 text-[13px] font-bold text-navy-600">₱<?= number_format($combinedIncome, 2) ?></td>
                   </tr>
                 </tfoot>
               </table>
@@ -582,8 +535,7 @@ $progColors = [
           <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
             <div class="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center gap-3">
               <span class="text-[12px] font-semibold text-slate-500">All records for this client</span>
-              <button
-                class="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-3 py-1.5 hover:bg-navy-100 transition-all">
+              <button class="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-3 py-1.5 hover:bg-navy-100 transition-all">
                 ⬇ Export
               </button>
             </div>
@@ -592,18 +544,12 @@ $progColors = [
               <table class="w-full text-[12px]">
                 <thead>
                   <tr class="bg-slate-50 border-b border-slate-100">
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Date Applied</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Program</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Category</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Amount</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Status</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Encoded By</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Date Applied</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Program</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Category</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Amount</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Status</th>
+                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Encoded By</th>
                     <th class="px-5 py-3"></th>
                   </tr>
                 </thead>
@@ -617,8 +563,8 @@ $progColors = [
                   <?php else: ?>
                     <?php foreach ($availments as $av): ?>
                       <?php
-                      $sc = $statusColors[$av['av_status']] ?? 'bg-slate-50 text-slate-500';
-                      $tag = $progColors[$av['program_label']] ?? 'bg-slate-100 text-slate-600';
+                        $sc  = $statusColors[$av['av_status']] ?? 'bg-slate-50 text-slate-500';
+                        $tag = $progColors[$av['program_label']] ?? 'bg-slate-100 text-slate-600';
                       ?>
                       <tr class="table-row">
                         <td class="px-5 py-3 text-slate-500">
@@ -651,8 +597,7 @@ $progColors = [
             </div>
 
             <!-- footer summary -->
-            <div
-              class="px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400">
+            <div class="px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400">
               <span><?= $totalAvailments ?> record<?= $totalAvailments !== 1 ? 's' : '' ?> found</span>
               <div class="flex items-center gap-4">
                 <?php if ($totalPending > 0): ?>
@@ -676,8 +621,7 @@ $progColors = [
       </div>
     </main>
 
-    <footer
-      class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+    <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
       <span>MSWDO San Enrique Information System — Version 1.0.0</span>
     </footer>
   </div>
@@ -697,5 +641,4 @@ $progColors = [
   </script>
 
 </body>
-
 </html>
