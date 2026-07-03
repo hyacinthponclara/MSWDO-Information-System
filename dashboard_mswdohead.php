@@ -191,7 +191,7 @@
                     </div>
                     <span class="text-[12px] font-medium text-slate-700 group-hover:text-green-600">New Availment</span>
                 </button>
-                <a href="pending_approvals.html"
+                <a href="pending_approvals.php"
                     <button
                         class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
                         <div
