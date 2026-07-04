@@ -77,7 +77,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <!-- acces by admin -->
     <?php if ($role === 'Admin'): ?>
-        <a href="dashboard.php"
+        <a href="dashboard_admin.php"
             class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'dashboard.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie text-sm"></i> Dashboard
         </a>
@@ -184,7 +184,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <!-- access by social worker -->
     <?php if ($role === 'Social Worker'): ?>
-        <a href="dashboard.php"
+        <a href="dashboard_mswdohead.php"
             class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'dashboard.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie text-sm"></i> Dashboard
         </a>
@@ -280,7 +280,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <!-- access by staff -->
     <?php if ($role === 'Staff'): ?>
-        <a href="dashboard.php"
+        <a href="dashboard_staff.php"
             class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'dashboard.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie text-sm"></i> Dashboard
         </a>
