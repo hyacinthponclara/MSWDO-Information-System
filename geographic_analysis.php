@@ -1,3 +1,121 @@
+<?php
+require 'auth.php';
+requireRole(['Admin', 'Social Worker']); // adjust roles as needed for your team
+require 'db_connect.php';
+
+// ── BARANGAY NAMES (must match the GeoJSON adm4_en values exactly) ────────
+$barangayNames = ['Bagonawa', 'Baliwagan', 'Batuan', 'Guintorilan', 'Nayon',
+                   'Poblacion', 'Sibucao', 'Tabao Baybay', 'Tabao Rizal', 'Tibsoc'];
+
+// Helper: initialize an empty per-barangay record
+function emptyBrgyRecord() {
+    return ['count' => 0, 'amount' => 0.0, 'pwd' => 0, 'senior' => 0,
+            'solo' => 0, 'fourPs' => 0, 'beneficiaries' => []];
+}
+
+// ── PWD / SENIOR / SOLO PARENT / 4Ps COUNTS PER BARANGAY ───────────────────
+// These are added onto every program's per-barangay record, same as the
+// original mock data did (they describe the barangay's overall profile,
+// not just beneficiaries of the selected program).
+function countByBarangay(PDO $pdo, string $table, string $availmentFk = 'availment_id') {
+    $sql = "
+        SELECT b.barangay_name AS barangay, COUNT(*) AS cnt
+        FROM $table t
+        JOIN AVAILMENT a ON a.availment_id = t.$availmentFk
+        JOIN CLIENT c ON c.client_id = a.client_id
+        JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+        GROUP BY b.barangay_name
+    ";
+    $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_KEY_PAIR);
+    return $rows; // ['Poblacion' => 15, ...]
+}
+
+$pwdByBrgy    = countByBarangay($pdo, 'PWD');
+$seniorByBrgy = countByBarangay($pdo, 'SENIOR');
+$soloByBrgy   = countByBarangay($pdo, 'SOLO_PARENT');
+$fourPsByBrgy = countByBarangay($pdo, 'FOUR_PS');
+
+function applyProfileCounts(array &$record, string $brgy, array $pwd, array $senior, array $solo, array $fourPs) {
+    $record['pwd']    = (int)($pwd[$brgy]    ?? 0);
+    $record['senior'] = (int)($senior[$brgy] ?? 0);
+    $record['solo']   = (int)($solo[$brgy]   ?? 0);
+    $record['fourPs'] = (int)($fourPs[$brgy] ?? 0);
+}
+
+// ── AICS SUBTYPES ───────────────────────────────────────────────────────
+$aicsSubtypes = [
+    'aics_financial'   => ['table' => 'AICS_FINANCIAL',   'label' => 'Financial'],
+    'aics_burial'      => ['table' => 'AICS_BURIAL',      'label' => 'Burial'],
+    'aics_medical'     => ['table' => 'AICS_MEDICAL',     'label' => 'Medical'],
+    'aics_livelihood'  => ['table' => 'AICS_LIVELIHOOD',  'label' => 'Livelihood'],
+    'aics_educational' => ['table' => 'AICS_EDUCATIONAL', 'label' => 'Educational'],
+];
+
+$programData = [];
+
+foreach ($aicsSubtypes as $key => $meta) {
+    // Seed every barangay with a zeroed record so the map always has all 10
+    $data = [];
+    foreach ($barangayNames as $b) $data[$b] = emptyBrgyRecord();
+
+    $stmt = $pdo->prepare("
+        SELECT
+            b.barangay_name AS barangay,
+            c.cl_firstname, c.cl_lastname, c.cl_age,
+            a.av_amount, a.av_status
+        FROM {$meta['table']} t
+        JOIN AVAILMENT a ON a.availment_id = t.availment_id
+        JOIN CLIENT c ON c.client_id = a.client_id
+        JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+    ");
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $b = $row['barangay'];
+        if (!isset($data[$b])) $data[$b] = emptyBrgyRecord(); // barangay outside the 10 mapped ones
+        $data[$b]['count']++;
+        $data[$b]['amount'] += (float)$row['av_amount'];
+        $data[$b]['beneficiaries'][] = [
+            'name'    => trim($row['cl_firstname'] . ' ' . $row['cl_lastname']),
+            'age'     => (int)$row['cl_age'],
+            'remarks' => $row['av_status'],
+        ];
+    }
+    foreach ($barangayNames as $b) {
+        applyProfileCounts($data[$b], $b, $pwdByBrgy, $seniorByBrgy, $soloByBrgy, $fourPsByBrgy);
+    }
+    $programData[$key] = $data;
+}
+
+// ── WOMEN AND CHILDREN ──────────────────────────────────────────────────
+$women = [];
+foreach ($barangayNames as $b) $women[$b] = emptyBrgyRecord();
+
+$wcStmt = $pdo->query("
+    SELECT
+        b.barangay_name AS barangay,
+        c.cl_firstname, c.cl_lastname, c.cl_age,
+        a.av_amount, wc.wc_status
+    FROM WOMAN_AND_CHILDREN wc
+    JOIN AVAILMENT a ON a.availment_id = wc.availment_id
+    JOIN CLIENT c ON c.client_id = a.client_id
+    JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+");
+foreach ($wcStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $b = $row['barangay'];
+    if (!isset($women[$b])) $women[$b] = emptyBrgyRecord();
+    $women[$b]['count']++;
+    $women[$b]['amount'] += (float)$row['av_amount'];
+    $women[$b]['beneficiaries'][] = [
+        'name'    => trim($row['cl_firstname'] . ' ' . $row['cl_lastname']),
+        'age'     => (int)$row['cl_age'],
+        'remarks' => $row['wc_status'],
+    ];
+}
+foreach ($barangayNames as $b) {
+    applyProfileCounts($women[$b], $b, $pwdByBrgy, $seniorByBrgy, $soloByBrgy, $fourPsByBrgy);
+}
+$programData['women_child'] = $women;
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -411,41 +529,8 @@
 
         const barangayNames = barangayGeoJSON.features.map(f => f.properties.adm4_en);
 
-        // ---- SAMPLE DATA FOR EACH PROGRAM ----
-        const baseAICS = { Bagonawa: 85, Baliwagan: 70, Batuan: 40, Guintorilan: 35, Nayon: 30, Poblacion: 120, Sibucao: 25, "Tabao Baybay": 20, "Tabao Rizal": 15, Tibsoc: 10 };
-        const baseWomen = { Bagonawa: 3, Baliwagan: 6, Batuan: 1, Guintorilan: 2, Nayon: 0, Poblacion: 9, Sibucao: 4, "Tabao Baybay": 5, "Tabao Rizal": 2, Tibsoc: 1 };
-
-        const pwdCounts = { Bagonawa: 10, Baliwagan: 8, Batuan: 5, Guintorilan: 4, Nayon: 3, Poblacion: 15, Sibucao: 6, "Tabao Baybay": 7, "Tabao Rizal": 4, Tibsoc: 2 };
-        const seniorCounts = { Bagonawa: 60, Baliwagan: 90, Batuan: 35, Guintorilan: 40, Nayon: 25, Poblacion: 150, Sibucao: 55, "Tabao Baybay": 48, "Tabao Rizal": 42, Tibsoc: 22 };
-        const soloCounts = { Bagonawa: 5, Baliwagan: 7, Batuan: 3, Guintorilan: 2, Nayon: 1, Poblacion: 12, Sibucao: 4, "Tabao Baybay": 6, "Tabao Rizal": 3, Tibsoc: 2 };
-        const fourPsCounts = { Bagonawa: 30, Baliwagan: 25, Batuan: 15, Guintorilan: 18, Nayon: 10, Poblacion: 45, Sibucao: 20, "Tabao Baybay": 16, "Tabao Rizal": 12, Tibsoc: 8 };
-
-        const amountPerSubtype = { financial: 2100, burial: 5000, medical: 2500, livelihood: 3000, educational: 2000 };
-        const amountWomen = 0;
-
-        function buildSubtypeData(base, subtypeKey, multiplier = 1) {
-            const data = {};
-            barangayNames.forEach(b => {
-                const count = Math.round((base[b] || 0) * multiplier);
-                data[b] = {
-                    count: count,
-                    amount: count * (amountPerSubtype[subtypeKey] || 0),
-                    pwd: pwdCounts[b] || 0,
-                    senior: seniorCounts[b] || 0,
-                    solo: soloCounts[b] || 0,
-                    fourPs: fourPsCounts[b] || 0,
-                    beneficiaries: count > 0 ? [{ name: `${subtypeKey.toUpperCase()} Client 1 — ${b}`, age: 35, remarks: "Active" }] : []
-                };
-            });
-            return data;
-        }
-
-        const programData = {};
-        programData.aics_financial = buildSubtypeData(baseAICS, 'financial', 0.9);
-        programData.aics_burial = buildSubtypeData(baseAICS, 'burial', 0.3);
-        programData.aics_medical = buildSubtypeData(baseAICS, 'medical', 0.7);
-        programData.aics_livelihood = buildSubtypeData(baseAICS, 'livelihood', 0.5);
-        programData.aics_educational = buildSubtypeData(baseAICS, 'educational', 0.4);
+        // ---- PROGRAM DATA (from database) ----
+        const programData = <?= json_encode($programData) ?>;
 
         programData.aics_all = {};
         barangayNames.forEach(b => {
@@ -460,25 +545,11 @@
             programData.aics_all[b] = {
                 count: count,
                 amount: amount,
-                pwd: pwdCounts[b] || 0,
-                senior: seniorCounts[b] || 0,
-                solo: soloCounts[b] || 0,
-                fourPs: fourPsCounts[b] || 0,
+                pwd: programData.aics_financial[b].pwd,
+                senior: programData.aics_financial[b].senior,
+                solo: programData.aics_financial[b].solo,
+                fourPs: programData.aics_financial[b].fourPs,
                 beneficiaries: []
-            };
-        });
-
-        programData.women_child = {};
-        barangayNames.forEach(b => {
-            const count = baseWomen[b] || 0;
-            programData.women_child[b] = {
-                count: count,
-                amount: count * amountWomen,
-                pwd: pwdCounts[b] || 0,
-                senior: seniorCounts[b] || 0,
-                solo: soloCounts[b] || 0,
-                fourPs: fourPsCounts[b] || 0,
-                beneficiaries: count > 0 ? [{ name: `WC Client 1 — ${b}`, age: 28, remarks: "Priority" }] : []
             };
         });
 
@@ -489,10 +560,10 @@
             programData.combined[b] = {
                 count: aicsAll.count + women.count,
                 amount: aicsAll.amount + women.amount,
-                pwd: pwdCounts[b] || 0,
-                senior: seniorCounts[b] || 0,
-                solo: soloCounts[b] || 0,
-                fourPs: fourPsCounts[b] || 0,
+                pwd: aicsAll.pwd,
+                senior: aicsAll.senior,
+                solo: aicsAll.solo,
+                fourPs: aicsAll.fourPs,
                 beneficiaries: []
             };
         });

@@ -2,6 +2,63 @@
 require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
+
+// ── STAT CARDS ─────────────────────────────────────────────
+$totalClientsDB = $pdo->query("SELECT COUNT(*) FROM CLIENT");
+$total_clients = (int)$totalClientsDB->fetchColumn();
+
+$availmentsMonthDB = $pdo->query("
+    SELECT COUNT(*)
+    FROM AVAILMENT
+    WHERE MONTH(av_date_applied) = MONTH(CURDATE())
+      AND YEAR(av_date_applied)  = YEAR(CURDATE())
+");
+$availments_this_month = (int)$availmentsMonthDB->fetchColumn();
+
+$budgetAlertsDB = $pdo->query("
+    SELECT COUNT(*)
+    FROM PROGRAM
+    WHERE prog_remaining_budget IS NOT NULL
+      AND prog_annual_budget IS NOT NULL
+      AND prog_remaining_budget < (prog_annual_budget * 0.2)
+");
+$budget_alerts = (int)$budgetAlertsDB->fetchColumn();
+
+// ── BUDGET SUMMARY — ALL PROGRAMS ──────────────────────────
+$budgetDB = $pdo->query("
+    SELECT
+        p.program_name,
+        p.prog_annual_budget AS total,
+        COALESCE(SUM(a.av_amount), 0) AS spent
+    FROM PROGRAM p
+    LEFT JOIN AVAILMENT a
+        ON a.program_id = p.program_id
+       AND a.av_status IN ('Approved', 'Released')
+    GROUP BY p.program_id, p.program_name, p.prog_annual_budget
+    ORDER BY p.program_name ASC
+");
+$programs = $budgetDB->fetchAll(PDO::FETCH_ASSOC);
+
+// ── RECENT ACTIVITY (last 6 availments) ────────────────────
+$activityDB = $pdo->query("
+    SELECT
+        a.availment_id,
+        a.av_amount,
+        a.av_status,
+        a.av_date_applied,
+        c.cl_firstname,
+        c.cl_lastname,
+        p.program_name,
+        u.user_firstname,
+        u.user_lastname
+    FROM AVAILMENT a
+    JOIN CLIENT c ON c.client_id = a.client_id
+    JOIN PROGRAM p ON p.program_id = a.program_id
+    LEFT JOIN MSWDO_USER u ON u.user_id = a.user_id
+    ORDER BY a.availment_id DESC
+    LIMIT 6
+");
+$recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -146,7 +203,7 @@ require 'db_connect.php';
                     class="stat-card animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-2xl"></div>
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Total Clients</p>
-                    <p class="text-3xl font-semibold text-green-600 leading-none">1,284</p>
+                    <p class="text-3xl font-semibold text-green-600 leading-none"><?= number_format($total_clients) ?></p>
                     <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-users"></i></div>
                 </div>
 
@@ -155,7 +212,7 @@ require 'db_connect.php';
                     class="stat-card animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4 relative overflow-hidden">
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t-2xl"></div>
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Availments / Month</p>
-                    <p class="text-3xl font-semibold text-green-600 leading-none">347</p>
+                    <p class="text-3xl font-semibold text-green-600 leading-none"><?= number_format($availments_this_month) ?></p>
                     <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-clipboard-list"></i></div>
                 </div>
 
@@ -164,7 +221,7 @@ require 'db_connect.php';
                     class="stat-card animate-fade-up-3 bg-white rounded-2xl border border-red-100 p-4 relative overflow-hidden cursor-pointer">
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-red-500 rounded-t-2xl"></div>
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Budget Alerts</p>
-                    <p class="text-3xl font-semibold text-red-500 leading-none">2</p>
+                    <p class="text-3xl font-semibold text-red-500 leading-none"><?= number_format($budget_alerts) ?></p>
                     <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-triangle-exclamation"></i></div>
                 </div>
 
@@ -230,84 +287,37 @@ require 'db_connect.php';
                     <a href="#" class="text-[11px] text-green-500 font-medium hover:text-green-700">View all logs →</a>
                 </div>
                 <div class="divide-y divide-slate-100">
-
-                    <div class="activity-row flex items-start gap-3 px-5 py-3.5">
-                        <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-                            <i class="fas fa-user-plus text-blue-600"></i>
+                    <?php if (empty($recent_activity)): ?>
+                        <div class="px-5 py-6 text-center text-[12px] text-slate-400">No availments recorded yet.</div>
+                    <?php else: ?>
+                        <?php foreach ($recent_activity as $row):
+                            $statusStyles = [
+                                'Pending'  => 'text-slate-500 bg-slate-100',
+                                'Approved' => 'text-blue-600 bg-blue-50',
+                                'Released' => 'text-emerald-600 bg-emerald-50',
+                                'Denied'   => 'text-red-500 bg-red-50',
+                            ];
+                            $badgeClass = $statusStyles[$row['av_status']] ?? 'text-slate-500 bg-slate-100';
+                            $workerName = trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? ''));
+                        ?>
+                        <div class="activity-row flex items-start gap-3 px-5 py-3.5">
+                            <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
+                                <i class="fas fa-clipboard-list text-blue-600"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[12px] text-slate-700">
+                                    <?= htmlspecialchars($row['program_name']) ?> availment — <strong
+                                        class="font-semibold text-green-600"><?= htmlspecialchars($row['cl_firstname'] . ' ' . $row['cl_lastname']) ?></strong>
+                                    · ₱<?= number_format((float)$row['av_amount'], 2) ?>
+                                </p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">
+                                    <?= date('M j, Y', strtotime($row['av_date_applied'])) ?><?= $workerName ? ' · Staff: ' . htmlspecialchars($workerName) : '' ?>
+                                </p>
+                            </div>
+                            <span class="text-[10px] font-medium <?= $badgeClass ?> px-2.5 py-0.5 rounded-full flex-shrink-0"><?= htmlspecialchars($row['av_status']) ?></span>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-[12px] text-slate-700">New client registered — <strong
-                                    class="font-semibold text-green-600">Maria Santos</strong>, Brgy. Poblacion</p>
-                            <p class="text-[10px] text-slate-400 mt-0.5">2 mins ago · Staff: Ana Reyes</p>
-                        </div>
-                        <span
-                            class="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex-shrink-0">Create</span>
-                    </div>
-
-                    <div class="activity-row flex items-start gap-3 px-5 py-3.5">
-                        <div class="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-                            <i class="fas fa-pills text-emerald-600"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-[12px] text-slate-700">AICS Medical availment approved — <strong
-                                    class="font-semibold text-green-600">Pedro Cruz</strong> · ₱3,500</p>
-                            <p class="text-[10px] text-slate-400 mt-0.5">15 mins ago · Staff: Ana Reyes</p>
-                        </div>
-                        <span
-                            class="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex-shrink-0">Approved</span>
-                    </div>
-
-                    <div class="activity-row flex items-start gap-3 px-5 py-3.5">
-                        <div class="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-                            <i class="fas fa-wheelchair text-amber-600"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-[12px] text-slate-700">PWD ID issued — <strong
-                                    class="font-semibold text-green-600">Rodrigo Lim</strong>, Brgy. San Jose</p>
-                            <p class="text-[10px] text-slate-400 mt-0.5">1 hour ago · Staff: Ben Torres</p>
-                        </div>
-                        <span
-                            class="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex-shrink-0">Released</span>
-                    </div>
-
-                    <div class="activity-row flex items-start gap-3 px-5 py-3.5">
-                        <div class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-                            <i class="fas fa-user-plus text-purple-600"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-[12px] text-slate-700">New Solo Parent — <strong class="font-semibold text-green-600">Luz
-                                    Bautista</strong></p>
-                            <p class="text-[10px] text-slate-400 mt-0.5">2 hours ago · Staff: Ben Torres</p>
-                        </div>
-                        <span
-                            class="text-[10px] font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full flex-shrink-0">Updated</span>
-                    </div>
-
-                    <div class="activity-row flex items-start gap-3 px-5 py-3.5">
-                        <div class="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-                            <i class="fas fa-graduation-cap text-blue-600"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-[12px] text-slate-700">AICS Educational availment encoded — <strong
-                                    class="font-semibold text-green-600">Carlo Reyes</strong> · ₱5,000</p>
-                            <p class="text-[10px] text-slate-400 mt-0.5">3 hours ago · Staff: Ana Reyes</p>
-                        </div>
-                        <span
-                            class="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full flex-shrink-0">Pending</span>
-                    </div>
-
-                    <div class="activity-row flex items-start gap-3 px-5 py-3.5">
-                        <div class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">
-                            <i class="fas fa-gear text-slate-600"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-[12px] text-slate-700">Budget reallocated — <strong
-                                    class="font-semibold text-green-600">AICS</strong> ₱200,000 → ₱240,000</p>
-                            <p class="text-[10px] text-slate-400 mt-0.5">Yesterday · Admin: Juan Dela Cruz</p>
-                        </div>
-                        <span
-                            class="text-[10px] font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full flex-shrink-0">Admin</span>
-                    </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -331,22 +341,21 @@ require 'db_connect.php';
     </script>
 
     <script>
-        // ── Budget Summary — All Programs  ──
-        const budgetFullData = [
-            { name: 'AICS', annual: 2800000, remaining: 1540000, used: 1260000},
-            { name: '4Ps', annual: 30000, remaining: 28500, used: 1500},
-            { name: 'SLP', annual: 450000, remaining: 320000, used: 130000},
-            { name: 'SFP', annual: 800000, remaining: 620000, used: 180000},
-            { name: 'Day Care', annual: 350000, remaining: 280000, used: 70000},
-            { name: 'Senior Citizen', annual: 1500000, remaining: 1050000, used: 450000},
-            { name: 'PWD', annual: 200000, remaining: 144000, used: 56000},
-            { name: 'Solo Parent', annual: 300000, remaining: 228000, used: 72000},
-            { name: 'Women & Child', annual: 100000, remaining: 72000, used: 28000},
-        ];
+        // ── Budget Summary — All Programs (from database) ──
+        const budgetFullData = <?= json_encode(array_map(function ($p) {
+            $annual = (float)$p['total'];
+            $used   = (float)$p['spent'];
+            return [
+                'name'      => $p['program_name'],
+                'annual'    => $annual,
+                'used'      => $used,
+                'remaining' => $annual - $used,
+            ];
+        }, $programs)) ?>;
 
         const container = document.getElementById('budgetFull');
         budgetFullData.forEach(b => {
-            const pct = Math.round((b.used / b.annual) * 100);
+            const pct = b.annual > 0 ? Math.round((b.used / b.annual) * 100) : 0;
             const barColor = pct > 80 ? 'bg-red-400' : pct > 60 ? 'bg-amber-400' : 'bg-emerald-400';
             const textColor = pct > 80 ? 'text-red-500' : pct > 60 ? 'text-amber-500' : 'text-emerald-600';
             container.innerHTML += `

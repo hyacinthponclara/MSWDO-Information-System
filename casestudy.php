@@ -29,13 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $combined_income = (float) ($_POST['combined_income'] ?? 0);
     $monthly_expenses = (float) ($_POST['monthly_expenses'] ?? 0);
     $emergency_fund_available = isset($_POST['emergency_fund_available']) ? (int) $_POST['emergency_fund_available'] : 0;
-    $crisis_severity = trim($_POST['crisis_severity'] ?? '') ?: null;
-    $crisis_experienced = trim($_POST['crisis_experienced'] ?? '') ?: null;
     $problem_presented = trim($_POST['problem_presented'] ?? '');
     $home_condition = trim($_POST['home_condition'] ?? '') ?: null;
     $indigency_assessment = trim($_POST['indigency_assessment'] ?? '') ?: null;
     $recommendation = trim($_POST['recommendation'] ?? '') ?: null;
-    $previous_dswd_assistance = isset($_POST['previous_dswd_assistance']) ? 1 : 0;
+    $previous_dswd_assistance = ((int) ($_POST['previous_dswd_assistance'] ?? 0)) === 1 ? 1 : 0;
     $previous_assistance_details = trim($_POST['previous_assistance_details'] ?? '') ?: null;
     $previous_assistance_date = trim($_POST['previous_assistance_date'] ?? '') ?: null;
     $insurance_coverage = trim($_POST['insurance_coverage'] ?? '') ?: null;
@@ -70,11 +68,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             client_id, user_id, interview_date, type_of_case_study,
             patient_name, patient_relationship, family_composition_json,
             combined_income, monthly_expenses, emergency_fund_available,
-            crisis_severity, crises_experienced, problem_presented,
+            problem_presented,
             home_condition, indigency_assessment, recommendation,
             previous_dswd_assistance, previous_assistance_details,
             previous_assistance_date, insurance_coverage, savings
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $client_id,
@@ -87,8 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $combined_income,
         $monthly_expenses,
         $emergency_fund_available,
-        $crisis_severity,
-        $crisis_experienced,
         $problem_presented,
         $home_condition,
         $indigency_assessment,
@@ -131,6 +127,55 @@ $famRow = $famStmt->fetch(PDO::FETCH_ASSOC);
 $registrationFamily = [];
 if ($famRow && !empty($famRow['family_composition_json'])) {
     $registrationFamily = json_decode($famRow['family_composition_json'], true) ?? [];
+}
+
+//  Auto-detect previous DSWD/MSWDO assistance from availment history 
+$prevStmt = $pdo->prepare("
+    SELECT AVAILMENT.availment_id, PROGRAM.program_name, AVAILMENT.av_amount, AVAILMENT.av_date_applied
+    FROM AVAILMENT
+    JOIN PROGRAM ON AVAILMENT.program_id = PROGRAM.program_id
+    WHERE AVAILMENT.client_id = ?
+      AND AVAILMENT.av_status IN ('Approved', 'Released')
+    ORDER BY AVAILMENT.av_date_applied DESC
+");
+$prevStmt->execute([$client_id]);
+$prevAvailments = $prevStmt->fetchAll(PDO::FETCH_ASSOC);
+$has_prev_dswd_assistance = count($prevAvailments) > 0;
+
+// "AICS FBML" is one shared PROGRAM row for Financial/Burial/Medical/Livelihood -
+// the actual subtype only lives in which AICS_* table has a matching availment_id.
+function resolveAicsFbmlSubtype(PDO $pdo, int $availment_id): ?string
+{
+    $subtypeTables = [
+        'AICS_MEDICAL' => 'AICS Medical',
+        'AICS_FINANCIAL' => 'AICS Financial',
+        'AICS_BURIAL' => 'AICS Burial',
+        'AICS_LIVELIHOOD' => 'AICS Livelihood',
+    ];
+    foreach ($subtypeTables as $table => $label) {
+        $stmt = $pdo->prepare("SELECT 1 FROM {$table} WHERE availment_id = ? LIMIT 1");
+        $stmt->execute([$availment_id]);
+        if ($stmt->fetchColumn()) {
+            return $label;
+        }
+    }
+    return null;
+}
+
+$prev_assistance_details_auto = '';
+$prev_assistance_date_auto = '';
+if ($has_prev_dswd_assistance) {
+    $lines = [];
+    foreach ($prevAvailments as $row) {
+        $label = $row['program_name'];
+        if ($label === 'AICS FBML') {
+            $label = resolveAicsFbmlSubtype($pdo, (int) $row['availment_id']) ?? $label;
+        }
+        $lines[] = $label . ' — ₱' . number_format((float) $row['av_amount'], 2)
+            . ' (' . date('M j, Y', strtotime($row['av_date_applied'])) . ')';
+    }
+    $prev_assistance_details_auto = implode("\n", $lines);
+    $prev_assistance_date_auto = $prevAvailments[0]['av_date_applied']; // most recent
 }
 ?>
 <!DOCTYPE html>
@@ -322,44 +367,6 @@ if ($famRow && !empty($famRow['family_composition_json'])) {
 
         .indig-opt.sel-notassessed p {
             color: #475569;
-        }
-
-        .sev-opt {
-            transition: all .18s;
-            cursor: pointer;
-        }
-
-        .sev-opt:hover {
-            border-color: #94A3B8;
-        }
-
-        .sev-opt.sel {
-            border-color: #0B2545;
-            background: #E8EDF5;
-        }
-
-        .sev-opt.sel p {
-            color: #0B2545;
-            font-weight: 600;
-        }
-
-        .crisis-check {
-            transition: all .15s;
-            cursor: pointer;
-        }
-
-        .crisis-check:has(input:checked) {
-            border-color: #C0392B;
-            background: #FEF2F2;
-        }
-
-        .crisis-check:has(input:checked) span {
-            color: #991B1B;
-            font-weight: 500;
-        }
-
-        .crisis-check:hover {
-            border-color: #94A3B8;
         }
 
         .fam-input {
@@ -840,104 +847,10 @@ if ($famRow && !empty($famRow['family_composition_json'])) {
                         </div>
                     </div>
 
-                    <!--  Section 4: Crisis Assessment  -->
+                    <!--  Section 4: Problem Presented & Home Condition  -->
                     <div class="section-card animate-fade-up-4">
                         <div class="section-head">
                             <div class="section-num">4</div>
-                            <div>
-                                <h2 class="text-[14px] font-semibold text-navy-600">Crisis Assessment</h2>
-                                <p class="text-[11px] text-slate-400">Severity of the current crisis and recent critical
-                                    events</p>
-                            </div>
-                        </div>
-                        <div class="section-body space-y-5">
-                            <input type="hidden" name="crisis_severity" id="severityValue" value="">
-                            <div>
-                                <label class="field-label req">Severity of Crisis</label>
-                                <div class="grid grid-cols-4 gap-3 mt-2" id="sevSelector">
-                                    <div onclick="setSev(this,'Recently diagnosed (≤3 months)')"
-                                        class="sev-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                        <p class="text-[12px] font-semibold text-slate-600 leading-tight">Recently
-                                            Diagnosed</p>
-                                        <p class="text-[10px] text-slate-400 mt-1">≤ 3 months</p>
-                                    </div>
-                                    <div onclick="setSev(this,'3 months to 1 year')"
-                                        class="sev-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                        <p class="text-[12px] font-semibold text-slate-600 leading-tight">3 Months – 1
-                                            Year</p>
-                                        <p class="text-[10px] text-slate-400 mt-1">Ongoing</p>
-                                    </div>
-                                    <div onclick="setSev(this,'Chronic/lifelong')"
-                                        class="sev-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                        <p class="text-[12px] font-semibold text-slate-600 leading-tight">Chronic /
-                                            Lifelong</p>
-                                        <p class="text-[10px] text-slate-400 mt-1">Permanent condition</p>
-                                    </div>
-                                    <div onclick="setSev(this,'Not applicable')"
-                                        class="sev-opt border-2 border-slate-200 rounded-xl p-3 text-center">
-                                        <p class="text-[12px] font-semibold text-slate-600 leading-tight">Not Applicable
-                                        </p>
-                                        <p class="text-[10px] text-slate-400 mt-1">Financial / other type</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="field-label">Crises Experienced in the Past 3 Months</label>
-                                <p class="text-[11px] text-slate-400 mb-3">Check all that apply to the household</p>
-                                <input type="hidden" name="crisis_experienced" id="crisisValue" value="">
-                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
-                                        onclick="updateCrisis()">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
-                                            value="Hospitalization">
-                                        <span class="text-[12px] text-slate-700">Hospitalization</span>
-                                    </label>
-                                    <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
-                                        onclick="updateCrisis()">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
-                                            value="Death in family">
-                                        <span class="text-[12px] text-slate-700">Death in family</span>
-                                    </label>
-                                    <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
-                                        onclick="updateCrisis()">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
-                                            value="Catastrophic event">
-                                        <span class="text-[12px] text-slate-700">Catastrophic event</span>
-                                    </label>
-                                    <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
-                                        onclick="updateCrisis()">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
-                                            value="Disablement">
-                                        <span class="text-[12px] text-slate-700">Disablement</span>
-                                    </label>
-                                    <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
-                                        onclick="updateCrisis()">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
-                                            value="Loss of livelihood">
-                                        <span class="text-[12px] text-slate-700">Loss of livelihood</span>
-                                    </label>
-                                    <label
-                                        class="crisis-check flex items-center gap-3 p-3 border-2 border-slate-200 rounded-xl cursor-pointer"
-                                        onclick="updateCrisis()">
-                                        <input type="checkbox" class="w-4 h-4 accent-red-500 flex-shrink-0"
-                                            value="Others">
-                                        <span class="text-[12px] text-slate-700">Others</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!--  Section 5: Problem Presented & Home Condition  -->
-                    <div class="section-card animate-fade-up-5">
-                        <div class="section-head">
-                            <div class="section-num">5</div>
                             <div>
                                 <h2 class="text-[14px] font-semibold text-navy-600">Problem Presented & Home Condition
                                 </h2>
@@ -962,10 +875,10 @@ if ($famRow && !empty($famRow['family_composition_json'])) {
                         </div>
                     </div>
 
-                    <!--  Section 6: Indigency Assessment  -->
-                    <div class="section-card animate-fade-up-6">
+                    <!--  Section 5: Indigency Assessment  -->
+                    <div class="section-card animate-fade-up-5">
                         <div class="section-head">
-                            <div class="section-num">6</div>
+                            <div class="section-num">5</div>
                             <div>
                                 <h2 class="text-[14px] font-semibold text-navy-600">Indigency Assessment</h2>
                                 <p class="text-[11px] text-slate-400">Based on DOH / DSWD Assessment Tool</p>
@@ -998,42 +911,56 @@ if ($famRow && !empty($famRow['family_composition_json'])) {
                         </div>
                     </div>
 
-                    <!--  Section 7: Previous DSWD Assistance  -->
+                    <!--  Section 6: Previous DSWD Assistance  -->
                     <div class="section-card animate-fade-up-6">
                         <div class="section-head">
-                            <div class="section-num">7</div>
+                            <div class="section-num">6</div>
                             <div>
                                 <h2 class="text-[14px] font-semibold text-navy-600">Previous DSWD Assistance</h2>
-                                <p class="text-[11px] text-slate-400">Any prior assistance received from DSWD or MSWDO
-                                </p>
+                                <p class="text-[11px] text-slate-400">Auto-detected from this client's availment
+                                    records</p>
                             </div>
                         </div>
                         <div class="section-body space-y-4">
-                            <div class="flex items-center gap-3">
-                                <input type="checkbox" id="prevDSWD" name="previous_dswd_assistance" value="1"
-                                    class="w-4 h-4 accent-navy-600" onchange="togglePrevDSWD()">
-                                <label for="prevDSWD" class="text-[13px] font-medium text-slate-700 cursor-pointer">
-                                    Client has received previous assistance from DSWD / MSWDO
-                                </label>
-                            </div>
-                            <div id="prevDSWDFields" class="hidden grid grid-cols-2 gap-4">
+                            <input type="hidden" name="previous_dswd_assistance"
+                                value="<?= $has_prev_dswd_assistance ? 1 : 0 ?>">
+                            <?php if ($has_prev_dswd_assistance): ?>
+                                <div class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                                    <i class="fas fa-circle-info text-amber-500 mt-0.5"></i>
+                                    <p class="text-[12px] text-amber-800">
+                                        <span class="font-semibold">Auto-detected:</span> this client has
+                                        <?= count($prevAvailments) ?> prior approved/released availment(s) on record.
+                                        Details are pre-filled below — review and adjust before saving.
+                                    </p>
+                                </div>
+                            <?php else: ?>
+                                <div class="flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                    <i class="fas fa-circle-info text-slate-400 mt-0.5"></i>
+                                    <p class="text-[12px] text-slate-500">
+                                        <span class="font-semibold">Auto-detected:</span> no prior approved/released
+                                        availments found for this client.
+                                    </p>
+                                </div>
+                            <?php endif; ?>
+                            <div class="grid grid-cols-2 gap-4">
                                 <div class="col-span-2">
                                     <label class="field-label">Details of Previous Assistance</label>
                                     <textarea class="field" rows="2" name="previous_assistance_details"
-                                        placeholder="Type of assistance, amount, program..."></textarea>
+                                        placeholder="Type of assistance, amount, program..."><?= htmlspecialchars($prev_assistance_details_auto) ?></textarea>
                                 </div>
                                 <div>
                                     <label class="field-label">Date of Previous Assistance</label>
-                                    <input type="date" class="field" name="previous_assistance_date">
+                                    <input type="date" class="field" name="previous_assistance_date"
+                                        value="<?= htmlspecialchars($prev_assistance_date_auto) ?>">
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!--  Section 8: Evaluation & Recommendation  -->
+                    <!--  Section 7: Evaluation & Recommendation  -->
                     <div class="section-card animate-fade-up-7">
                         <div class="section-head">
-                            <div class="section-num">8</div>
+                            <div class="section-num">7</div>
                             <div>
                                 <h2 class="text-[14px] font-semibold text-navy-600">Evaluation & Recommendation</h2>
                                 <p class="text-[11px] text-slate-400">Social worker's professional assessment and formal
@@ -1092,17 +1019,6 @@ if ($famRow && !empty($famRow['family_composition_json'])) {
             document.getElementById('patientInfoFields').classList.toggle('hidden', !patientOn);
         }
 
-        //  Crisis severity selector 
-        function setSev(el, enumValue) {
-            document.querySelectorAll('#sevSelector .sev-opt').forEach(e => {
-                e.className = 'sev-opt border-2 border-slate-200 rounded-xl p-3 text-center';
-                e.querySelector('p').className = 'text-[12px] font-semibold text-slate-600 leading-tight';
-            });
-            el.classList.add('sel', 'border-navy-600', 'bg-navy-50');
-            el.querySelector('p').className = 'text-[12px] font-semibold text-navy-700 leading-tight';
-            document.getElementById('severityValue').value = enumValue;
-        }
-
         //  Indigency selector 
         function setIndig(el, enumValue, cssClass) {
             document.querySelectorAll('#indigSelector .indig-opt').forEach(e => {
@@ -1111,13 +1027,6 @@ if ($famRow && !empty($famRow['family_composition_json'])) {
             });
             el.classList.add(cssClass);
             document.getElementById('indigValue').value = enumValue;
-        }
-
-        //  Crisis checkboxes 
-        function updateCrisis() {
-            const checked = document.querySelectorAll('.crisis-check input:checked');
-            const values = Array.from(checked).map(cb => cb.value).join(', ');
-            document.getElementById('crisisValue').value = values;
         }
 
         //  Seed Section 3 combined income field from client income on load 
@@ -1154,12 +1063,6 @@ if ($famRow && !empty($famRow['family_composition_json'])) {
             const el = document.getElementById(countId);
             el.textContent = `${len} / ${max} characters`;
             el.className = `char-counter ${len > max * .9 ? 'limit' : len > max * .75 ? 'warn' : ''}`;
-        }
-
-        //  Previous DSWD toggle 
-        function togglePrevDSWD() {
-            const checked = document.getElementById('prevDSWD').checked;
-            document.getElementById('prevDSWDFields').classList.toggle('hidden', !checked);
         }
 
         //  Recommendation templates 

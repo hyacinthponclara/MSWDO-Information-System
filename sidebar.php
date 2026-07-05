@@ -141,7 +141,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-file-alt text-sm"></i> Reports
         </a>
-        <a href="#"
+        <a href="geographic_analysis.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-map-marked-alt text-sm"></i> Geographic Analysis
         </a>
@@ -255,7 +255,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="#"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                 class="fas fa-file-alt text-sm"></i> Reports</a>
-        <a href="#"
+        <a href="geographic_analysis.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                 class="fas fa-map-marked-alt text-sm"></i> Geographic</a>
         <a href="#"

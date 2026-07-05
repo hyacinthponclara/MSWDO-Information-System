@@ -2,6 +2,53 @@
 require 'auth.php';
 requireRole(['Staff']);
 require 'db_connect.php';
+
+// ── STAT CARDS ─────────────────────────────────────────────
+$clientsTodayDB = $pdo->query("
+    SELECT COUNT(DISTINCT client_id)
+    FROM AVAILMENT
+    WHERE av_date_applied = CURDATE()
+");
+$clients_today = (int)$clientsTodayDB->fetchColumn();
+
+// Week = Monday-Sunday of the current week (mode 1 = ISO week, starts Monday)
+$availmentsWeekDB = $pdo->query("
+    SELECT COUNT(*)
+    FROM AVAILMENT
+    WHERE YEARWEEK(av_date_applied, 1) = YEARWEEK(CURDATE(), 1)
+");
+$availments_this_week = (int)$availmentsWeekDB->fetchColumn();
+
+// ── AICS QUICK ACCESS TILE (availments this week) ──────────
+$aicsWeekDB = $pdo->prepare("
+    SELECT COUNT(*)
+    FROM AVAILMENT a
+    JOIN PROGRAM p ON p.program_id = a.program_id
+    WHERE p.program_name = :pname
+      AND YEARWEEK(a.av_date_applied, 1) = YEARWEEK(CURDATE(), 1)
+");
+$aicsWeekDB->execute(['pname' => 'AICS']);
+$aics_this_week = (int)$aicsWeekDB->fetchColumn();
+
+// ── AICS BUDGET CARD ─────────────────────────────────────
+$aicsBudgetDB = $pdo->prepare("
+    SELECT
+        p.prog_annual_budget AS total,
+        COALESCE(SUM(a.av_amount), 0) AS spent
+    FROM PROGRAM p
+    LEFT JOIN AVAILMENT a
+        ON a.program_id = p.program_id
+       AND a.av_status IN ('Approved', 'Released')
+    WHERE p.program_name = :pname
+    GROUP BY p.program_id, p.prog_annual_budget
+");
+$aicsBudgetDB->execute(['pname' => 'AICS']);
+$aicsBudget = $aicsBudgetDB->fetch(PDO::FETCH_ASSOC);
+
+$aics_annual    = $aicsBudget ? (float)$aicsBudget['total'] : 0;
+$aics_used      = $aicsBudget ? (float)$aicsBudget['spent'] : 0;
+$aics_remaining = $aics_annual - $aics_used;
+$aics_pct_used  = $aics_annual > 0 ? round(($aics_used / $aics_annual) * 100) : 0;
 ?>
 
 <!DOCTYPE html>
@@ -149,7 +196,7 @@ require 'db_connect.php';
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-green-500 rounded-t-2xl"></div>
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Clients Served
                         Today</p>
-                    <p class="text-3xl font-semibold text-green-600 leading-none">14</p>
+                    <p class="text-3xl font-semibold text-green-600 leading-none"><?= number_format($clients_today) ?></p>
                     <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-users"></i></div>
                 </div>
 
@@ -158,7 +205,7 @@ require 'db_connect.php';
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 rounded-t-2xl"></div>
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Availments This
                         Week</p>
-                    <p class="text-3xl font-semibold text-green-600 leading-none">58</p>
+                    <p class="text-3xl font-semibold text-green-600 leading-none"><?= number_format($availments_this_week) ?></p>
                     <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-clipboard-list"></i></div>
                 </div>
             </div>
@@ -177,7 +224,7 @@ require 'db_connect.php';
                         </div>
                         <div class="min-w-0">
                             <p class="text-[12px] font-semibold text-green-700 truncate">AICS</p>
-                            <p class="text-[10px] text-slate-400 mt-0.5">32 this week</p>
+                            <p class="text-[10px] text-slate-400 mt-0.5"><?= number_format($aics_this_week) ?> this week</p>
                         </div>
                     </div>
                 </div>
@@ -192,27 +239,27 @@ require 'db_connect.php';
                 <div class="space-y-3">
                     <div class="flex items-center justify-between">
                         <span class="text-[12px] text-slate-500">Annual Budget</span>
-                        <span class="text-[13px] font-bold text-green-600">₱2,800,000</span>
+                        <span class="text-[13px] font-bold text-green-600">₱<?= number_format($aics_annual, 2) ?></span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[12px] text-slate-500">Used</span>
-                        <span class="text-[13px] font-semibold text-amber-500">₱1,260,000</span>
+                        <span class="text-[13px] font-semibold text-amber-500">₱<?= number_format($aics_used, 2) ?></span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-[12px] text-slate-500">Remaining</span>
-                        <span class="text-[13px] font-bold text-green-600">₱1,540,000</span>
+                        <span class="text-[13px] font-bold text-green-600">₱<?= number_format($aics_remaining, 2) ?></span>
                     </div>
                     <div class="mt-2">
                         <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-                            <span>45% used</span>
-                            <span>55% remaining</span>
+                            <span><?= $aics_pct_used ?>% used</span>
+                            <span><?= 100 - $aics_pct_used ?>% remaining</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div class="prog-bar-fill h-2 rounded-full bg-green-500" style="width:0%" data-target="45%"></div>
+                            <div class="prog-bar-fill h-2 rounded-full bg-green-500" style="width:0%" data-target="<?= $aics_pct_used ?>%"></div>
                         </div>
                     </div>
                     <div class="text-[10px] text-slate-400 pt-3 border-t border-slate-100">
-                        Last updated: Today at 8:00 AM
+                        Last updated: <?= date('F j, Y \a\t g:i A') ?>
                     </div>
                 </div>
             </div>

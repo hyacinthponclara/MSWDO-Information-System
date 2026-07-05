@@ -22,15 +22,39 @@ $client_name = htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_last
 
 function saveFile($field, $folder)
 {
-    if (!isset($_FILES[$field]) || $_FILES[$field]['error'] !== 0) {
+    if (!isset($_FILES[$field])) {
         return null; // if wala uploaded store NULL in database
     }
-    $original = basename($_FILES[$field]['name']);
+    $file = $_FILES[$field];
+
+    // Multi-file input (e.g. name="edu_doc_card[]" with multiple) - PHP gives arrays here.
+    if (is_array($file['name'])) {
+        $saved = [];
+        foreach ($file['name'] as $i => $original) {
+            if (($file['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                continue; // skip empty/failed slots, don't bail on the whole field
+            }
+            $safe_name = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($original));
+            if (!is_dir($folder)) {
+                mkdir($folder, 0755, true); // Create upload folder if missing
+            }
+            if (move_uploaded_file($file['tmp_name'][$i], $folder . $safe_name)) {
+                $saved[] = $safe_name;
+            }
+        }
+        return $saved ? implode(',', $saved) : null; // store as comma-separated list in the single DB column
+    }
+
+    // Single-file input
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+    $original = basename($file['name']);
     $safe_name = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $original);
     if (!is_dir($folder)) {
         mkdir($folder, 0755, true); // Create upload folder if missing
     }
-    if (move_uploaded_file($_FILES[$field]['tmp_name'], $folder . $safe_name)) {
+    if (move_uploaded_file($file['tmp_name'], $folder . $safe_name)) {
         return $safe_name; // 
     }
     return null;
@@ -56,6 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Amount must be between ₱500 and ₱5,000.';
     if (empty($date_applied))
         $errors[] = 'Date Applied is required.';
+    elseif (strtotime($date_applied) > strtotime(date('Y-m-d')))
+        $errors[] = 'Date Applied cannot be a future date.';
 
     if (empty($errors)) {
 
@@ -405,6 +431,9 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$client_id, $edu_program_id]);
 $edu_y_count = (int) $stmt->fetchColumn();
+
+//  AICS Educational: rolling quarter-window count (same pattern as FBML subtypes) 
+$edu_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $edu_program_id, 'AICS_EDUCATIONAL'));
 
 // $quarter_ok = true means AT LEAST ONE subtype is still within its quarter limit.
 // The Proceed button is only fully hard-blocked when every FBML subtype is blocked.
@@ -874,7 +903,7 @@ $post_errors = $errors ?? [];
                                             <p class="text-[10px] text-slate-400 mt-1.5">Min ₱500 · Max ₱5,000</p>
                                         </div>
                                         <div><label class="field-label req">Date Applied</label><input type="date"
-                                                class="field" id="dateApplied"></div>
+                                                class="field" id="dateApplied" max="<?= date('Y-m-d') ?>"></div>
                                     </div>
 
                                     <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden"
@@ -887,8 +916,8 @@ $post_errors = $errors ?? [];
                                         </div>
                                         <div id="limitRows" class="divide-y divide-slate-100">
 
-                                            <!-- Quarter row -->
-                                            <div id="row-fbml-quarter"
+                                            <!-- Quarter row (shared format for FBML subtypes and Educational) -->
+                                            <div id="row-quarter"
                                                 class="limit-row flex items-center justify-between px-4 py-2.5">
                                                 <div class="flex items-center gap-2">
                                                     <i class="fas fa-calendar-alt text-slate-500 text-sm"></i>
@@ -903,8 +932,8 @@ $post_errors = $errors ?? [];
                                                     id="quarter-status-text">— Select assistance type below</span>
                                             </div>
 
-                                            <!-- Year row  -->
-                                            <div id="row-fbml-year"
+                                            <!-- Year row (shared format for FBML subtypes and Educational) -->
+                                            <div id="row-year"
                                                 class="limit-row flex items-center justify-between px-4 py-2.5">
                                                 <div class="flex items-center gap-2"><i
                                                         class="fas fa-calendar-week text-slate-500 text-sm"></i><span
@@ -912,58 +941,6 @@ $post_errors = $errors ?? [];
                                                 </div>
                                                 <span class="text-[12px] font-semibold text-slate-400"
                                                     id="fbml-year-text">—</span>
-                                            </div>
-
-                                            <!-- Per-subtype year breakdown (shown when any FBML type selected) -->
-                                            <div id="row-subtype-breakdown" class="hidden px-4 py-2.5 bg-slate-50/80">
-                                                <p
-                                                    class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">
-                                                    This year by subtype</p>
-                                                <div class="grid grid-cols-4 gap-2 text-[11px]">
-                                                    <div class="bg-white rounded-lg px-3 py-2 border border-slate-200">
-                                                        <p class="text-slate-400 mb-0.5">Medical</p>
-                                                        <p
-                                                            class="font-semibold <?= $med_y_count >= 4 ? 'text-red-500' : 'text-navy-600' ?>">
-                                                            <?= $med_y_count ?>/4
-                                                        </p>
-                                                    </div>
-                                                    <div class="bg-white rounded-lg px-3 py-2 border border-slate-200">
-                                                        <p class="text-slate-400 mb-0.5">Financial</p>
-                                                        <p
-                                                            class="font-semibold <?= $fin_y_count >= 4 ? 'text-red-500' : 'text-navy-600' ?>">
-                                                            <?= $fin_y_count ?>/4
-                                                        </p>
-                                                    </div>
-                                                    <div class="bg-white rounded-lg px-3 py-2 border border-slate-200">
-                                                        <p class="text-slate-400 mb-0.5">Burial</p>
-                                                        <p
-                                                            class="font-semibold <?= $bur_y_count >= 4 ? 'text-red-500' : 'text-navy-600' ?>">
-                                                            <?= $bur_y_count ?>/4
-                                                        </p>
-                                                    </div>
-                                                    <div class="bg-white rounded-lg px-3 py-2 border border-slate-200">
-                                                        <p class="text-slate-400 mb-0.5">Livelihood</p>
-                                                        <p
-                                                            class="font-semibold <?= $liv_y_count >= 4 ? 'text-red-500' : 'text-navy-600' ?>">
-                                                            <?= $liv_y_count ?>/4
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Educational row -->
-                                            <div id="row-edu-year"
-                                                class="limit-row items-center justify-between px-4 py-2.5 hidden">
-                                                <div class="flex items-center gap-2"><i
-                                                        class="fas fa-calendar-week text-slate-500 text-sm"></i><span
-                                                        class="text-[12px] text-slate-600">Educational availments this
-                                                        year</span></div>
-                                                <span
-                                                    class="text-[12px] font-semibold flex items-center gap-1 <?= $edu_year_ok ? 'text-emerald-600' : 'text-red-500' ?>">
-                                                    <?= $edu_year_ok ? '✓' : '✗' ?>
-                                                    <?= $edu_y_count ?> of 2 —
-                                                    <?= $edu_year_ok ? "{$edu_year_left} remaining" : 'limit reached' ?>
-                                                </span>
                                             </div>
 
                                             <div class="limit-row flex items-center justify-between px-4 py-2.5"
@@ -1046,7 +1023,9 @@ $post_errors = $errors ?? [];
                                         </div>
                                         <p class="text-[13px] font-semibold text-slate-700">Educational</p>
                                         <p class="text-[10px] text-slate-400 mt-1">6 documents</p>
-                                        <?php if (!$edu_year_ok): ?>
+                                        <?php if ($edu_q['count'] >= 1): ?>
+                                            <p class="text-[10px] text-red-400 font-semibold mt-1">Quarter full</p>
+                                        <?php elseif (!$edu_year_ok): ?>
                                             <p class="text-[10px] text-red-400 font-semibold mt-1">Year limit reached</p>
                                         <?php endif; ?>
                                     </div>
@@ -1883,6 +1862,10 @@ $post_errors = $errors ?? [];
 
     <script>
         const EDU_YEAR_OK = <?= $edu_year_ok ? 'true' : 'false' ?>;
+        const EDU_YEAR_COUNT = <?= $edu_y_count ?>;
+        const EDU_QUARTER = <?= $edu_q['count'] ?>;
+        const EDU_WINDOW_END = '<?= $edu_q['window_end'] ? $edu_q['window_end']->format('M j, Y') : '' ?>';
+        const EDU_WINDOW_LABEL = '<?= ($edu_q['window_start'] && $edu_q['window_end']) ? '(' . $edu_q['window_start']->format('M j') . ' – ' . $edu_q['window_end']->format('M j, Y') . ')' : '' ?>';
         const BUDGET_OK = <?= $budget_ok ? 'true' : 'false' ?>;
 
         // (how many times this client has availed each type this year)
@@ -1990,9 +1973,16 @@ $post_errors = $errors ?? [];
                 amountInput.focus();
                 return;
             }
-            if (!document.getElementById('dateApplied').value) {
+            const dateAppliedInput = document.getElementById('dateApplied');
+            if (!dateAppliedInput.value) {
                 showToast('Please select Date Applied.');
-                document.getElementById('dateApplied').focus();
+                dateAppliedInput.focus();
+                return;
+            }
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (dateAppliedInput.value > todayStr) {
+                showToast('Date Applied cannot be a future date.');
+                dateAppliedInput.focus();
                 return;
             }
             if (!currentSubtype) {
@@ -2001,6 +1991,10 @@ $post_errors = $errors ?? [];
             }
 
             if (currentSubtype === 'educational') {
+                if (EDU_QUARTER >= 1) {
+                    showToast('Quarter limit reached for educational. Select a different type or wait until the quarter resets.');
+                    return;
+                }
                 if (!EDU_YEAR_OK) {
                     showToast('Educational year limit reached — max 2 per year.');
                     return;
@@ -2035,49 +2029,38 @@ $post_errors = $errors ?? [];
             const isEdu = sub === 'educational';
 
             // Show/hide the right rows in the limit panel
-            document.getElementById('row-fbml-quarter').classList.toggle('hidden', isEdu);
-            document.getElementById('row-fbml-quarter').classList.toggle('flex', !isEdu);
-            document.getElementById('row-fbml-year').classList.toggle('hidden', isEdu);
-            document.getElementById('row-fbml-year').classList.toggle('flex', !isEdu);
-            document.getElementById('row-edu-year').classList.toggle('hidden', !isEdu);
-            document.getElementById('row-edu-year').classList.toggle('flex', isEdu);
-            document.getElementById('row-subtype-breakdown').classList.toggle('hidden', isEdu);
+            document.getElementById('row-quarter').classList.remove('hidden');
+            document.getElementById('row-year').classList.remove('hidden');
 
-            if (!isEdu) {
-                // Quarter row: show this subtype's own count and window
-                const qCount = SUBTYPE_QUARTER[sub] ?? 0;
-                const qOk = qCount < 1;
-                const qLabel = SUBTYPE_WINDOW_LABEL[sub] || '';
-                const qEl = document.getElementById('quarter-status-text');
-                qEl.className = 'text-[12px] font-semibold ' + (qOk ? 'text-emerald-600' : 'text-red-500');
-                qEl.textContent = (qOk ? '✓' : '✗') + ' ' + qCount + ' of 1 — ' + (qOk ? 'eligible' : 'limit reached');
-                document.getElementById('quarter-window-label').textContent = qLabel;
+            // Quarter row: show this type's own count and window (Educational uses the same 1-per-quarter pattern as FBML subtypes)
+            const qCount = isEdu ? EDU_QUARTER : (SUBTYPE_QUARTER[sub] ?? 0);
+            const qOk = qCount < 1;
+            const qLabel = isEdu ? EDU_WINDOW_LABEL : (SUBTYPE_WINDOW_LABEL[sub] || '');
+            const qEl = document.getElementById('quarter-status-text');
+            qEl.className = 'text-[12px] font-semibold ' + (qOk ? 'text-emerald-600' : 'text-red-500');
+            qEl.textContent = (qOk ? '✓' : '✗') + ' ' + qCount + ' of 1 — ' + (qOk ? 'eligible' : 'limit reached');
+            document.getElementById('quarter-window-label').textContent = qLabel;
 
-                // Year row: show this subtype's own count
-                const yCount = SUBTYPE_YEAR[sub] ?? 0;
-                const yLeft = Math.max(0, 4 - yCount);
-                const yOk = yCount < 4;
-                const yEl = document.getElementById('fbml-year-text');
-                yEl.className = 'text-[12px] font-semibold ' + (yOk ? 'text-emerald-600' : 'text-red-500');
-                yEl.textContent = (yOk ? '✓' : '✗') + ' ' + yCount + ' of 4 — ' + (yOk ? yLeft + ' remaining' : 'limit reached');
+            // Year row: show this type's own count (Educational caps at 2/year, FBML subtypes cap at 4/year)
+            const yLimit = isEdu ? 2 : 4;
+            const yCount = isEdu ? EDU_YEAR_COUNT : (SUBTYPE_YEAR[sub] ?? 0);
+            const yLeft = Math.max(0, yLimit - yCount);
+            const yOk = yCount < yLimit;
+            const yEl = document.getElementById('fbml-year-text');
+            yEl.className = 'text-[12px] font-semibold ' + (yOk ? 'text-emerald-600' : 'text-red-500');
+            yEl.textContent = (yOk ? '✓' : '✗') + ' ' + yCount + ' of ' + yLimit + ' — ' + (yOk ? yLeft + ' remaining' : 'limit reached');
 
-                // Block banner: show only if THIS subtype is at its quarter limit
-                const banner = document.getElementById('quarterBlockBanner');
-                const msgEl = document.getElementById('quarterBlockMsg');
-                if (!qOk) {
-                    const resetDate = SUBTYPE_WINDOW_END[sub] || '';
-                    msgEl.innerHTML = '<?= htmlspecialchars($client_name) ?> has already availed ' + sub + ' assistance once this quarter.'
-                        + (resetDate ? ' This window resets on <strong>' + resetDate + '</strong>.' : '')
-                        + ' Select a different type or wait until the quarter resets.';
-                    banner.classList.remove('hidden');
-                } else {
-                    banner.classList.add('hidden');
-                }
+            // Block banner: show only if THIS type is at its quarter limit
+            const banner = document.getElementById('quarterBlockBanner');
+            const msgEl = document.getElementById('quarterBlockMsg');
+            if (!qOk) {
+                const resetDate = isEdu ? EDU_WINDOW_END : (SUBTYPE_WINDOW_END[sub] || '');
+                msgEl.innerHTML = '<?= htmlspecialchars($client_name) ?> has already availed ' + sub + ' assistance once this quarter.'
+                    + (resetDate ? ' This window resets on <strong>' + resetDate + '</strong>.' : '')
+                    + ' Select a different type or wait until the quarter resets.';
+                banner.classList.remove('hidden');
             } else {
-                document.getElementById('quarter-status-text').textContent = '— Select a type below';
-                document.getElementById('quarter-window-label').textContent = '';
-                document.getElementById('fbml-year-text').textContent = '— Select a type below';
-                document.getElementById('quarterBlockBanner').classList.add('hidden');
+                banner.classList.add('hidden');
             }
 
             switchBudgetDisplay(isEdu ? 'edu' : 'fbml');

@@ -2,6 +2,58 @@
 require 'auth.php';
 requireRole(['Social Worker']);
 require 'db_connect.php';
+
+// ── STAT CARDS ─────────────────────────────────────────────
+// "Active" caseload = case studies on file (no status field on CASE_STUDY itself,
+// so this counts everything logged; adjust the WHERE clause if you add a status column)
+$activeCasesDB = $pdo->query("SELECT COUNT(*) FROM CASE_STUDY");
+$total_active_cases = (int)$activeCasesDB->fetchColumn();
+
+$clientsMonthDB = $pdo->query("
+    SELECT COUNT(DISTINCT client_id)
+    FROM AVAILMENT
+    WHERE MONTH(av_date_applied) = MONTH(CURDATE())
+      AND YEAR(av_date_applied)  = YEAR(CURDATE())
+");
+$clients_this_month = (int)$clientsMonthDB->fetchColumn();
+
+$pendingApprovalsDB = $pdo->query("
+    SELECT COUNT(*) FROM AVAILMENT WHERE av_status = 'Pending'
+");
+$pending_approvals = (int)$pendingApprovalsDB->fetchColumn();
+
+// ── BUDGET SUMMARY — ALL PROGRAMS ──────────────────────────
+$budgetDB = $pdo->query("
+    SELECT
+        p.program_name,
+        p.prog_annual_budget AS total,
+        COALESCE(SUM(a.av_amount), 0) AS spent
+    FROM PROGRAM p
+    LEFT JOIN AVAILMENT a
+        ON a.program_id = p.program_id
+       AND a.av_status IN ('Approved', 'Released')
+    GROUP BY p.program_id, p.program_name, p.prog_annual_budget
+    ORDER BY p.program_name ASC
+");
+$programs = $budgetDB->fetchAll(PDO::FETCH_ASSOC);
+
+// ── RECENT REGULAR PROGRAM ACTIVITY (last 5 availments) ────
+$activityDB = $pdo->query("
+    SELECT
+        a.av_date_applied,
+        a.av_amount,
+        a.av_status,
+        c.cl_firstname,
+        c.cl_lastname,
+        p.program_name,
+        p.prog_category
+    FROM AVAILMENT a
+    JOIN CLIENT c ON c.client_id = a.client_id
+    JOIN PROGRAM p ON p.program_id = a.program_id
+    ORDER BY a.availment_id DESC
+    LIMIT 5
+");
+$recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -155,7 +207,7 @@ require 'db_connect.php';
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-green-500 rounded-t-2xl"></div>
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Total Active
                         Cases</p>
-                    <p class="text-3xl font-semibold text-green-600 leading-none">412</p>
+                    <p class="text-3xl font-semibold text-green-600 leading-none"><?= number_format($total_active_cases) ?></p>
                     <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-file-alt"></i></div>
                 </div>
 
@@ -164,7 +216,7 @@ require 'db_connect.php';
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t-2xl"></div>
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Clients This
                         Month</p>
-                    <p class="text-3xl font-semibold text-green-600 leading-none">89</p>
+                    <p class="text-3xl font-semibold text-green-600 leading-none"><?= number_format($clients_this_month) ?></p>
                     <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-users"></i></div>
                 </div>
 
@@ -173,7 +225,7 @@ require 'db_connect.php';
                     <div class="absolute top-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-2xl"></div>
                     <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Pending
                         Approvals</p>
-                    <p class="text-3xl font-semibold text-green-600 leading-none">7</p>
+                    <p class="text-3xl font-semibold text-green-600 leading-none"><?= number_format($pending_approvals) ?></p>
                     <div class="absolute right-3 top-3 text-2xl opacity-30"><i class="fas fa-clock"></i></div>
                 </div>
             </div>
@@ -198,15 +250,14 @@ require 'db_connect.php';
                     <span class="text-[12px] font-medium text-slate-700 group-hover:text-green-600">New Availment</span>
                 </button>
                 <a href="pending_approvals.php"
-                    <button
-                        class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
-                        <div
-                            class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-base group-hover:bg-emerald-100 transition-colors flex-shrink-0">
-                            <i class="fas fa-clock text-green-600"></i>
-                        </div>
-                        <span class="text-[12px] font-medium text-slate-700 group-hover:text-green-600">Pending
-                            Approvals</span>
-                    </button></a>
+                    class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-base group-hover:bg-emerald-100 transition-colors flex-shrink-0">
+                        <i class="fas fa-clock text-green-600"></i>
+                    </div>
+                    <span class="text-[12px] font-medium text-slate-700 group-hover:text-green-600">Pending
+                        Approvals</span>
+                </a>
                 <button
                     class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
                     <div
@@ -269,66 +320,37 @@ require 'db_connect.php';
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            <tr class="case-row">
-                                <td class="px-5 py-3 text-slate-500">Apr 14</td>
-                                <td class="px-5 py-3 font-medium text-green-600">Maria Santos</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS</span>
-                                </td>
-                                <td class="px-5 py-3 text-slate-600">Medical</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱3,500</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span>
-                                </td>
-                            </tr>
-                            <tr class="case-row">
-                                <td class="px-5 py-3 text-slate-500">Apr 14</td>
-                                <td class="px-5 py-3 font-medium text-green-600">Pedro Cruz</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-semibold">PWD</span>
-                                </td>
-                                <td class="px-5 py-3 text-slate-600">Financial</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱2,000</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Released</span>
-                                </td>
-                            </tr>
-                            <tr class="case-row">
-                                <td class="px-5 py-3 text-slate-500">Apr 13</td>
-                                <td class="px-5 py-3 font-medium text-green-600">Luz Bautista</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-teal-100 text-teal-700 px-2 py-0.5 rounded text-[10px] font-semibold">Solo
-                                        Parent</span></td>
-                                <td class="px-5 py-3 text-slate-600">SPID Issuance</td>
-                                <td class="px-5 py-3 text-slate-400">—</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Approved</span>
-                                </td>
-                            </tr>
-                            <tr class="case-row">
-                                <td class="px-5 py-3 text-slate-500">Apr 12</td>
-                                <td class="px-5 py-3 font-medium text-green-600">Elena Dela Cruz</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS</span>
-                                </td>
-                                <td class="px-5 py-3 text-slate-600">Burial</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱5,000</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-amber-50 text-amber-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span>
-                                </td>
-                            </tr>
-                            <tr class="case-row">
-                                <td class="px-5 py-3 text-slate-500">Apr 12</td>
-                                <td class="px-5 py-3 font-medium text-green-600">Rodrigo Lim</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px] font-semibold">Senior</span>
-                                </td>
-                                <td class="px-5 py-3 text-slate-600">Pension Top-up</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱500</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-emerald-50 text-emerald-600 px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Released</span>
-                                </td>
-                            </tr>
+                            <?php if (empty($recent_activity)): ?>
+                                <tr>
+                                    <td colspan="6" class="px-5 py-6 text-center text-slate-400">No availments recorded yet.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($recent_activity as $row):
+                                    $statusStyles = [
+                                        'Pending'  => 'text-amber-600 bg-amber-50',
+                                        'Approved' => 'text-blue-600 bg-blue-50',
+                                        'Released' => 'text-emerald-600 bg-emerald-50',
+                                        'Denied'   => 'text-red-500 bg-red-50',
+                                    ];
+                                    $badgeClass = $statusStyles[$row['av_status']] ?? 'text-slate-500 bg-slate-100';
+                                    $programColors = [
+                                        'AICS' => 'bg-blue-100 text-blue-700',
+                                        'PWD'  => 'bg-indigo-100 text-indigo-700',
+                                        'Solo Parent' => 'bg-teal-100 text-teal-700',
+                                        'Senior Citizen' => 'bg-amber-100 text-amber-700',
+                                    ];
+                                    $progClass = $programColors[$row['program_name']] ?? 'bg-slate-100 text-slate-700';
+                                ?>
+                                <tr class="case-row">
+                                    <td class="px-5 py-3 text-slate-500"><?= date('M j', strtotime($row['av_date_applied'])) ?></td>
+                                    <td class="px-5 py-3 font-medium text-green-600"><?= htmlspecialchars($row['cl_firstname'] . ' ' . $row['cl_lastname']) ?></td>
+                                    <td class="px-5 py-3"><span class="<?= $progClass ?> px-2 py-0.5 rounded text-[10px] font-semibold"><?= htmlspecialchars($row['program_name']) ?></span></td>
+                                    <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($row['prog_category'] ?? '—') ?></td>
+                                    <td class="px-5 py-3 font-semibold text-slate-700">₱<?= number_format((float)$row['av_amount'], 2) ?></td>
+                                    <td class="px-5 py-3"><span class="<?= $badgeClass ?> px-2.5 py-0.5 rounded-full text-[10px] font-semibold"><?= htmlspecialchars($row['av_status']) ?></span></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -352,22 +374,21 @@ require 'db_connect.php';
     </script>
 
     <script>
-        // Full budget data
-        const budgetFullData = [
-            { name: 'AICS', annual: 2800000, remaining: 1540000, used: 1260000 },
-            { name: '4Ps', annual: 30000, remaining: 28500, used: 1500 },
-            { name: 'SLP', annual: 450000, remaining: 320000, used: 130000 },
-            { name: 'SFP', annual: 800000, remaining: 620000, used: 180000 },
-            { name: 'Day Care', annual: 350000, remaining: 280000, used: 70000 },
-            { name: 'Senior Citizen', annual: 1500000, remaining: 1050000, used: 450000 },
-            { name: 'PWD', annual: 200000, remaining: 144000, used: 56000 },
-            { name: 'Solo Parent', annual: 300000, remaining: 228000, used: 72000 },
-            { name: 'Women & Child', annual: 100000, remaining: 72000, used: 28000 },
-        ];
+        // Full budget data (from database)
+        const budgetFullData = <?= json_encode(array_map(function ($p) {
+            $annual = (float)$p['total'];
+            $used   = (float)$p['spent'];
+            return [
+                'name'      => $p['program_name'],
+                'annual'    => $annual,
+                'used'      => $used,
+                'remaining' => $annual - $used,
+            ];
+        }, $programs)) ?>;
 
         const container = document.getElementById('budgetFull');
         budgetFullData.forEach(b => {
-            const pct = Math.round((b.used / b.annual) * 100);
+            const pct = b.annual > 0 ? Math.round((b.used / b.annual) * 100) : 0;
             const barColor = pct > 80 ? 'bg-red-400' : pct > 60 ? 'bg-amber-400' : 'bg-emerald-400';
             const textColor = pct > 80 ? 'text-red-500' : pct > 60 ? 'text-amber-500' : 'text-emerald-600';
             container.innerHTML += `
