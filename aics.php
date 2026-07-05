@@ -277,7 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $stmt = $pdo->prepare("
     SELECT
         p.prog_annual_budget,
-        COALESCE(SUM(CASE WHEN a.av_status IN ('Approved','Released') THEN a.av_amount ELSE 0 END), 0) AS spent
+        COALESCE(SUM(CASE WHEN a.av_status = 'Released' THEN a.av_amount ELSE 0 END), 0) AS spent
     FROM PROGRAM p
     LEFT JOIN AVAILMENT a
         ON a.program_id = p.program_id
@@ -316,7 +316,7 @@ if ($pct_used >= 90) {
 $stmt = $pdo->prepare("
     SELECT
         p.prog_annual_budget,
-        COALESCE(SUM(CASE WHEN a.av_status IN ('Approved','Released') THEN a.av_amount ELSE 0 END), 0) AS spent
+        COALESCE(SUM(CASE WHEN a.av_status = 'Released' THEN a.av_amount ELSE 0 END), 0) AS spent
     FROM PROGRAM p
     LEFT JOIN AVAILMENT a
         ON a.program_id = p.program_id

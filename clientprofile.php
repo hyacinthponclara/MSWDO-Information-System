@@ -98,20 +98,16 @@ if ($caseRow && !empty($caseRow['family_composition_json'])) {
 $totalAvailments = count($availments);
 
 // add up amounts by status — Released is money already in the client's hands;
-// Approved is money that's been cleared but not yet released; Pending is still
-// awaiting mayor review/approval. Keeping these separate avoids the "why is
-// released ₱0.00" confusion when everything is still sitting at Approved.
+// Approved is money that's been cleared but not yet released. Availments are
+// auto-approved on submission now, so nothing sits at Pending anymore.
 $totalAssistance = 0;
 $totalApproved   = 0;
-$totalPending    = 0;
 foreach ($availments as $av) {
     $amt = floatval($av['av_amount']);
     if ($av['av_status'] === 'Released') {
         $totalAssistance += $amt;
     } elseif ($av['av_status'] === 'Approved') {
         $totalApproved += $amt;
-    } elseif ($av['av_status'] === 'Pending') {
-        $totalPending += $amt;
     }
 }
 
@@ -166,12 +162,12 @@ $sectorMap = [
     'cl_is_indigent'   => ['label' => 'Indigent',      'icon' => 'fa-list',         'cls' => 'bg-emerald-100 text-emerald-700'],
 ];
 
-// status badge colors for availment history
+// status badge colors for availment history — Pending/Denied no longer occur
+// for new availments, but any legacy record with those statuses will fall
+// back to a neutral gray badge via the ?? below.
 $statusColors = [
-    'Pending'  => 'bg-yellow-50 text-yellow-600',
     'Approved' => 'bg-blue-50 text-blue-600',
     'Released' => 'bg-emerald-50 text-emerald-600',
-    'Denied'   => 'bg-red-50 text-red-600',
 ];
 
 // program tag colors — keyed by program_label, so each AICS FBML subtype
@@ -600,11 +596,6 @@ $progColors = [
             <div class="px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400">
               <span><?= $totalAvailments ?> record<?= $totalAvailments !== 1 ? 's' : '' ?> found</span>
               <div class="flex items-center gap-4">
-                <?php if ($totalPending > 0): ?>
-                  <span class="text-yellow-600 font-semibold">
-                    Total pending: ₱<?= number_format($totalPending, 2) ?>
-                  </span>
-                <?php endif; ?>
                 <?php if ($totalApproved > 0): ?>
                   <span class="text-blue-600 font-semibold">
                     Total approved: ₱<?= number_format($totalApproved, 2) ?>

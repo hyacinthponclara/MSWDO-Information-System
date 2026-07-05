@@ -2,6 +2,153 @@
 require 'auth.php';
 requireRole(['Social Worker']);
 require 'db_connect.php';
+
+// ─────────────────────────────────────────────────────────────
+// AJAX: Release an approved availment
+//
+// Fund lifecycle:
+//   Approved -> availments are auto-approved on submission. This is a
+//               commitment, but STILL hasn't deducted anything from the
+//               budget yet.
+//   Released -> money has actually left the program budget. This is the
+//               ONLY status that reduces available funds.
+// ─────────────────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['availment_id'])) {
+    header('Content-Type: application/json');
+
+    $action        = $_POST['action'];
+    $availment_id  = (int) $_POST['availment_id'];
+
+    if ($action !== 'release' || $availment_id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid request.']);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        // Lock the row so two admins can't process the same application at once
+        $stmt = $pdo->prepare("SELECT av_status, av_amount, program_id FROM AVAILMENT WHERE availment_id = ? FOR UPDATE");
+        $stmt->execute([$availment_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            throw new Exception('Application not found.');
+        }
+
+        if ($row['av_status'] !== 'Approved') {
+            throw new Exception('Only approved applications can be released.');
+        }
+        // This is the real deduction point — verify the program still has
+        // enough actual (released) budget left before paying out.
+        $progStmt = $pdo->prepare("
+            SELECT
+                p.prog_annual_budget,
+                COALESCE(SUM(CASE WHEN a.av_status = 'Released' THEN a.av_amount ELSE 0 END), 0) AS released
+            FROM PROGRAM p
+            LEFT JOIN AVAILMENT a
+                ON a.program_id = p.program_id
+                AND YEAR(a.av_date_applied) = YEAR(CURDATE())
+            WHERE p.program_id = ?
+            GROUP BY p.program_id
+        ");
+        $progStmt->execute([$row['program_id']]);
+        $prog = $progStmt->fetch(PDO::FETCH_ASSOC);
+        $available = (float) ($prog['prog_annual_budget'] ?? 0) - (float) ($prog['released'] ?? 0);
+
+        if ((float) $row['av_amount'] > $available) {
+            throw new Exception('Insufficient budget remaining to release this amount.');
+        }
+
+        $upd = $pdo->prepare("UPDATE AVAILMENT SET av_status = 'Released', av_date_released = CURDATE() WHERE availment_id = ?");
+        $upd->execute([$availment_id]);
+        $message = 'Funds released and deducted from the budget.';
+
+        $pdo->commit();
+        echo json_encode(['success' => true, 'message' => $message]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Budget summary — AICS FBML (Medical / Financial / Burial / Livelihood share one pool)
+//
+// Only 'Released' amounts are actual disbursements, so only those reduce
+// Available funds. 'Approved' is a commitment that hasn't been paid out
+// yet — shown separately as "Awaiting Release" so staff can see what's
+// coming, without it looking like the money is already gone.
+// ─────────────────────────────────────────────────────────────
+function getBudgetSummary(PDO $pdo, string $programName): array
+{
+    $stmt = $pdo->prepare("
+        SELECT
+            p.prog_annual_budget,
+            COALESCE(SUM(CASE WHEN a.av_status = 'Approved' THEN a.av_amount ELSE 0 END), 0) AS approved,
+            COALESCE(SUM(CASE WHEN a.av_status = 'Released' THEN a.av_amount ELSE 0 END), 0) AS released
+        FROM PROGRAM p
+        LEFT JOIN AVAILMENT a
+            ON a.program_id = p.program_id
+            AND YEAR(a.av_date_applied) = YEAR(CURDATE())
+        WHERE p.program_name = ?
+        GROUP BY p.program_id
+        LIMIT 1
+    ");
+    $stmt->execute([$programName]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $total    = (float) ($row['prog_annual_budget'] ?? 0);
+    $approved = (float) ($row['approved'] ?? 0);
+    $released = (float) ($row['released'] ?? 0);
+    // Only Released amounts leave the budget — this is the deduction point.
+    $available = $total - $released;
+    $pctUsed   = $total > 0 ? round(($released / $total) * 100, 1) : 0;
+
+    return compact('total', 'approved', 'released', 'available', 'pctUsed');
+}
+
+$fbmlBudget = getBudgetSummary($pdo, 'AICS FBML');
+$eduBudget  = getBudgetSummary($pdo, 'AICS Educational');
+
+// ─────────────────────────────────────────────────────────────
+// Actionable applications — availments are auto-approved on submission,
+// so everything here just needs Release once funds actually go out.
+// ─────────────────────────────────────────────────────────────
+$pendingStmt = $pdo->prepare("
+    SELECT
+        a.availment_id,
+        a.av_amount,
+        a.av_date_applied,
+        a.av_status,
+        CONCAT(c.cl_firstname, ' ', c.cl_lastname) AS beneficiary_name,
+        p.program_name,
+        CASE
+            WHEN p.program_name = 'AICS FBML' THEN
+                CASE
+                    WHEN med.aics_medical_id    IS NOT NULL THEN 'Medical'
+                    WHEN fin.aics_financial_id   IS NOT NULL THEN 'Financial'
+                    WHEN bur.aics_burial_id      IS NOT NULL THEN 'Burial'
+                    WHEN liv.aics_livelihood_id  IS NOT NULL THEN 'Livelihood'
+                    ELSE 'Other'
+                END
+            WHEN p.program_name = 'AICS Educational' THEN 'Educational'
+            ELSE p.program_name
+        END AS assistance_type
+    FROM AVAILMENT a
+    JOIN CLIENT c  ON a.client_id = c.client_id
+    JOIN PROGRAM p ON a.program_id = p.program_id
+    LEFT JOIN AICS_MEDICAL    med ON med.availment_id = a.availment_id
+    LEFT JOIN AICS_FINANCIAL  fin ON fin.availment_id = a.availment_id
+    LEFT JOIN AICS_BURIAL     bur ON bur.availment_id = a.availment_id
+    LEFT JOIN AICS_LIVELIHOOD liv ON liv.availment_id = a.availment_id
+    WHERE a.av_status = 'Approved'
+      AND p.program_name IN ('AICS FBML', 'AICS Educational')
+    ORDER BY a.av_date_applied ASC
+");
+$pendingStmt->execute();
+$pendingApplications = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -10,7 +157,7 @@ require 'db_connect.php';
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pending Approvals – MSWDO San Enrique</title>
+    <title>AICS Release Queue – MSWDO San Enrique</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
@@ -105,19 +252,9 @@ require 'db_connect.php';
             background: #EEF6F0;
         }
 
-        .badge-pending {
-            background: #FEF3C7;
-            color: #D97706;
-        }
-
         .badge-approved {
             background: #D1FAE5;
             color: #059669;
-        }
-
-        .badge-denied {
-            background: #FEE2E2;
-            color: #DC2626;
         }
 
         ::-webkit-scrollbar {
@@ -142,7 +279,7 @@ require 'db_connect.php';
         <header
             class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
-                <span class="text-green-600 font-semibold">Pending Approvals</span>
+                <span class="text-green-600 font-semibold">AICS Release Queue</span>
             </div>
             <div class="flex items-center gap-2">
             </div>
@@ -153,9 +290,9 @@ require 'db_connect.php';
             <!-- Page Title with Quick Actions -->
             <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
                 <div>
-                    <h1 class="text-xl font-serif text-green-600">AICS Applications for Approval</h1>
-                    <p class="text-[13px] text-slate-500 mt-0.5">Review and process pending AICS availments after case
-                        study.</p>
+                    <h1 class="text-xl font-serif text-green-600">AICS Applications Awaiting Release</h1>
+                    <p class="text-[13px] text-slate-500 mt-0.5">Availments are auto-approved on submission — release
+                        funds here once they're ready to go out.</p>
                 </div>
             </div>
 
@@ -171,28 +308,29 @@ require 'db_connect.php';
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱1,800,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($fbmlBudget['total']) ?></p>
                         </div>
                         <div>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Pending</p>
-                            <p class="text-xl font-bold text-amber-600">₱210,000</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider" title="Approved but not yet deducted">Awaiting Release</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fbmlBudget['approved']) ?></p>
                         </div>
                         <div>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Approved</p>
-                            <p class="text-xl font-bold text-emerald-600">₱1,260,000</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider" title="Actually paid out">Released</p>
+                            <p class="text-xl font-bold text-emerald-600">₱<?= number_format($fbmlBudget['released']) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Available</p>
-                            <p class="text-xl font-bold text-blue-600">₱330,000</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fbmlBudget['available']) ?></p>
                         </div>
                     </div>
+                    <p class="text-[10px] text-slate-400 mt-2">Awaiting release: ₱<?= number_format($fbmlBudget['approved']) ?></p>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 70%</span>
-                            <span>Remaining: 30%</span>
+                            <span>Released: <?= $fbmlBudget['pctUsed'] ?>%</span>
+                            <span>Remaining: <?= max(0, round(100 - $fbmlBudget['pctUsed'], 1)) ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:70%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= min(100, $fbmlBudget['pctUsed']) ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -207,28 +345,29 @@ require 'db_connect.php';
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱200,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($eduBudget['total']) ?></p>
                         </div>
                         <div>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Pending</p>
-                            <p class="text-xl font-bold text-amber-600">₱45,000</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider" title="Approved but not yet deducted">Awaiting Release</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($eduBudget['approved']) ?></p>
                         </div>
                         <div>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Approved</p>
-                            <p class="text-xl font-bold text-emerald-600">₱120,000</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider" title="Actually paid out">Released</p>
+                            <p class="text-xl font-bold text-emerald-600">₱<?= number_format($eduBudget['released']) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Available</p>
-                            <p class="text-xl font-bold text-blue-600">₱35,000</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($eduBudget['available']) ?></p>
                         </div>
                     </div>
+                    <p class="text-[10px] text-slate-400 mt-2">Awaiting release: ₱<?= number_format($eduBudget['approved']) ?></p>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 60%</span>
-                            <span>Remaining: 40%</span>
+                            <span>Released: <?= $eduBudget['pctUsed'] ?>%</span>
+                            <span>Remaining: <?= max(0, round(100 - $eduBudget['pctUsed'], 1)) ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:60%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= min(100, $eduBudget['pctUsed']) ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -247,23 +386,16 @@ require 'db_connect.php';
                         <option value="Medical">Medical</option>
                         <option value="Livelihood">Livelihood</option>
                     </select>
-                    <select
-                        class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none">
-                        <option>All Status</option>
-                        <option>Pending</option>
-                        <option>Approved</option>
-                        <option>Denied</option>
-                    </select>
                     <div class="relative">
                         <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                         <input type="text" placeholder="Search beneficiary..."
                             class="text-[12px] pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none w-48" />
                     </div>
                 </div>
-                <span class="text-[11px] text-slate-400" id="rowCount">Showing 6 pending applications</span>
+                <span class="text-[11px] text-slate-400" id="rowCount">Showing <?= count($pendingApplications) ?> applications awaiting release</span>
             </div>
 
-            <!-- Pending Applications Table -->
+            <!-- Applications Awaiting Release Table -->
             <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-up-3">
                 <div class="overflow-x-auto">
                     <table class="w-full text-[12px]">
@@ -293,160 +425,50 @@ require 'db_connect.php';
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100" id="pendingTableBody">
-                            <!-- AICS FBML rows -->
-                            <tr class="table-row" data-type="Medical">
-                                <td class="px-5 py-3 font-medium text-green-700">Maria Santos</td>
+                            <?php if (empty($pendingApplications)): ?>
+                            <tr>
+                                <td colspan="7" class="px-5 py-8 text-center text-slate-400">No applications awaiting release right now.</td>
+                            </tr>
+                            <?php else: ?>
+                            <?php foreach ($pendingApplications as $app): ?>
+                            <?php
+                                $isFbml = $app['program_name'] === 'AICS FBML';
+                                $sourceLabel = $isFbml ? 'AICS FBML' : 'AICS Educational';
+                                $sourceBadgeCls = $isFbml
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-purple-100 text-purple-700';
+                                $budgetType = $isFbml ? 'fbml' : 'edu';
+                                $safeName = htmlspecialchars($app['beneficiary_name'], ENT_QUOTES);
+                            ?>
+                            <tr class="table-row" data-type="<?= htmlspecialchars($app['assistance_type']) ?>" id="row-<?= (int) $app['availment_id'] ?>">
+                                <td class="px-5 py-3 font-medium text-green-700"><?= $safeName ?></td>
                                 <td class="px-5 py-3"><span
-                                        class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS
-                                        FBML</span></td>
-                                <td class="px-5 py-3 text-slate-600">Medical</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱3,500</td>
-                                <td class="px-5 py-3 text-slate-400">Apr 14, 2026</td>
+                                        class="<?= $sourceBadgeCls ?> px-2 py-0.5 rounded text-[10px] font-semibold"><?= $sourceLabel ?></span>
+                                </td>
+                                <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($app['assistance_type']) ?></td>
+                                <td class="px-5 py-3 font-semibold text-slate-700">₱<?= number_format((float) $app['av_amount']) ?></td>
+                                <td class="px-5 py-3 text-slate-400"><?= date('M j, Y', strtotime($app['av_date_applied'])) ?></td>
                                 <td class="px-5 py-3"><span
-                                        class="badge-pending px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span>
+                                        class="badge-approved px-2.5 py-0.5 rounded-full text-[10px] font-semibold"><?= htmlspecialchars($app['av_status']) ?></span>
                                 </td>
                                 <td class="px-5 py-3">
                                     <div class="flex items-center gap-1.5">
-                                        <button onclick="handleApprove('Maria Santos', 3500, 'fbml')"
-                                            class="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 hover:bg-emerald-100 transition-colors">
-                                            <i class="fas fa-check mr-1"></i> Approve
-                                        </button>
-                                        <button onclick="handleDeny('Maria Santos', 3500, 'fbml')"
-                                            class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors">
-                                            <i class="fas fa-times mr-1"></i> Deny
+                                        <button onclick="handleRelease(<?= (int) $app['availment_id'] ?>, '<?= addslashes($safeName) ?>', <?= (float) $app['av_amount'] ?>, '<?= $budgetType ?>')"
+                                            class="text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1 hover:bg-blue-100 transition-colors">
+                                            <i class="fas fa-hand-holding-dollar mr-1"></i> Release
                                         </button>
                                     </div>
                                 </td>
                             </tr>
-                            <tr class="table-row" data-type="Burial">
-                                <td class="px-5 py-3 font-medium text-green-700">Elena Dela Cruz</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS
-                                        FBML</span></td>
-                                <td class="px-5 py-3 text-slate-600">Burial</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱5,000</td>
-                                <td class="px-5 py-3 text-slate-400">Apr 12, 2026</td>
-                                <td class="px-5 py-3"><span
-                                        class="badge-pending px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span>
-                                </td>
-                                <td class="px-5 py-3">
-                                    <div class="flex items-center gap-1.5">
-                                        <button onclick="handleApprove('Elena Dela Cruz', 5000, 'fbml')"
-                                            class="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 hover:bg-emerald-100 transition-colors">
-                                            <i class="fas fa-check mr-1"></i> Approve
-                                        </button>
-                                        <button onclick="handleDeny('Elena Dela Cruz', 5000, 'fbml')"
-                                            class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors">
-                                            <i class="fas fa-times mr-1"></i> Deny
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr class="table-row" data-type="Livelihood">
-                                <td class="px-5 py-3 font-medium text-green-700">Rodrigo Lim</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS
-                                        FBML</span></td>
-                                <td class="px-5 py-3 text-slate-600">Livelihood</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱8,000</td>
-                                <td class="px-5 py-3 text-slate-400">Apr 10, 2026</td>
-                                <td class="px-5 py-3"><span
-                                        class="badge-pending px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span>
-                                </td>
-                                <td class="px-5 py-3">
-                                    <div class="flex items-center gap-1.5">
-                                        <button onclick="handleApprove('Rodrigo Lim', 8000, 'fbml')"
-                                            class="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 hover:bg-emerald-100 transition-colors">
-                                            <i class="fas fa-check mr-1"></i> Approve
-                                        </button>
-                                        <button onclick="handleDeny('Rodrigo Lim', 8000, 'fbml')"
-                                            class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors">
-                                            <i class="fas fa-times mr-1"></i> Deny
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <!-- AICS Educational rows -->
-                            <tr class="table-row" data-type="Educational">
-                                <td class="px-5 py-3 font-medium text-green-700">Carlo Reyes</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS
-                                        Educational</span></td>
-                                <td class="px-5 py-3 text-slate-600">Educational</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱5,000</td>
-                                <td class="px-5 py-3 text-slate-400">Apr 11, 2026</td>
-                                <td class="px-5 py-3"><span
-                                        class="badge-pending px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span>
-                                </td>
-                                <td class="px-5 py-3">
-                                    <div class="flex items-center gap-1.5">
-                                        <button onclick="handleApprove('Carlo Reyes', 5000, 'edu')"
-                                            class="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 hover:bg-emerald-100 transition-colors">
-                                            <i class="fas fa-check mr-1"></i> Approve
-                                        </button>
-                                        <button onclick="handleDeny('Carlo Reyes', 5000, 'edu')"
-                                            class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors">
-                                            <i class="fas fa-times mr-1"></i> Deny
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr class="table-row" data-type="Educational">
-                                <td class="px-5 py-3 font-medium text-green-700">Ana Delos Santos</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS
-                                        Educational</span></td>
-                                <td class="px-5 py-3 text-slate-600">Educational</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱2,500</td>
-                                <td class="px-5 py-3 text-slate-400">Apr 9, 2026</td>
-                                <td class="px-5 py-3"><span
-                                        class="badge-pending px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span>
-                                </td>
-                                <td class="px-5 py-3">
-                                    <div class="flex items-center gap-1.5">
-                                        <button onclick="handleApprove('Ana Delos Santos', 2500, 'edu')"
-                                            class="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 hover:bg-emerald-100 transition-colors">
-                                            <i class="fas fa-check mr-1"></i> Approve
-                                        </button>
-                                        <button onclick="handleDeny('Ana Delos Santos', 2500, 'edu')"
-                                            class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors">
-                                            <i class="fas fa-times mr-1"></i> Deny
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr class="table-row" data-type="Educational">
-                                <td class="px-5 py-3 font-medium text-green-700">Josefa Reyes</td>
-                                <td class="px-5 py-3"><span
-                                        class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-[10px] font-semibold">AICS
-                                        Educational</span></td>
-                                <td class="px-5 py-3 text-slate-600">Educational</td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱1,200</td>
-                                <td class="px-5 py-3 text-slate-400">Apr 8, 2026</td>
-                                <td class="px-5 py-3"><span
-                                        class="badge-pending px-2.5 py-0.5 rounded-full text-[10px] font-semibold">Pending</span>
-                                </td>
-                                <td class="px-5 py-3">
-                                    <div class="flex items-center gap-1.5">
-                                        <button onclick="handleApprove('Josefa Reyes', 1200, 'edu')"
-                                            class="text-[11px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1 hover:bg-emerald-100 transition-colors">
-                                            <i class="fas fa-check mr-1"></i> Approve
-                                        </button>
-                                        <button onclick="handleDeny('Josefa Reyes', 1200, 'edu')"
-                                            class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors">
-                                            <i class="fas fa-times mr-1"></i> Deny
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
                 <!-- Pagination -->
                 <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100">
-                    <span class="text-[11px] text-slate-400">Showing <span id="visibleCount">6</span> of <span
-                            id="totalCount">6</span> pending applications</span>
+                    <span class="text-[11px] text-slate-400">Showing <span id="visibleCount"><?= count($pendingApplications) ?></span> of <span
+                            id="totalCount"><?= count($pendingApplications) ?></span> applications awaiting release</span>
                     <div class="flex items-center gap-1">
                         <button
                             class="text-[11px] text-slate-400 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Previous</button>
@@ -494,7 +516,7 @@ require 'db_connect.php';
 
             const countSpan = document.querySelector('.text-slate-400:not(.flex-1)');
             if (countSpan) {
-                countSpan.textContent = `Showing ${visibleCount} pending applications`;
+                countSpan.textContent = `Showing ${visibleCount} applications awaiting release`;
             }
         }
 
@@ -511,29 +533,46 @@ require 'db_connect.php';
             }, 3000);
         }
 
-        function handleApprove(name, amount, budgetType) {
-            const budgetName = budgetType === 'fbml' ? 'AICS FBML' : 'AICS Educational';
-            if (amount > 0) {
-                if (confirm(`Approve ${name}'s ${budgetName} availment for ₱${amount.toLocaleString()}? This will deduct from the ${budgetName} budget.`)) {
-                    showToast(`${name}'s ${budgetName} availment approved! ₱${amount.toLocaleString()} deducted.`);
+        async function submitDecision(availmentId, action, name, amount, budgetType) {
+            const params = new URLSearchParams({ action, availment_id: availmentId });
+
+            try {
+                const res = await fetch(window.location.pathname, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params.toString()
+                });
+                const data = await res.json();
+
+                if (!data.success) {
+                    showToast(data.message || 'Something went wrong.', 'error');
+                    return;
                 }
-            } else {
-                if (confirm(`Approve ${name}'s ${budgetName} availment?`)) {
-                    showToast(`${name}'s ${budgetName} availment approved!`);
-                }
+
+                const budgetName = budgetType === 'fbml' ? 'AICS FBML' : 'AICS Educational';
+                showToast(`${name}'s ${budgetName} funds released! ₱${amount.toLocaleString()} deducted from the budget.`);
+
+                const row = document.getElementById('row-' + availmentId);
+                if (row) row.remove();
+
+                const remainingRows = document.querySelectorAll('#pendingTableBody tr[data-type]').length;
+                document.getElementById('visibleCount').textContent = remainingRows;
+                document.getElementById('totalCount').textContent = remainingRows;
+                document.getElementById('rowCount').textContent = `Showing ${remainingRows} applications awaiting release`;
+
+                // Budget card figures are stale after this change — refresh shortly
+                // so everything reflects the new totals.
+                setTimeout(() => window.location.reload(), 1200);
+            } catch (err) {
+                showToast('Network error — please try again.', 'error');
             }
         }
 
-        function handleDeny(name, amount, budgetType) {
+        function handleRelease(availmentId, name, amount, budgetType) {
             const budgetName = budgetType === 'fbml' ? 'AICS FBML' : 'AICS Educational';
-            if (amount > 0) {
-                if (confirm(`Deny ${name}'s ${budgetName} availment for ₱${amount.toLocaleString()}? The reserved budget will be released.`)) {
-                    showToast(`${name}'s ${budgetName} availment denied. Budget released.`);
-                }
-            } else {
-                if (confirm(`Deny ${name}'s ${budgetName} availment?`)) {
-                    showToast(`${name}'s ${budgetName} availment denied.`);
-                }
+            const msg = `Release ₱${amount.toLocaleString()} to ${name}? This will deduct the amount from the ${budgetName} budget.`;
+            if (confirm(msg)) {
+                submitDecision(availmentId, 'release', name, amount, budgetType);
             }
         }
     </script>

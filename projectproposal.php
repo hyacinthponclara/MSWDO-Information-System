@@ -2,6 +2,93 @@
 require 'auth.php';
 requireRole(['Social Worker']);
 require 'db_connect.php';
+
+function saveFile($field, $folder)
+{
+    if (!isset($_FILES[$field]) || $_FILES[$field]['error'] !== UPLOAD_ERR_OK) {
+        return null; // if wala uploaded store NULL in database
+    }
+    $original = basename($_FILES[$field]['name']);
+    $safe_name = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $original);
+    if (!is_dir($folder)) {
+        mkdir($folder, 0755, true); // Create upload folder if missing
+    }
+    if (move_uploaded_file($_FILES[$field]['tmp_name'], $folder . $safe_name)) {
+        return $safe_name;
+    }
+    return null;
+}
+
+$errors = [];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $user_id = $_SESSION['user_id'];
+
+    $pp_title = trim($_POST['pp_title'] ?? '');
+    $pp_date_from = trim($_POST['pp_date_from'] ?? '');
+    $pp_date_to = trim($_POST['pp_date_to'] ?? '');
+    $pp_venue = trim($_POST['pp_venue'] ?? '');
+    $pp_num_participants = (int) ($_POST['pp_num_participants'] ?? 0);
+    $pp_participant_desc = trim($_POST['pp_participant_desc'] ?? '');
+    $pp_budget = (float) ($_POST['pp_budget'] ?? 0);
+    $pp_fund_source = trim($_POST['pp_fund_source'] ?? '');
+
+    if ($pp_title === '') {
+        $errors[] = 'Project title is required.';
+    }
+    if ($pp_date_from === '' || $pp_date_to === '') {
+        $errors[] = 'Duration (From and To dates) is required.';
+    } elseif (strtotime($pp_date_to) < strtotime($pp_date_from)) {
+        $errors[] = '"To" date cannot be before "From" date.';
+    }
+    if ($pp_venue === '') {
+        $errors[] = 'Venue is required.';
+    }
+    if ($pp_num_participants <= 0) {
+        $errors[] = 'Enter a valid number of participants.';
+    }
+    if ($pp_participant_desc === '') {
+        $errors[] = 'Description of participants is required.';
+    }
+    if ($pp_budget <= 0) {
+        $errors[] = 'Enter a valid budgetary requirement.';
+    }
+    if ($pp_fund_source === '') {
+        $errors[] = 'Source of fund is required.';
+    }
+    if (!isset($_FILES['pp_document']) || $_FILES['pp_document']['error'] === UPLOAD_ERR_NO_FILE) {
+        $errors[] = 'Please upload the Project Proposal document.';
+    } elseif ($_FILES['pp_document']['error'] !== UPLOAD_ERR_OK) {
+        $errors[] = 'The uploaded file could not be processed. Please try again.';
+    }
+
+    if (empty($errors)) {
+        $pp_document = saveFile('pp_document', 'uploads/project_proposals/');
+
+        $stmt = $pdo->prepare("
+            INSERT INTO PROJECT_PROPOSAL (
+                user_id, pp_title, pp_date_from, pp_date_to, pp_venue,
+                pp_num_participants, pp_participant_desc, pp_budget,
+                pp_fund_source, pp_document
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $user_id,
+            $pp_title,
+            $pp_date_from,
+            $pp_date_to,
+            $pp_venue,
+            $pp_num_participants,
+            $pp_participant_desc,
+            $pp_budget,
+            $pp_fund_source,
+            $pp_document
+        ]);
+
+        header("Location: projectproposal.php?submitted=1");
+        exit;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -212,100 +299,126 @@ require 'db_connect.php';
                     <h1 class="text-xl font-serif text-green-600">Submit Project Proposal</h1>
                 </div>
 
-                <!-- ── Project Information ── -->
-                <div class="section-card animate-fade-up-1">
-                    <div class="section-head">
-                        <div class="section-num">I</div>
-                        <div>
-                            <h2 class="text-[14px] font-semibold text-green-600">Project Information</h2>
+                <?php if (!empty($errors)): ?>
+                    <div class="bg-red-50 border border-red-200 text-red-700 text-[12px] rounded-xl p-3 space-y-1">
+                        <?php foreach ($errors as $err): ?>
+                            <p><i class="fas fa-exclamation-circle mr-1"></i>
+                                <?= htmlspecialchars($err) ?>
+                            </p>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+                <form id="proposalForm" method="POST" action="projectproposal.php" enctype="multipart/form-data">
+
+                    <!-- ── Project Information ── -->
+                    <div class="section-card animate-fade-up-1">
+                        <div class="section-head">
+                            <div class="section-num">I</div>
+                            <div>
+                                <h2 class="text-[14px] font-semibold text-green-600">Project Information</h2>
+                            </div>
+                        </div>
+                        <div class="section-body space-y-4">
+
+                            <div>
+                                <label class="field-label req">A. Title / Name of Project</label>
+                                <input type="text" id="projTitle" name="pp_title" class="field"
+                                    value="<?= htmlspecialchars($_POST['pp_title'] ?? '') ?>">
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="field-label req">B. Duration</label>
+                                    <input type="text" id="durationText" class="field"
+                                        value="Select dates to auto-calculate" readonly>
+                                </div>
+                                <div>
+                                    <label class="field-label">From</label>
+                                    <input type="date" id="durFrom" name="pp_date_from" class="field"
+                                        value="<?= htmlspecialchars($_POST['pp_date_from'] ?? '') ?>">
+                                </div>
+                                <div>
+                                    <label class="field-label">To</label>
+                                    <input type="date" id="durTo" name="pp_date_to" class="field"
+                                        value="<?= htmlspecialchars($_POST['pp_date_to'] ?? '') ?>">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="field-label">C. Venue</label>
+                                <input type="text" id="venue" name="pp_venue" class="field"
+                                    value="<?= htmlspecialchars($_POST['pp_venue'] ?? '') ?>">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="field-label req">D. No. of Participants</label>
+                                    <input type="number" min="0" id="numParticipants" name="pp_num_participants"
+                                        class="field" value="<?= htmlspecialchars($_POST['pp_num_participants'] ?? '') ?>">
+                                </div>
+                                <div>
+                                    <label class="field-label req">Description of Participants</label>
+                                    <input type="text" id="participantDesc" name="pp_participant_desc" class="field"
+                                        value="<?= htmlspecialchars($_POST['pp_participant_desc'] ?? '') ?>">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="field-label req">E. Budgetary Requirement (₱)</label>
+                                <div class="relative">
+                                    <span
+                                        class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₱</span>
+                                    <input type="number" min="0" step="0.01" id="budgetReq" name="pp_budget"
+                                        class="field pl-8" value="<?= htmlspecialchars($_POST['pp_budget'] ?? '') ?>">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="field-label req">F. Source of Fund</label>
+                                <input type="text" id="fundSource" name="pp_fund_source" class="field"
+                                    value="<?= htmlspecialchars($_POST['pp_fund_source'] ?? '') ?>">
+                            </div>
+
                         </div>
                     </div>
-                    <div class="section-body space-y-4">
 
-                        <div>
-                            <label class="field-label req">A. Title / Name of Project</label>
-                            <input type="text" id="projTitle" class="field">
-                        </div>
-
-                        <div class="grid grid-cols-3 gap-4">
+                    <!-- ── Project Proposal File Upload ── -->
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div class="section-num"><i class="fas fa-file-upload"></i></div>
                             <div>
-                                <label class="field-label req">B. Duration</label>
-                                <input type="text" id="durationText" class="field"
-                                    value="Select dates to auto-calculate" readonly>
-                            </div>
-                            <div>
-                                <label class="field-label">From</label>
-                                <input type="date" id="durFrom" class="field">
-                            </div>
-                            <div>
-                                <label class="field-label">To</label>
-                                <input type="date" id="durTo" class="field">
+                                <h2 class="text-[14px] font-semibold text-green-600">Attach Project Proposal Document
+                                </h2>
                             </div>
                         </div>
-
-                        <div>
-                            <label class="field-label">C. Venue</label>
-                            <input type="text" id="venue" class="field">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="field-label req">D. No. of Participants</label>
-                                <input type="number" min="0" id="numParticipants" class="field">
+                        <div class="section-body">
+                            <div id="uploadZone" class="upload-zone"
+                                onclick="document.getElementById('fileInput').click()">
+                                <div id="uploadContent">
+                                    <i class="fas fa-cloud-upload-alt text-3xl text-green-400 mb-2 block"></i>
+                                    <p class="text-[13px] text-slate-600">Click to upload or drag and drop</p>
+                                    <p class="text-[11px] text-slate-400 mt-1">Accepted: .pdf, .doc, .docx (max 10MB)
+                                    </p>
+                                </div>
+                                <input type="file" id="fileInput" name="pp_document" class="hidden"
+                                    accept=".pdf,.doc,.docx" onchange="fileSelected(this)">
                             </div>
-                            <div>
-                                <label class="field-label req">Description of Participants</label>
-                                <input type="text" id="participantDesc" class="field">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="field-label req">E. Budgetary Requirement (₱)</label>
-                            <div class="relative">
-                                <span
-                                    class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₱</span>
-                                <input type="number" min="0" step="0.01" id="budgetReq" class="field pl-8">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="field-label req">F. Source of Fund</label>
-                            <input type="text" id="fundSource" class="field">
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- ── Project Proposal File Upload ── -->
-                <div class="section-card">
-                    <div class="section-head">
-                        <div class="section-num"><i class="fas fa-file-upload"></i></div>
-                        <div>
-                            <h2 class="text-[14px] font-semibold text-green-600">Attach Project Proposal Document</h2>
+                            <p class="text-[11px] text-slate-400 mt-3"><i class="fas fa-info-circle mr-1"></i> Upload
+                                the
+                                completed Project Proposal document (PDF/Word).</p>
                         </div>
                     </div>
-                    <div class="section-body">
-                        <div id="uploadZone" class="upload-zone" onclick="document.getElementById('fileInput').click()">
-                            <div id="uploadContent">
-                                <i class="fas fa-cloud-upload-alt text-3xl text-green-400 mb-2 block"></i>
-                                <p class="text-[13px] text-slate-600">Click to upload or drag and drop</p>
-                                <p class="text-[11px] text-slate-400 mt-1">Accepted: .pdf, .doc, .docx (max 10MB)</p>
-                            </div>
-                            <input type="file" id="fileInput" class="hidden" accept=".pdf,.doc,.docx"
-                                onchange="fileSelected(this)">
-                        </div>
-                        <p class="text-[11px] text-slate-400 mt-3"><i class="fas fa-info-circle mr-1"></i> Upload the
-                            completed Project Proposal document (PDF/Word).</p>
-                    </div>
-                </div>
 
-                <!-- Submit-->
-                <div class="flex justify-end gap-3">
-                    <button onclick="submitProposal()"
-                        class="text-[13px] font-semibold text-white bg-green-600 rounded-xl px-6 py-2.5 hover:bg-green-500 transition-all">
-                        Submit Proposal
-                    </button>
-                </div>
+                    <!-- Submit-->
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="submitProposal()"
+                            class="text-[13px] font-semibold text-white bg-green-600 rounded-xl px-6 py-2.5 hover:bg-green-500 transition-all">
+                            Submit Proposal
+                        </button>
+                    </div>
+
+                </form>
 
             </div>
         </main>
@@ -421,8 +534,14 @@ require 'db_connect.php';
             if (!fundSource) { showToast('Please enter the Source of Fund.', 'error'); return; }
             if (!file) { showToast('Please upload the proposal document.', 'error'); return; }
 
-            showToast('Proposal submitted');
+            document.getElementById('proposalForm').submit();
         }
+
+        <?php if (isset($_GET['submitted'])): ?>
+            window.addEventListener('DOMContentLoaded', function () {
+                showToast('Proposal submitted');
+            });
+        <?php endif; ?>
     </script>
 
 </body>
