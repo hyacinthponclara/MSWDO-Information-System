@@ -1,3 +1,9 @@
+<?php
+require 'auth.php';
+requireRole(['Social Worker']);
+require 'db_connect.php';
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
