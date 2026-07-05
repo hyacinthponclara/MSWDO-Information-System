@@ -1,57 +1,3 @@
-<?php
-require 'auth.php';
-requireRole(['Admin', 'Social Worker', 'Staff']);
-require 'db_connect.php';
-
-$barangay_id = (int)($_GET['barangay_id'] ?? 0);
-
-if ($barangay_id <= 0) {
-    header("Location: barangaylist.php");
-    exit;
-}
-
-$barangayDB = $pdo->prepare("SELECT barangay_id, barangay_name FROM BARANGAY WHERE barangay_id = ?");
-$barangayDB->execute([$barangay_id]);
-$barangay = $barangayDB->fetch(PDO::FETCH_ASSOC);
-
-if (!$barangay) {
-    header("Location: barangaylist.php");
-    exit;
-}
-
-$barangay_name = htmlspecialchars($barangay['barangay_name']);
-
-$programBudget = $pdo->prepare("
-    SELECT
-        p.program_id,
-        p.program_name,
-        p.prog_annual_budget,
-        COALESCE(SUM(a.av_amount), 0) AS total_spent
-    FROM PROGRAM p
-    LEFT JOIN AVAILMENT a
-        ON a.program_id = p.program_id
-        AND a.client_id IN (
-            SELECT client_id FROM CLIENT WHERE brgy_id = ?
-        )
-    GROUP BY p.program_id, p.program_name, p.prog_annual_budget
-    ORDER BY p.program_name ASC
-");
-$programBudget->execute([$barangay_id]);
-$programs = $programBudget->fetchAll(PDO::FETCH_ASSOC);
-
-$prog_spent = [];
-foreach ($programs as $prog) {
-    $prog_spent[$prog['program_name']] = [
-        'spent'  => (float)$prog['total_spent'],
-        'budget' => (float)$prog['prog_annual_budget'],
-    ];
-}
-
-$clientCount = $pdo->prepare("SELECT COUNT(*) FROM CLIENT WHERE brgy_id = ?");
-$clientCount->execute([$barangay_id]);
-$client_count = (int)$clientCount->fetchColumn();
-
-?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -185,56 +131,56 @@ $client_count = (int)$clientCount->fetchColumn();
                 <div class="animate-fade-up-1 grid grid-cols-2 sm:grid-cols-4 gap-4">
 
                     <!-- 4Ps -->
-                    <a href="4ps.php?client_id=<?= $client_id ?>" class="prog-card">
+                    <a href="projectproposal.php" class="prog-card">
                         <div class="card-icon"><i class="fas fa-home"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">4Ps</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Pantawid Pamilyang Pilipino Program</p>
                     </a>
 
                     <!-- SLP -->
-                    <a href="slp.php?client_id=<?= $client_id ?>" class="prog-card">
+                    <a href="projectproposal.php" class="prog-card">
                         <div class="card-icon"><i class="fas fa-hand-holding-usd"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">SLP</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Sustainable Livelihood Program</p>
                     </a>
 
                     <!-- SFP -->
-                    <a href="sfp.php?client_id=<?= $client_id ?>" class="prog-card">
+                    <a href="projectproposal.php" class="prog-card">
                         <div class="card-icon"><i class="fas fa-utensils"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">SFP</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Supplementary Feeding Program</p>
                     </a>
 
                     <!-- Day Care -->
-                    <a href="daycare.php?client_id=<?= $client_id ?>" class="prog-card">
+                    <a href="projectproposal.php" class="prog-card">
                         <div class="card-icon"><i class="fas fa-school"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">Day Care</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Day Care Program</p>
                     </a>
 
                     <!-- Senior Citizen -->
-                    <a href="senior.php?client_id=<?= $client_id ?>" class="prog-card">
+                    <a href="projectproposal.php" class="prog-card">
                         <div class="card-icon"><i class="fas fa-user-friends"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">Senior Citizens Program</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Pension & ID</p>
                     </a>
 
                     <!-- PWD -->
-                    <a href="pwd.php?client_id=<?= $client_id ?>" class="prog-card">
+                    <a href="projectproposal.php" class="prog-card">
                         <div class="card-icon"><i class="fas fa-wheelchair"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">PWD</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Persons with Disabilities Program</p>
                     </a>
 
                     <!-- Solo Parent -->
-                    <a href="solo_parent.php?client_id=<?= $client_id ?>" class="prog-card">
+                    <a href="projectproposal.php" class="prog-card">
                         <div class="card-icon"><i class="fas fa-user"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">Solo Parents Program</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">ID & Assistance</p>
                     </a>
 
                     <!-- Women & Child Protection -->
-                    <a href="vawc.php?client_id=<?= $client_id ?>" class="prog-card">
+                    <a href="projectproposal.php" class="prog-card">
                         <div class="card-icon"><i class="fas fa-shield-alt"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">Women & Child Protection</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Women & Child Protection Program</p>

@@ -86,9 +86,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'clientslist.php' ? 'active' : '' ?>">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
-        <a href="projectproposal.php"
+        <a href="requestfund.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'barangaylist.php' ? 'active' : '' ?>">
-            <i class="fas fa-list text-sm"></i> Barangay
+            <i class="fas fa-list text-sm"></i> Fund Request
         </a>
 
         <details class="group" open>
@@ -192,9 +192,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'clientslist.php' ? 'active' : '' ?>">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
-        <a href="projectproposal.php"
+        <a href="requestfund.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'barangaylist.php' ? 'active' : '' ?>">
-            <i class="fas fa-list text-sm"></i> Barangay
+            <i class="fas fa-list text-sm"></i> Fund Request
         </a>
         <!-- <a href="casestudy.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'casestudy.php' ? 'active' : '' ?>">
@@ -288,9 +288,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'clientslist.php' ? 'active' : '' ?>">
             <i class="fas fa-users text-sm"></i> Clients
         </a>
-        <a href="projectproposal.php"
+        <a href="requestfund.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'barangaylist.php' ? 'active' : '' ?>">
-            <i class="fas fa-list text-sm"></i> Barangay
+            <i class="fas fa-list text-sm"></i> Fund Request
         </a>
 
         <details class="group" open>
