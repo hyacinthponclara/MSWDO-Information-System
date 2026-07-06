@@ -105,8 +105,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="confidential.php"
             class="sidebar-item flex items-center justify-between px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <span class="flex items-center gap-2.5"><i class="fas fa-lock text-sm"></i> Confidential Cases</span>
-            <span
-                class="relative bg-red-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none">3</span>
         </a>
         <a href="#"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
@@ -119,32 +117,32 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 <span>Programs</span>
                 <i class="fas fa-chevron-down text-[8px] transition-transform duration-200 group-open:rotate-180"></i>
             </summary>
-            <a href="#"
+            <a href="funds_aics.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-capsules text-sm"></i> AICS</a>
-            <a href="#"
+            <a href="funds_4ps.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-home text-sm"></i> 4Ps</a>
-            <a href="#"
+            <a href="funds_slp.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-briefcase text-sm"></i> SLP</a>
-            <a href="#"
+            <a href="funds_sfp.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-utensils text-sm"></i> SFP</a>
-            <a href="#"
+            <a href="funds_daycare.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-school text-sm"></i> Day Care</a>
-            <a href="#"
+            <a href="funds_senior.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-user-friends text-sm"></i> Senior Citizen</a>
-            <a href="#"
+            <a href="funds_pwd.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-wheelchair text-sm"></i> PWD</a>
             <a href="#"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-user text-sm"></i> Solo Parent</a>
             </a>
-            <a href="#"
+            <a href="funds_wac.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
                 <i class="fas fa-lock text-sm"></i> Women &amp; Child
             </a>
@@ -152,7 +150,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </details>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Reports</p>
-        <a href="#"
+        <a href="fund_request_reports.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                 class="fas fa-file-alt text-sm"></i> Reports</a>
         <a href="geographic_analysis.php"
@@ -164,7 +162,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </nav>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Administration</p>
-        <a href="#"
+        <a href="uermanagement.html"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-user-gear text-sm"></i> User Management
         </a>
