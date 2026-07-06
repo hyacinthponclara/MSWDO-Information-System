@@ -3,21 +3,11 @@ require 'auth.php';
 requireRole(['Social Worker']);
 require 'db_connect.php';
 
-// ─────────────────────────────────────────────────────────────
-// AJAX: Release an approved availment
-//
-// Fund lifecycle:
-//   Approved -> availments are auto-approved on submission. This is a
-//               commitment, but STILL hasn't deducted anything from the
-//               budget yet.
-//   Released -> money has actually left the program budget. This is the
-//               ONLY status that reduces available funds.
-// ─────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['availment_id'])) {
     header('Content-Type: application/json');
 
-    $action        = $_POST['action'];
-    $availment_id  = (int) $_POST['availment_id'];
+    $action = $_POST['action'];
+    $availment_id = (int) $_POST['availment_id'];
 
     if ($action !== 'release' || $availment_id <= 0) {
         echo json_encode(['success' => false, 'message' => 'Invalid request.']);
@@ -27,7 +17,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['ava
     try {
         $pdo->beginTransaction();
 
-        // Lock the row so two admins can't process the same application at once
         $stmt = $pdo->prepare("SELECT av_status, av_amount, program_id FROM AVAILMENT WHERE availment_id = ? FOR UPDATE");
         $stmt->execute([$availment_id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -39,8 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['ava
         if ($row['av_status'] !== 'Approved') {
             throw new Exception('Only approved applications can be released.');
         }
-        // This is the real deduction point — verify the program still has
-        // enough actual (released) budget left before paying out.
         $progStmt = $pdo->prepare("
             SELECT
                 p.prog_annual_budget,
@@ -73,14 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['ava
     exit;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Budget summary — AICS FBML (Medical / Financial / Burial / Livelihood share one pool)
-//
-// Only 'Released' amounts are actual disbursements, so only those reduce
-// Available funds. 'Approved' is a commitment that hasn't been paid out
-// yet — shown separately as "Awaiting Release" so staff can see what's
-// coming, without it looking like the money is already gone.
-// ─────────────────────────────────────────────────────────────
 function getBudgetSummary(PDO $pdo, string $programName): array
 {
     $stmt = $pdo->prepare("
@@ -99,23 +78,18 @@ function getBudgetSummary(PDO $pdo, string $programName): array
     $stmt->execute([$programName]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $total    = (float) ($row['prog_annual_budget'] ?? 0);
+    $total = (float) ($row['prog_annual_budget'] ?? 0);
     $approved = (float) ($row['approved'] ?? 0);
     $released = (float) ($row['released'] ?? 0);
-    // Only Released amounts leave the budget — this is the deduction point.
     $available = $total - $released;
-    $pctUsed   = $total > 0 ? round(($released / $total) * 100, 1) : 0;
+    $pctUsed = $total > 0 ? round(($released / $total) * 100, 1) : 0;
 
     return compact('total', 'approved', 'released', 'available', 'pctUsed');
 }
 
 $fbmlBudget = getBudgetSummary($pdo, 'AICS FBML');
-$eduBudget  = getBudgetSummary($pdo, 'AICS Educational');
+$eduBudget = getBudgetSummary($pdo, 'AICS Educational');
 
-// ─────────────────────────────────────────────────────────────
-// Actionable applications — availments are auto-approved on submission,
-// so everything here just needs Release once funds actually go out.
-// ─────────────────────────────────────────────────────────────
 $pendingStmt = $pdo->prepare("
     SELECT
         a.availment_id,
@@ -270,9 +244,8 @@ $pendingApplications = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
 
 <body class="bg-slate2 min-h-screen flex">
 
-    <!-- ══════════════════════════ SIDEBAR ══════════════════════════ -->
     <?php require 'sidebar.php'; ?>
-    <!-- ══════════════════════════ MAIN ══════════════════════════════ -->
+
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <!-- Top Bar -->
@@ -291,8 +264,6 @@ $pendingApplications = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
                 <div>
                     <h1 class="text-xl font-serif text-green-600">AICS Applications Awaiting Release</h1>
-                    <p class="text-[13px] text-slate-500 mt-0.5">Availments are auto-approved on submission — release
-                        funds here once they're ready to go out.</p>
                 </div>
             </div>
 
@@ -311,26 +282,33 @@ $pendingApplications = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
                             <p class="text-xl font-bold text-green-600">₱<?= number_format($fbmlBudget['total']) ?></p>
                         </div>
                         <div>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-wider" title="Approved but not yet deducted">Awaiting Release</p>
-                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fbmlBudget['approved']) ?></p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider"
+                                title="Approved but not yet deducted">Awaiting Release</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fbmlBudget['approved']) ?>
+                            </p>
                         </div>
                         <div>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-wider" title="Actually paid out">Released</p>
-                            <p class="text-xl font-bold text-emerald-600">₱<?= number_format($fbmlBudget['released']) ?></p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider" title="Actually paid out">
+                                Released</p>
+                            <p class="text-xl font-bold text-emerald-600">₱<?= number_format($fbmlBudget['released']) ?>
+                            </p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Available</p>
-                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fbmlBudget['available']) ?></p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fbmlBudget['available']) ?>
+                            </p>
                         </div>
                     </div>
-                    <p class="text-[10px] text-slate-400 mt-2">Awaiting release: ₱<?= number_format($fbmlBudget['approved']) ?></p>
+                    <p class="text-[10px] text-slate-400 mt-2">Awaiting release:
+                        ₱<?= number_format($fbmlBudget['approved']) ?></p>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
                             <span>Released: <?= $fbmlBudget['pctUsed'] ?>%</span>
                             <span>Remaining: <?= max(0, round(100 - $fbmlBudget['pctUsed'], 1)) ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= min(100, $fbmlBudget['pctUsed']) ?>%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500"
+                                style="width:<?= min(100, $fbmlBudget['pctUsed']) ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -348,26 +326,33 @@ $pendingApplications = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
                             <p class="text-xl font-bold text-green-600">₱<?= number_format($eduBudget['total']) ?></p>
                         </div>
                         <div>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-wider" title="Approved but not yet deducted">Awaiting Release</p>
-                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($eduBudget['approved']) ?></p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider"
+                                title="Approved but not yet deducted">Awaiting Release</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($eduBudget['approved']) ?>
+                            </p>
                         </div>
                         <div>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-wider" title="Actually paid out">Released</p>
-                            <p class="text-xl font-bold text-emerald-600">₱<?= number_format($eduBudget['released']) ?></p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider" title="Actually paid out">
+                                Released</p>
+                            <p class="text-xl font-bold text-emerald-600">₱<?= number_format($eduBudget['released']) ?>
+                            </p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Available</p>
-                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($eduBudget['available']) ?></p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($eduBudget['available']) ?>
+                            </p>
                         </div>
                     </div>
-                    <p class="text-[10px] text-slate-400 mt-2">Awaiting release: ₱<?= number_format($eduBudget['approved']) ?></p>
+                    <p class="text-[10px] text-slate-400 mt-2">Awaiting release:
+                        ₱<?= number_format($eduBudget['approved']) ?></p>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
                             <span>Released: <?= $eduBudget['pctUsed'] ?>%</span>
                             <span>Remaining: <?= max(0, round(100 - $eduBudget['pctUsed'], 1)) ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= min(100, $eduBudget['pctUsed']) ?>%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500"
+                                style="width:<?= min(100, $eduBudget['pctUsed']) ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -392,7 +377,8 @@ $pendingApplications = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
                             class="text-[12px] pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none w-48" />
                     </div>
                 </div>
-                <span class="text-[11px] text-slate-400" id="rowCount">Showing <?= count($pendingApplications) ?> applications awaiting release</span>
+                <span class="text-[11px] text-slate-400" id="rowCount">Showing <?= count($pendingApplications) ?>
+                    applications awaiting release</span>
             </div>
 
             <!-- Applications Awaiting Release Table -->
@@ -426,49 +412,58 @@ $pendingApplications = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
                         </thead>
                         <tbody class="divide-y divide-slate-100" id="pendingTableBody">
                             <?php if (empty($pendingApplications)): ?>
-                            <tr>
-                                <td colspan="7" class="px-5 py-8 text-center text-slate-400">No applications awaiting release right now.</td>
-                            </tr>
+                                <tr>
+                                    <td colspan="7" class="px-5 py-8 text-center text-slate-400">No applications awaiting
+                                        release right now.</td>
+                                </tr>
                             <?php else: ?>
-                            <?php foreach ($pendingApplications as $app): ?>
-                            <?php
-                                $isFbml = $app['program_name'] === 'AICS FBML';
-                                $sourceLabel = $isFbml ? 'AICS FBML' : 'AICS Educational';
-                                $sourceBadgeCls = $isFbml
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : 'bg-purple-100 text-purple-700';
-                                $budgetType = $isFbml ? 'fbml' : 'edu';
-                                $safeName = htmlspecialchars($app['beneficiary_name'], ENT_QUOTES);
-                            ?>
-                            <tr class="table-row" data-type="<?= htmlspecialchars($app['assistance_type']) ?>" id="row-<?= (int) $app['availment_id'] ?>">
-                                <td class="px-5 py-3 font-medium text-green-700"><?= $safeName ?></td>
-                                <td class="px-5 py-3"><span
-                                        class="<?= $sourceBadgeCls ?> px-2 py-0.5 rounded text-[10px] font-semibold"><?= $sourceLabel ?></span>
-                                </td>
-                                <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($app['assistance_type']) ?></td>
-                                <td class="px-5 py-3 font-semibold text-slate-700">₱<?= number_format((float) $app['av_amount']) ?></td>
-                                <td class="px-5 py-3 text-slate-400"><?= date('M j, Y', strtotime($app['av_date_applied'])) ?></td>
-                                <td class="px-5 py-3"><span
-                                        class="badge-approved px-2.5 py-0.5 rounded-full text-[10px] font-semibold"><?= htmlspecialchars($app['av_status']) ?></span>
-                                </td>
-                                <td class="px-5 py-3">
-                                    <div class="flex items-center gap-1.5">
-                                        <button onclick="handleRelease(<?= (int) $app['availment_id'] ?>, '<?= addslashes($safeName) ?>', <?= (float) $app['av_amount'] ?>, '<?= $budgetType ?>')"
-                                            class="text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1 hover:bg-blue-100 transition-colors">
-                                            <i class="fas fa-hand-holding-dollar mr-1"></i> Release
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
+                                <?php foreach ($pendingApplications as $app): ?>
+                                    <?php
+                                    $isFbml = $app['program_name'] === 'AICS FBML';
+                                    $sourceLabel = $isFbml ? 'AICS FBML' : 'AICS Educational';
+                                    $sourceBadgeCls = $isFbml
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'bg-purple-100 text-purple-700';
+                                    $budgetType = $isFbml ? 'fbml' : 'edu';
+                                    $safeName = htmlspecialchars($app['beneficiary_name'], ENT_QUOTES);
+                                    ?>
+                                    <tr class="table-row" data-type="<?= htmlspecialchars($app['assistance_type']) ?>"
+                                        id="row-<?= (int) $app['availment_id'] ?>">
+                                        <td class="px-5 py-3 font-medium text-green-700"><?= $safeName ?></td>
+                                        <td class="px-5 py-3"><span
+                                                class="<?= $sourceBadgeCls ?> px-2 py-0.5 rounded text-[10px] font-semibold"><?= $sourceLabel ?></span>
+                                        </td>
+                                        <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($app['assistance_type']) ?>
+                                        </td>
+                                        <td class="px-5 py-3 font-semibold text-slate-700">
+                                            ₱<?= number_format((float) $app['av_amount']) ?></td>
+                                        <td class="px-5 py-3 text-slate-400">
+                                            <?= date('M j, Y', strtotime($app['av_date_applied'])) ?>
+                                        </td>
+                                        <td class="px-5 py-3"><span
+                                                class="badge-approved px-2.5 py-0.5 rounded-full text-[10px] font-semibold"><?= htmlspecialchars($app['av_status']) ?></span>
+                                        </td>
+                                        <td class="px-5 py-3">
+                                            <div class="flex items-center gap-1.5">
+                                                <button
+                                                    onclick="handleRelease(<?= (int) $app['availment_id'] ?>, '<?= addslashes($safeName) ?>', <?= (float) $app['av_amount'] ?>, '<?= $budgetType ?>')"
+                                                    class="text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1 hover:bg-blue-100 transition-colors">
+                                                    <i class="fas fa-hand-holding-dollar mr-1"></i> Release
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
                             <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
                 <!-- Pagination -->
                 <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100">
-                    <span class="text-[11px] text-slate-400">Showing <span id="visibleCount"><?= count($pendingApplications) ?></span> of <span
-                            id="totalCount"><?= count($pendingApplications) ?></span> applications awaiting release</span>
+                    <span class="text-[11px] text-slate-400">Showing <span
+                            id="visibleCount"><?= count($pendingApplications) ?></span> of <span
+                            id="totalCount"><?= count($pendingApplications) ?></span> applications awaiting
+                        release</span>
                     <div class="flex items-center gap-1">
                         <button
                             class="text-[11px] text-slate-400 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Previous</button>
@@ -560,8 +555,6 @@ $pendingApplications = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
                 document.getElementById('totalCount').textContent = remainingRows;
                 document.getElementById('rowCount').textContent = `Showing ${remainingRows} applications awaiting release`;
 
-                // Budget card figures are stale after this change — refresh shortly
-                // so everything reflects the new totals.
                 setTimeout(() => window.location.reload(), 1200);
             } catch (err) {
                 showToast('Network error — please try again.', 'error');

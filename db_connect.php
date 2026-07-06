@@ -12,4 +12,3 @@ try {
     header('Location: index.html?error=server');
     exit;
 }
-?>

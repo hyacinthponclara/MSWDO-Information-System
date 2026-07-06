@@ -1,6 +1,6 @@
-<!-- authentication -->
-
 <?php
+// authentication
+
 function requireLogin() {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
@@ -22,4 +22,3 @@ function requireRole($allowedRoles) {
         exit;
     }
 }
-?>
