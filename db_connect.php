@@ -11,7 +11,7 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
     error_log($e->getMessage());
-    header('Location: index.html?error=server');
+    header('Location: index.php?error=server');
     exit;
 }
 ?>
