@@ -12,7 +12,7 @@ session_start();
     <div class="text-center">
         <h1 class="text-4xl font-semibold text-gray-800 mb-3">Access Denied</h1>
         <p class="text-gray-500 mb-6">You do not have permission to view this page.</p>
-        <a href="index.php" class="px-6 py-3 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-700">
+        <a href="index.html" class="px-6 py-3 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-700">
             Back to Login
         </a>
     </div>

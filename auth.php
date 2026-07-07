@@ -7,7 +7,7 @@ function requireLogin() {
     }
 
     if (!isset($_SESSION['user_role'])) {
-        header('Location: index.php?error=unauthorized');
+        header('Location: index.html?error=unauthorized');
         exit;
     }
 }
