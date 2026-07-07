@@ -231,7 +231,7 @@ $recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <!-- Quick Actions -->
-            <div class="animate-fade-up grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div class="animate-fade-up grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <button
                     class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
                     <div
@@ -249,15 +249,6 @@ $recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                     <span class="text-[12px] font-medium text-slate-700 group-hover:text-green-600">New Availment</span>
                 </button>
-                <a href="pending_approvals.php"
-                    class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
-                    <div
-                        class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-base group-hover:bg-emerald-100 transition-colors flex-shrink-0">
-                        <i class="fas fa-clock text-green-600"></i>
-                    </div>
-                    <span class="text-[12px] font-medium text-slate-700 group-hover:text-green-600">Pending
-                        Approvals</span>
-                </a>
                 <button
                     class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
                     <div

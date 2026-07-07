@@ -229,7 +229,8 @@ $recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- ── QUICK ACTIONS ── -->
             <div class="animate-fade-up grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <button
+                
+            <button
                     class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group">
                     <div
                         class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center text-base group-hover:bg-green-100 transition-colors flex-shrink-0">
@@ -327,7 +328,6 @@ $recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
         <footer
             class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
             <span>MSWDO San Enrique Information System</span>
-            <span>Developed by: Elupre, Macalino, Mana-ay, Ponclara</span>
         </footer>
     </div>
 
