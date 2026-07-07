@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-requireRole(['Admin']);
+requireRole(['Admin', 'Social Worker']);
 require 'db_connect.php';
 
 // ── STAT CARDS ─────────────────────────────────────────────
