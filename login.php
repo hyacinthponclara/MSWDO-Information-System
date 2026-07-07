@@ -14,12 +14,11 @@ if (empty($username) || empty($password)) {
     exit;
 }
 
-$host = getenv('mysql.railway.internal');
-$port = getenv('19886');
-$dbname = getenv('railway'); 
-$db_user = getenv('root');
-$db_pass = getenv('zvDiFeHtRYptIXBTEIwIpKpPxTJTUCri'); 
-
+$host = getenv('MYSQLHOST');
+$port = getenv('MYSQLPORT');
+$dbname = getenv('MYSQLDATABASE');
+$db_user = getenv('MYSQLUSER');
+$db_pass = getenv('MYSQLPASSWORD');
 try {
     // Added port=$port here!
     $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8", $db_user, $db_pass);
