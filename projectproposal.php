@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-requireRole(['Social Worker']);
+requireRole(['Admin', 'Social Worker']);
 require 'db_connect.php';
 
 function saveFile($field, $folder)

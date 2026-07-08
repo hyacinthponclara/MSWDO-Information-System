@@ -84,7 +84,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
     <!-- access by head social worker/admin -->
     <?php if ($role === 'Social Worker' || $role === 'Admin'): ?>
-        <a href="dashboard_mswdohead.php"
+        <a href="dashboard_admin.php"
             class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/70 text-sm <?= $current_page == 'dashboard.php' ? 'active' : '' ?>">
             <i class="fas fa-chart-pie text-sm"></i> Dashboard
         </a>
