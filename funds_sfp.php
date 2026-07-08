@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-requireRole(['Admin', 'Social Worker']); 
+requireRole(['Admin', 'Social Worker']);
 require 'db_connect.php';
 ?>
 
@@ -13,14 +13,14 @@ require 'db_connect.php';
     <title>SFP Fund Requests – MSWDO San Enrique</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-  tailwind.config = {
-    content: [
-      './*.php',
-      './**/*.php',
-      './*.html'
-    ]
-  }
-</script>
+        tailwind.config = {
+            content: [
+                './*.php',
+                './**/*.php',
+                './*.html'
+            ]
+        }
+    </script>
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
         rel="stylesheet" />
@@ -77,10 +77,12 @@ require 'db_connect.php';
         .sidebar-item {
             transition: all .15s ease;
         }
+
         .sidebar-item:hover {
             background: rgba(255, 255, 255, .07);
             color: rgba(255, 255, 255, .95);
         }
+
         .sidebar-item.active {
             background: rgba(26, 92, 58, .25);
             border-left-color: #C49A2A;
@@ -90,6 +92,7 @@ require 'db_connect.php';
         .stat-card {
             transition: transform .2s ease, box-shadow .2s ease;
         }
+
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(26, 92, 58, .1);
@@ -98,6 +101,7 @@ require 'db_connect.php';
         .btn-action {
             transition: all .15s ease;
         }
+
         .btn-action:hover {
             transform: translateY(-1px);
         }
@@ -105,6 +109,7 @@ require 'db_connect.php';
         .table-row {
             transition: background .12s;
         }
+
         .table-row:hover {
             background: #EEF6F0;
         }
@@ -112,6 +117,7 @@ require 'db_connect.php';
         ::-webkit-scrollbar {
             width: 4px;
         }
+
         ::-webkit-scrollbar-thumb {
             background: rgba(26, 92, 58, .2);
             border-radius: 2px;
@@ -121,17 +127,21 @@ require 'db_connect.php';
             cursor: pointer;
             user-select: none;
         }
+
         th.sortable:hover {
             background: #E2E8F0;
         }
+
         th.sortable .sort-icon {
             margin-left: 4px;
             font-size: 10px;
             opacity: 0.5;
         }
+
         th.sortable.asc .sort-icon {
             opacity: 1;
         }
+
         th.sortable.desc .sort-icon {
             opacity: 1;
         }
@@ -146,7 +156,8 @@ require 'db_connect.php';
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <!-- Top Bar -->
-        <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
                 <span class="text-green-600 font-semibold">SFP Fund Requests</span>
             </div>
@@ -160,7 +171,8 @@ require 'db_connect.php';
                     <h1 class="text-xl font-serif text-green-600">Supplementary Feeding Program (SFP) Fund Requests</h1>
                     <p class="text-[13px] text-slate-500 mt-0.5">View, filter, and export all SFP fund requests.</p>
                 </div>
-                <button onclick="exportCSV()" class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700">
+                <button onclick="exportCSV()"
+                    class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700">
                     <i class="fas fa-file-csv mr-1"></i> Export CSV
                 </button>
             </div>
@@ -169,7 +181,8 @@ require 'db_connect.php';
             <div class="grid grid-cols-1 md:grid-cols-1 gap-4 animate-fade-up-1">
                 <div class="bg-white rounded-2xl border border-slate-200 p-5">
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-[13px] font-semibold text-green-600"><i class="fas fa-utensils mr-1.5 text-green-400"></i>SFP Budget</h3>
+                        <h3 class="text-[13px] font-semibold text-green-600"><i
+                                class="fas fa-utensils mr-1.5 text-green-400"></i>SFP Budget</h3>
                         <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">DSWD</span>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
@@ -199,15 +212,20 @@ require 'db_connect.php';
             </div>
 
             <!-- Filters -->
-            <div class="flex flex-wrap items-center gap-3 animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
+            <div
+                class="flex flex-wrap items-center gap-3 animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
                 <div class="flex flex-wrap items-center gap-3">
                     <div>
                         <label class="text-[10px] uppercase tracking-wider text-slate-400 block">From</label>
-                        <input type="date" id="filterFrom" class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none" onchange="applyFilters()" />
+                        <input type="date" id="filterFrom"
+                            class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"
+                            onchange="applyFilters()" />
                     </div>
                     <div>
                         <label class="text-[10px] uppercase tracking-wider text-slate-400 block">To</label>
-                        <input type="date" id="filterTo" class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none" onchange="applyFilters()" />
+                        <input type="date" id="filterTo"
+                            class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"
+                            onchange="applyFilters()" />
                     </div>
                 </div>
                 <div class="flex-1"></div>
@@ -222,15 +240,27 @@ require 'db_connect.php';
                     <table class="w-full text-[12px]" id="fundRequestTable">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-100">
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Fund Request Title</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Duration</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Venue</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Participants</th>
-                                <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold" data-sort="amount" onclick="sortTable('amount')">
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Fund Request Title</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Duration</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Venue</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Participants</th>
+                                <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold"
+                                    data-sort="amount" onclick="sortTable('amount')">
                                     Budget <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Source of Fund</th>
-                                <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold" data-sort="date" onclick="sortTable('date')">
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Source of Fund</th>
+                                <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold"
+                                    data-sort="date" onclick="sortTable('date')">
                                     Date Submitted <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
                             </tr>
@@ -243,9 +273,11 @@ require 'db_connect.php';
                 <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100">
                     <span class="text-[11px] text-slate-400" id="paginationInfo">Showing 1–10 of 10</span>
                     <div class="flex items-center gap-1">
-                        <button class="text-[11px] text-slate-400 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Previous</button>
+                        <button
+                            class="text-[11px] text-slate-400 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Previous</button>
                         <button class="text-[11px] font-medium text-white bg-green-600 rounded-lg px-3 py-1">1</button>
-                        <button class="text-[11px] text-slate-600 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Next</button>
+                        <button
+                            class="text-[11px] text-slate-600 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Next</button>
                     </div>
                 </div>
             </div>
@@ -253,13 +285,15 @@ require 'db_connect.php';
         </main>
 
         <!-- Footer -->
-        <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+        <footer
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
             <span>MSWDO San Enrique Information System</span>
         </footer>
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-green-700 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
+    <div id="toast"
+        class="fixed bottom-6 right-6 bg-green-700 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
         <i class="fas fa-check-circle text-green-300"></i>
         <span id="toastMsg">Action completed!</span>
     </div>

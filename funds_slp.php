@@ -160,7 +160,7 @@ require 'db_connect.php';
             <div class="grid grid-cols-1 md:grid-cols-1 gap-4 animate-fade-up-1">
                 <div class="bg-white rounded-2xl border border-slate-200 p-5">
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-[13px] font-semibold text-green-600"><i class="fas fa-hand-holding-heart mr-1.5 text-green-400"></i>SLP Budget</h3>
+                        <h3 class="text-[13px] font-semibold text-green-600"><i class="fas fa-briefcase mr-1.5 text-green-400"></i>SLP Budget</h3>
                         <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">LGU</span>
                     </div>
                     <div class="grid grid-cols-3 gap-3">

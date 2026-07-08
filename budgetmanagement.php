@@ -12,6 +12,15 @@ require 'db_connect.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Budget Management – MSWDO San Enrique</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            content: [
+                './*.php',
+                './**/*.php',
+                './*.html'
+            ]
+        }
+    </script>
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
         rel="stylesheet" />
@@ -326,9 +335,6 @@ require 'db_connect.php';
                 <div class="bg-white rounded-2xl border border-slate-200 p-5">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-[13px] font-semibold text-green-600"><i class="fas fa-chart-line mr-1.5 text-green-400"></i>Forecast</h2>
-                        <button onclick="runForecast()" class="text-[11px] font-medium text-blue-600 hover:text-blue-800 transition-colors">
-                            <i class="fas fa-sync-alt mr-1"></i> Recalculate
-                        </button>
                     </div>
                     <div id="forecastContent">
                         <!-- Injected by JS -->
@@ -456,7 +462,7 @@ require 'db_connect.php';
                         <label class="field-label req">Source of Augmentation</label>
                         <select id="augmentSource" class="field" required>
                             <option value="">Select Source</option>
-                            <option value="Savings from another program">Savings from another program</option>
+                            <option value="Savings from another program">From another program</option>
                             <option value="LGU Supplemental Budget">LGU Supplemental Budget</option>
                             <option value="Mayor's Office">Mayor's Office</option>
                             <option value="Other">Other</option>
@@ -515,7 +521,7 @@ require 'db_connect.php';
                         </div>
                         <div>
                             <label class="field-label req">Total Recommended Budget</label>
-                            <input type="number" min="0" step="0.01" id="forecastRecommended" class="field" placeholder="0.00" required />
+                            <input type="number" min="0" step="0.01" id="forecastRecommended" class="field" placeholder="₱0.00" readonly/>
                         </div>
                     </div>
                     <div>
@@ -547,7 +553,7 @@ require 'db_connect.php';
         let budgetData = [{
             id: 1,
             program: 'AICS FBML',
-            fundingSource: 'LGU + DSWD',
+            fundingSource: 'LGU',
             period: 'Quarterly',
             totalBudget: 450000,
             spent: 350000,
@@ -557,7 +563,7 @@ require 'db_connect.php';
         }, {
             id: 2,
             program: 'AICS Educational',
-            fundingSource: 'LGU + DSWD',
+            fundingSource: 'LGU',
             period: 'Quarterly',
             totalBudget: 50000,
             spent: 48000,
@@ -577,7 +583,7 @@ require 'db_connect.php';
         }, {
             id: 4,
             program: 'PWD',
-            fundingSource: 'Provincial',
+            fundingSource: 'LGU',
             period: 'Half-Year',
             totalBudget: 200000,
             spent: 130000,
@@ -587,17 +593,17 @@ require 'db_connect.php';
         }, {
             id: 5,
             program: 'SFP',
-            fundingSource: 'DSWD',
-            period: 'Quarterly',
+            fundingSource: 'LGU',
+            period: 'Annually',
             totalBudget: 200000,
             spent: 195000,
             startDate: '2026-01-01',
-            endDate: '2026-03-31',
+            endDate: '2026-12-31',
             notes: ''
         }, {
             id: 6,
             program: '4Ps',
-            fundingSource: 'DSWD',
+            fundingSource: 'LGU',
             period: 'Annually',
             totalBudget: 30000,
             spent: 18500,
@@ -608,11 +614,11 @@ require 'db_connect.php';
             id: 7,
             program: 'Solo Parent',
             fundingSource: 'LGU',
-            period: 'Half-Year',
+            period: 'Quarterly',
             totalBudget: 150000,
             spent: 72000,
             startDate: '2026-01-01',
-            endDate: '2026-06-30',
+            endDate: '2026-03-31',
             notes: ''
         }, {
             id: 8,

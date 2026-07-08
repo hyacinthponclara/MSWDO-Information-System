@@ -162,13 +162,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </nav>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Administration</p>
-        <a href="usermanagement.html"
+        <a href="usermanagement.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-user-gear text-sm"></i> User Management
-        </a>
-        <a href="#"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-gear text-sm"></i> System Config
         </a>
         <a href="#"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
