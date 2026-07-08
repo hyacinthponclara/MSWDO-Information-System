@@ -69,10 +69,12 @@ require 'db_connect.php';
         .sidebar-item {
             transition: all .15s ease;
         }
+
         .sidebar-item:hover {
             background: rgba(255, 255, 255, .07);
             color: rgba(255, 255, 255, .95);
         }
+
         .sidebar-item.active {
             background: rgba(26, 92, 58, .25);
             border-left-color: #C49A2A;
@@ -82,6 +84,7 @@ require 'db_connect.php';
         .stat-card {
             transition: transform .2s ease, box-shadow .2s ease;
         }
+
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(26, 92, 58, .1);
@@ -90,6 +93,7 @@ require 'db_connect.php';
         .btn-action {
             transition: all .15s ease;
         }
+
         .btn-action:hover {
             transform: translateY(-1px);
         }
@@ -97,6 +101,7 @@ require 'db_connect.php';
         .table-row {
             transition: background .12s;
         }
+
         .table-row:hover {
             background: #EEF6F0;
         }
@@ -114,14 +119,17 @@ require 'db_connect.php';
             font-family: 'DM Sans', sans-serif;
             transition: all .2s;
         }
+
         .field:focus {
             border-color: #1A5C3A;
             background: #fff;
             box-shadow: 0 0 0 3px rgba(26, 92, 58, .12);
         }
+
         .field::placeholder {
             color: #94A3B8;
         }
+
         select.field {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
@@ -140,9 +148,16 @@ require 'db_connect.php';
             margin-bottom: 6px;
         }
 
+        .req::after {
+            content: '*';
+            color: #EF4444;
+            margin-left: 2px;
+        }
+
         ::-webkit-scrollbar {
             width: 4px;
         }
+
         ::-webkit-scrollbar-thumb {
             background: rgba(26, 92, 58, .2);
             border-radius: 2px;
@@ -159,10 +174,7 @@ require 'db_connect.php';
             background: #FEE2E2;
             color: #DC2626;
         }
-        .badge-socialworker {
-            background: #DBEAFE;
-            color: #1D4ED8;
-        }
+
         .badge-staff {
             background: #D1FAE5;
             color: #059669;
@@ -178,7 +190,8 @@ require 'db_connect.php';
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <!-- Top Bar -->
-        <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
                 <span class="text-green-600 font-semibold">User Management</span>
             </div>
@@ -192,13 +205,14 @@ require 'db_connect.php';
                     <h1 class="text-xl font-serif text-green-600">User Management</h1>
                     <p class="text-[13px] text-slate-500 mt-0.5">Manage system users, roles, and access permissions.</p>
                 </div>
-                <button onclick="openAddModal()" class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-4 py-2 hover:bg-green-700 transition-all flex items-center gap-2">
+                <button onclick="openAddModal()"
+                    class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-4 py-2 hover:bg-green-700 transition-all flex items-center gap-2">
                     <i class="fas fa-user-plus"></i> Add User
                 </button>
             </div>
 
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-up-1">
+            <!-- Stats Cards  -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-up-1">
                 <div class="bg-white rounded-2xl border border-slate-200 p-4">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total Users</p>
                     <p class="text-2xl font-bold text-green-600" id="totalUsers">0</p>
@@ -208,32 +222,34 @@ require 'db_connect.php';
                     <p class="text-2xl font-bold text-red-500" id="totalAdmins">0</p>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200 p-4">
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wider">Social Workers</p>
-                    <p class="text-2xl font-bold text-blue-500" id="totalSocialWorkers">0</p>
-                </div>
-                <div class="bg-white rounded-2xl border border-slate-200 p-4">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wider">Staff</p>
                     <p class="text-2xl font-bold text-emerald-500" id="totalStaff">0</p>
                 </div>
             </div>
 
             <!-- Search & Filter -->
-            <div class="flex flex-wrap items-center gap-3 animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
+            <div
+                class="flex flex-wrap items-center gap-3 animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
                 <div class="flex flex-wrap items-center gap-3 flex-1">
                     <div class="relative flex-1 min-w-[200px]">
                         <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                        <input type="text" id="searchInput" placeholder="Search by name, username, or email..." class="text-[12px] pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none w-full" oninput="applyFilters()" />
+                        <input type="text" id="searchInput" placeholder="Search by name, username, or email..."
+                            class="text-[12px] pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none w-full"
+                            oninput="applyFilters()" />
                     </div>
                     <div>
-                        <select id="roleFilter" class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none" onchange="applyFilters()">
+                        <select id="roleFilter"
+                            class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"
+                            onchange="applyFilters()">
                             <option value="all">All Roles</option>
                             <option value="Admin">Admin</option>
-                            <option value="SocialWorker">Social Worker</option>
                             <option value="Staff">Staff</option>
                         </select>
                     </div>
                     <div>
-                        <select id="statusFilter" class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none" onchange="applyFilters()">
+                        <select id="statusFilter"
+                            class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"
+                            onchange="applyFilters()">
                             <option value="all">All Status</option>
                             <option value="Active">Active</option>
                             <option value="Inactive">Inactive</option>
@@ -251,14 +267,30 @@ require 'db_connect.php';
                     <table class="w-full text-[12px]">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-100">
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Name</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Username</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Role</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Email</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Contact</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Status</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Last Login</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Actions</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Name</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Username</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Role</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Email</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Contact</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Status</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Last Login</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100" id="tableBody">
@@ -269,9 +301,11 @@ require 'db_connect.php';
                 <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100">
                     <span class="text-[11px] text-slate-400" id="paginationInfo">Showing 1–10 of 10</span>
                     <div class="flex items-center gap-1">
-                        <button class="text-[11px] text-slate-400 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Previous</button>
+                        <button
+                            class="text-[11px] text-slate-400 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Previous</button>
                         <button class="text-[11px] font-medium text-white bg-green-600 rounded-lg px-3 py-1">1</button>
-                        <button class="text-[11px] text-slate-600 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Next</button>
+                        <button
+                            class="text-[11px] text-slate-600 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Next</button>
                     </div>
                 </div>
             </div>
@@ -279,7 +313,8 @@ require 'db_connect.php';
         </main>
 
         <!-- Footer -->
-        <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+        <footer
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
             <span>MSWDO San Enrique Information System</span>
         </footer>
     </div>
@@ -287,7 +322,8 @@ require 'db_connect.php';
     <!-- ══════════════════════════ ADD/EDIT USER MODAL ══════════════════════════ -->
     <div id="userModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in">
-            <div class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <div
+                class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                 <h2 class="text-[16px] font-semibold text-green-600" id="modalTitle">Add New User</h2>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
                     <i class="fas fa-times text-xl"></i>
@@ -334,7 +370,6 @@ require 'db_connect.php';
                         <select id="role" class="field" required>
                             <option value="">Select Role</option>
                             <option value="Admin">Admin</option>
-                            <option value="SocialWorker">Social Worker</option>
                             <option value="Staff">Staff</option>
                         </select>
                     </div>
@@ -355,10 +390,12 @@ require 'db_connect.php';
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
-                        <button type="button" onclick="closeModal()" class="text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2 hover:border-green-400 hover:text-green-600 transition-all">
+                        <button type="button" onclick="closeModal()"
+                            class="text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2 hover:border-green-400 hover:text-green-600 transition-all">
                             Cancel
                         </button>
-                        <button type="submit" class="text-[13px] font-semibold text-white bg-green-600 rounded-xl px-6 py-2 hover:bg-green-500 transition-all">
+                        <button type="submit"
+                            class="text-[13px] font-semibold text-white bg-green-600 rounded-xl px-6 py-2 hover:bg-green-500 transition-all">
                             <i class="fas fa-save mr-1.5"></i> <span id="saveBtnText">Save User</span>
                         </button>
                     </div>
@@ -368,7 +405,8 @@ require 'db_connect.php';
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-green-700 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
+    <div id="toast"
+        class="fixed bottom-6 right-6 bg-green-700 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
         <i class="fas fa-check-circle text-green-300"></i>
         <span id="toastMsg">Action completed!</span>
     </div>
@@ -410,17 +448,6 @@ require 'db_connect.php';
             lastLogin: '2026-04-10 04:20 PM'
         }, {
             id: 4,
-            firstName: 'Maria',
-            lastName: 'Santos',
-            middleName: 'C.',
-            username: 'msantos',
-            role: 'SocialWorker',
-            email: 'maria.santos@mswdo.gov.ph',
-            contact: '09123456786',
-            isActive: true,
-            lastLogin: '2026-04-14 02:00 PM'
-        }, {
-            id: 5,
             firstName: 'Juan',
             lastName: 'Dela Cruz',
             middleName: 'R.',
@@ -430,20 +457,9 @@ require 'db_connect.php';
             contact: '09123456785',
             isActive: true,
             lastLogin: '2026-04-13 11:45 AM'
-        }, {
-            id: 6,
-            firstName: 'Luz',
-            lastName: 'Bautista',
-            middleName: 'P.',
-            username: 'lbautista',
-            role: 'SocialWorker',
-            email: 'luz.bautista@mswdo.gov.ph',
-            contact: '09123456784',
-            isActive: true,
-            lastLogin: '2026-04-12 10:00 AM'
-        }, ];
+        },];
 
-        let nextId = 7;
+        let nextId = 5;
         let editUserId = null;
         let filteredData = [...users];
 
@@ -451,7 +467,6 @@ require 'db_connect.php';
         function getRoleBadge(role) {
             const classes = {
                 'Admin': 'badge-admin',
-                'SocialWorker': 'badge-socialworker',
                 'Staff': 'badge-staff'
             };
             return classes[role] || 'bg-slate-100 text-slate-700';
@@ -483,6 +498,11 @@ require 'db_connect.php';
                 const tr = document.createElement('tr');
                 tr.className = 'table-row';
                 const fullName = [user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ');
+                // Determine toggle button text and icon
+                const toggleText = user.isActive ? 'Pause' : 'Continue';
+                const toggleIcon = user.isActive ? 'fa-pause' : 'fa-play';
+                const toggleColor = user.isActive ? 'text-amber-600 bg-amber-50 border-amber-200 hover:bg-amber-100' :
+                    'text-emerald-600 bg-emerald-50 border-emerald-200 hover:bg-emerald-100';
                 tr.innerHTML = `
                     <td class="px-5 py-3 font-medium text-green-700">${fullName}</td>
                     <td class="px-5 py-3 text-slate-600">${user.username}</td>
@@ -493,14 +513,11 @@ require 'db_connect.php';
                     <td class="px-5 py-3 text-slate-400">${user.lastLogin || 'Never'}</td>
                     <td class="px-5 py-3">
                         <div class="flex items-center gap-1.5">
-                            <button onclick="openEditModal(${user.id})" class="text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1 hover:bg-blue-100 transition-colors">
-                                <i class="fas fa-edit"></i>
+                            <button onclick="openEditModal(${user.id})" class="text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1 hover:bg-blue-100 transition-colors flex items-center gap-1">
+                                <i class="fas fa-edit"></i> Edit
                             </button>
-                            <button onclick="toggleUserStatus(${user.id})" class="text-[11px] font-medium ${user.isActive ? 'text-amber-600 bg-amber-50 border border-amber-200' : 'text-emerald-600 bg-emerald-50 border border-emerald-200'} rounded-lg px-2.5 py-1 hover:bg-${user.isActive ? 'amber' : 'emerald'}-100 transition-colors">
-                                <i class="fas ${user.isActive ? 'fa-pause' : 'fa-play'}"></i>
-                            </button>
-                            <button onclick="deleteUser(${user.id})" class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors">
-                                <i class="fas fa-trash"></i>
+                            <button onclick="toggleUserStatus(${user.id})" class="text-[11px] font-medium ${toggleColor} border rounded-lg px-2.5 py-1 transition-colors flex items-center gap-1">
+                                <i class="fas ${toggleIcon}"></i> ${toggleText}
                             </button>
                         </div>
                     </td>
@@ -517,12 +534,10 @@ require 'db_connect.php';
         function updateStats(data) {
             const total = data.length;
             const admins = data.filter(u => u.role === 'Admin').length;
-            const socialWorkers = data.filter(u => u.role === 'SocialWorker').length;
             const staff = data.filter(u => u.role === 'Staff').length;
 
             document.getElementById('totalUsers').textContent = total;
             document.getElementById('totalAdmins').textContent = admins;
-            document.getElementById('totalSocialWorkers').textContent = socialWorkers;
             document.getElementById('totalStaff').textContent = staff;
         }
 
@@ -596,7 +611,7 @@ require 'db_connect.php';
             document.getElementById('userForm').reset();
         }
 
-        // ── Save user ──
+        // ── Save user with validation ──
         function saveUser(event) {
             event.preventDefault();
 
@@ -612,11 +627,11 @@ require 'db_connect.php';
             const contact = document.getElementById('contact').value.trim();
             const isActive = document.getElementById('isActive').checked;
 
-            // Validation
-            if (!firstName || !lastName || !username || !role) {
-                showToast('Please fill in all required fields.', 'error');
-                return;
-            }
+            // ── Validation ──
+            if (!firstName) { showToast('First Name is required.', 'error'); return; }
+            if (!lastName) { showToast('Last Name is required.', 'error'); return; }
+            if (!username) { showToast('Username is required.', 'error'); return; }
+            if (!role) { showToast('Role is required.', 'error'); return; }
 
             // Check username uniqueness
             const existingUser = users.find(u => u.username === username && u.id != id);
@@ -626,21 +641,28 @@ require 'db_connect.php';
             }
 
             // Password validation for new user
-            if (!id && (!password || password.length < 8)) {
-                showToast('Password must be at least 8 characters.', 'error');
-                return;
-            }
-            if (!id && password !== confirmPassword) {
-                showToast('Passwords do not match.', 'error');
-                return;
-            }
-            if (id && password && password.length < 8) {
-                showToast('Password must be at least 8 characters.', 'error');
-                return;
-            }
-            if (id && password && password !== confirmPassword) {
-                showToast('Passwords do not match.', 'error');
-                return;
+            if (!id) {
+                // New user: password is required
+                if (!password || password.length < 8) {
+                    showToast('Password must be at least 8 characters.', 'error');
+                    return;
+                }
+                if (password !== confirmPassword) {
+                    showToast('Passwords do not match.', 'error');
+                    return;
+                }
+            } else {
+                // Editing: if password is provided, validate it
+                if (password) {
+                    if (password.length < 8) {
+                        showToast('Password must be at least 8 characters.', 'error');
+                        return;
+                    }
+                    if (password !== confirmPassword) {
+                        showToast('Passwords do not match.', 'error');
+                        return;
+                    }
+                }
             }
 
             if (id) {
@@ -655,7 +677,6 @@ require 'db_connect.php';
                     users[userIndex].email = email;
                     users[userIndex].contact = contact;
                     users[userIndex].isActive = isActive;
-                    // If password is provided, update it (in real app, hash it)
                     if (password) {
                         // In a real app, hash the password here
                         // users[userIndex].password = password;
@@ -675,8 +696,6 @@ require 'db_connect.php';
                     contact,
                     isActive,
                     lastLogin: 'Never',
-                    // In a real app, hash the password before storing
-                    password: password
                 };
                 users.push(newUser);
                 showToast(`User ${firstName} ${lastName} added successfully!`);
@@ -693,24 +712,12 @@ require 'db_connect.php';
 
             const action = user.isActive ? 'disable' : 'enable';
             const confirmMsg = user.isActive ?
-                `Are you sure you want to disable ${user.firstName} ${user.lastName}?` :
-                `Are you sure you want to enable ${user.firstName} ${user.lastName}?`;
+                `Are you sure you want to pause (disable) ${user.firstName} ${user.lastName}?` :
+                `Are you sure you want to continue (enable) ${user.firstName} ${user.lastName}?`;
 
             if (confirm(confirmMsg)) {
                 user.isActive = !user.isActive;
                 showToast(`${user.firstName} ${user.lastName} ${user.isActive ? 'enabled' : 'disabled'} successfully!`);
-                applyFilters();
-            }
-        }
-
-        // ── Delete user ──
-        function deleteUser(userId) {
-            const user = users.find(u => u.id === userId);
-            if (!user) return;
-
-            if (confirm(`Are you sure you want to delete ${user.firstName} ${user.lastName}? This action cannot be undone.`)) {
-                users = users.filter(u => u.id !== userId);
-                showToast(`User ${user.firstName} ${user.lastName} deleted successfully!`);
                 applyFilters();
             }
         }
@@ -733,14 +740,14 @@ require 'db_connect.php';
         applyFilters();
 
         // Close modal on backdrop click
-        document.getElementById('userModal').addEventListener('click', function(e) {
+        document.getElementById('userModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeModal();
             }
         });
 
         // Close modal on Escape key
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 closeModal();
             }
