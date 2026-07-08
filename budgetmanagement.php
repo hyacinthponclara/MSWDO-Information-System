@@ -168,7 +168,6 @@ require 'db_connect.php';
             border-radius: 2px;
         }
 
-        /* Modal backdrop */
         .modal-backdrop {
             background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(4px);
@@ -236,6 +235,16 @@ require 'db_connect.php';
         .forecast-note strong {
             color: #065F46;
         }
+
+        .bg-gray-100 {
+            background-color: #F3F4F6;
+        }
+        .cursor-not-allowed {
+            cursor: not-allowed;
+        }
+        .opacity-75 {
+            opacity: 0.75;
+        }
     </style>
 </head>
 
@@ -288,8 +297,8 @@ require 'db_connect.php';
                 <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                     <h2 class="text-[13px] font-semibold text-green-600">Program Budgets</h2>
                     <div class="flex items-center gap-2">
-                        <button onclick="openAddBudgetModal()" class="btn-action text-[12px] font-medium text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700 transition-all flex items-center gap-1.5">
-                            <i class="fas fa-plus"></i> Add Budget
+                        <button onclick="openAugmentModal()" class="btn-action text-[12px] font-semibold text-white bg-amber-600 rounded-lg px-3 py-1.5 hover:bg-amber-700 transition-all flex items-center gap-1.5">
+                            <i class="fas fa-hand-holding-usd"></i> Augmentation
                         </button>
                     </div>
                 </div>
@@ -315,7 +324,7 @@ require 'db_connect.php';
                 </div>
             </div>
 
-            <!-- ── Budget Analysis & Forecast (Expanded) ── -->
+            <!-- ── Budget Analysis & Forecast ── -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-fade-up-3">
 
                 <!-- Budget Analysis Card -->
@@ -355,20 +364,23 @@ require 'db_connect.php';
         </footer>
     </div>
 
-    <!-- ══════════════════════════ ADD BUDGET MODAL ══════════════════════════ -->
-    <div id="addBudgetModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
+    <!-- ══════════════════════════ AUGMENT BUDGET MODAL ══════════════════════════ -->
+    <div id="augmentModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in">
             <div class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h2 class="text-[16px] font-semibold text-green-600">Add New Budget</h2>
-                <button onclick="closeAddBudgetModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                <h2 class="text-[16px] font-semibold text-green-600">Augment Budget</h2>
+                <button onclick="closeAugmentModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
             <div class="p-6 space-y-4">
-                <form id="addBudgetForm" onsubmit="addBudget(event)">
+                <form id="augmentForm" onsubmit="augmentBudget(event)">
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                        <p class="text-[12px] text-slate-600">Augmentation adds funds from savings to a program. You can either add funds from an external source or transfer from another program's remaining budget.</p>
+                    </div>
                     <div>
-                        <label class="field-label req">Program</label>
-                        <select id="budgetProgram" class="field" required>
+                        <label class="field-label req">Program to Augment</label>
+                        <select id="augmentTargetProgram" class="field" required>
                             <option value="">Select Program</option>
                             <option value="AICS FBML">AICS FBML</option>
                             <option value="AICS Educational">AICS Educational</option>
@@ -383,91 +395,49 @@ require 'db_connect.php';
                         </select>
                     </div>
                     <div>
-                        <label class="field-label req">Funding Source</label>
-                        <select id="budgetFundingSource" class="field" required>
-                            <option value="">Select Source</option>
-                            <option value="LGU">LGU</option>
-                            <option value="DSWD">DSWD</option>
-                            <option value="Provincial">Provincial</option>
-                            <option value="LGU + DSWD">LGU + DSWD</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="field-label req">Period</label>
-                        <select id="budgetPeriod" class="field" required>
-                            <option value="">Select Period</option>
-                            <option value="Quarterly">Quarterly</option>
-                            <option value="Half-Year">Half-Year</option>
-                            <option value="Annually">Annually</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="field-label req">Total Budget (₱)</label>
-                        <input type="number" min="0" step="0.01" id="budgetTotal" class="field" placeholder="0.00" required />
-                    </div>
-                    <div>
-                        <label class="field-label req">Start Date</label>
-                        <input type="date" id="budgetStartDate" class="field" required />
-                    </div>
-                    <div>
-                        <label class="field-label req">End Date</label>
-                        <input type="date" id="budgetEndDate" class="field" required />
-                    </div>
-                    <div>
-                        <label class="field-label">Notes</label>
-                        <textarea id="budgetNotes" class="field" rows="2" placeholder="Additional notes about this budget..."></textarea>
-                    </div>
-
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
-                        <button type="button" onclick="closeAddBudgetModal()" class="text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2 hover:border-green-400 hover:text-green-600 transition-all">
-                            Cancel
-                        </button>
-                        <button type="submit" class="text-[13px] font-semibold text-white bg-green-600 rounded-xl px-6 py-2 hover:bg-green-500 transition-all">
-                            <i class="fas fa-plus mr-1.5"></i> Add Budget
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- ══════════════════════════ AUGMENT BUDGET MODAL ══════════════════════════ -->
-    <div id="augmentModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in">
-            <div class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h2 class="text-[16px] font-semibold text-green-600">Augment Budget</h2>
-                <button onclick="closeAugmentModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <div class="p-6 space-y-4">
-                <form id="augmentForm" onsubmit="augmentBudget(event)">
-                    <input type="hidden" id="augmentProgramId" />
-                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-                        <p class="text-[12px] text-slate-600">Augmentation adds funds from savings to a program that has run out of budget. This ensures ongoing work does not stop.</p>
-                    </div>
-                    <div>
-                        <label class="field-label">Program</label>
-                        <p class="text-[14px] font-semibold text-green-700" id="augmentProgramName">—</p>
-                    </div>
-                    <div>
-                        <label class="field-label">Current Remaining</label>
-                        <p class="text-[14px] font-bold text-amber-600" id="augmentCurrentRemaining">₱0</p>
-                    </div>
-                    <div>
                         <label class="field-label req">Additional Amount (₱)</label>
                         <input type="number" min="0" step="0.01" id="augmentAmount" class="field" placeholder="0.00" required />
                     </div>
                     <div>
                         <label class="field-label req">Source of Augmentation</label>
-                        <select id="augmentSource" class="field" required>
+                        <select id="augmentSource" class="field" required onchange="toggleAugmentSourceFields()">
                             <option value="">Select Source</option>
-                            <option value="Savings from another program">From another program</option>
+                            <option value="From another program">From another program</option>
                             <option value="LGU Supplemental Budget">LGU Supplemental Budget</option>
                             <option value="Mayor's Office">Mayor's Office</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
+
+                    <!-- Dynamic fields for "From another program" -->
+                    <div id="augmentTransferFields" style="display:none;">
+                        <div>
+                            <label class="field-label req">Transfer From Program</label>
+                            <select id="augmentDonorProgram" class="field" required>
+                                <option value="">Select Program</option>
+                                <option value="AICS FBML">AICS FBML</option>
+                                <option value="AICS Educational">AICS Educational</option>
+                                <option value="4Ps">4Ps</option>
+                                <option value="SLP">SLP</option>
+                                <option value="SFP">SFP</option>
+                                <option value="Day Care">Day Care</option>
+                                <option value="Senior Citizen">Senior Citizen</option>
+                                <option value="PWD">PWD</option>
+                                <option value="Solo Parent">Solo Parent</option>
+                                <option value="Women and Children">Women and Children</option>
+                            </select>
+                            <p class="text-[10px] text-slate-400 mt-1" id="donorRemainingDisplay">Program remaining: ₱0</p>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic fields for "Other" -->
+                    <div id="augmentOtherFields" style="display:none;">
+                        <div>
+                            <label class="field-label req">Specify Source</label>
+                            <input type="text" id="augmentOtherSource" class="field" placeholder="e.g., DSWD Emergency Fund" />
+                        </div>
+                    </div>
+
                     <div>
                         <label class="field-label">Reason</label>
                         <textarea id="augmentReason" class="field" rows="2" placeholder="Reason for augmentation..."></textarea>
@@ -478,7 +448,7 @@ require 'db_connect.php';
                             Cancel
                         </button>
                         <button type="submit" class="text-[13px] font-semibold text-white bg-amber-600 rounded-xl px-6 py-2 hover:bg-amber-500 transition-all">
-                            <i class="fas fa-plus mr-1.5"></i> Augment Budget
+                            <i class="fas fa-hand-holding-usd mr-1.5"></i> Augment Budget
                         </button>
                     </div>
                 </form>
@@ -509,35 +479,29 @@ require 'db_connect.php';
                     <p class="text-[11px] text-slate-600 mt-1">The recommended budget is calculated using the formula: <strong>(Current Annual Spending + 15% Buffer)</strong>. This ensures that programs have enough funds to continue operations without running out. The buffer accounts for inflation, increased demand, and unforeseen expenses.</p>
                 </div>
 
-                <form id="forecastForm" onsubmit="saveForecast(event)">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="field-label">Next Year's Period</label>
-                            <select id="forecastPeriod" class="field">
-                                <option value="Quarterly">Quarterly</option>
-                                <option value="Half-Year">Half-Year</option>
-                                <option value="Annually" selected>Annually</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="field-label req">Total Recommended Budget</label>
-                            <input type="number" min="0" step="0.01" id="forecastRecommended" class="field" placeholder="₱0.00" readonly/>
-                        </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="field-label">Next Year's Period</label>
+                        <select id="forecastPeriod" class="field">
+                            <option value="Quarterly">Quarterly</option>
+                            <option value="Half-Year">Half-Year</option>
+                            <option value="Annually" selected>Annually</option>
+                        </select>
                     </div>
                     <div>
-                        <label class="field-label">Justification</label>
-                        <textarea id="forecastJustification" class="field" rows="2" placeholder="Why this budget is recommended..."></textarea>
+                        <label class="field-label">Total Recommended Budget</label>
+                        <div class="relative">
+                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₱</span>
+                            <input type="text" id="forecastRecommended" class="field pl-8 bg-gray-100 cursor-not-allowed opacity-75" readonly />
+                        </div>
                     </div>
+                </div>
 
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
-                        <button type="button" onclick="closeForecastModal()" class="text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2 hover:border-green-400 hover:text-green-600 transition-all">
-                            Cancel
-                        </button>
-                        <button type="submit" class="text-[13px] font-semibold text-white bg-blue-600 rounded-xl px-6 py-2 hover:bg-blue-500 transition-all">
-                            <i class="fas fa-save mr-1.5"></i> Save Forecast
-                        </button>
-                    </div>
-                </form>
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                    <button type="button" onclick="exportForecastCSV()" class="text-[13px] font-semibold text-white bg-blue-600 rounded-xl px-6 py-2 hover:bg-blue-500 transition-all">
+                        <i class="fas fa-file-csv mr-1.5"></i> Export CSV
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -630,9 +594,29 @@ require 'db_connect.php';
             startDate: '2026-01-01',
             endDate: '2026-12-31',
             notes: ''
+        }, {
+            id: 9,
+            program: 'SLP',
+            fundingSource: 'LGU',
+            period: 'Annually',
+            totalBudget: 450000,
+            spent: 150000,
+            startDate: '2026-01-01',
+            endDate: '2026-12-31',
+            notes: ''
+        }, {
+            id: 10,
+            program: 'Day Care',
+            fundingSource: 'LGU',
+            period: 'Annually',
+            totalBudget: 350000,
+            spent: 200000,
+            startDate: '2026-01-01',
+            endDate: '2026-12-31',
+            notes: ''
         }, ];
 
-        let nextBudgetId = 9;
+        let nextBudgetId = 11;
 
         // ── Status functions ──
         function getStatus(remaining, total) {
@@ -678,14 +662,8 @@ require 'db_connect.php';
                     <td class="px-5 py-3"><span class="${status.class} px-2.5 py-0.5 rounded-full text-[10px] font-semibold">${status.label}</span></td>
                     <td class="px-5 py-3">
                         <div class="flex items-center gap-1.5">
-                            <button onclick="openAugmentModal(${budget.id})" class="text-[11px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1 hover:bg-amber-100 transition-colors" title="Augment Budget">
-                                <i class="fas fa-plus-circle"></i>
-                            </button>
                             <button onclick="endPeriodEarly(${budget.id})" class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors" title="End Period Early">
-                                <i class="fas fa-stop-circle"></i>
-                            </button>
-                            <button onclick="editBudget(${budget.id})" class="text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1 hover:bg-blue-100 transition-colors" title="Edit Budget">
-                                <i class="fas fa-edit"></i>
+                                <i class="fas fa-stop-circle mr-1"></i> End Early
                             </button>
                         </div>
                     </td>
@@ -746,14 +724,13 @@ require 'db_connect.php';
             window._warningPrograms = warning;
         }
 
-        // ── Update Forecast (Expanded) ──
+        // ── Update Forecast ──
         function updateForecast() {
             const container = document.getElementById('forecastContent');
             const totalBudget = budgetData.reduce((sum, b) => sum + b.totalBudget, 0);
             const totalSpent = budgetData.reduce((sum, b) => sum + b.spent, 0);
             const avgUtilization = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
-            // Calculate per-program recommended budget with 15% buffer
             let forecastRows = '';
             let totalRecommended = 0;
             budgetData.forEach(b => {
@@ -845,100 +822,135 @@ require 'db_connect.php';
             showToast('Forecast recalculated!');
         }
 
-        // ── Open Add Budget Modal ──
-        function openAddBudgetModal() {
-            document.getElementById('addBudgetModal').classList.remove('hidden');
-            document.getElementById('addBudgetModal').style.display = 'flex';
-        }
+        // ── Toggle Augment Source Fields ──
+        function toggleAugmentSourceFields() {
+            const source = document.getElementById('augmentSource').value;
+            const transferFields = document.getElementById('augmentTransferFields');
+            const otherFields = document.getElementById('augmentOtherFields');
 
-        function closeAddBudgetModal() {
-            document.getElementById('addBudgetModal').classList.add('hidden');
-            document.getElementById('addBudgetModal').style.display = 'none';
-            document.getElementById('addBudgetForm').reset();
-        }
+            transferFields.style.display = source === 'From another program' ? 'block' : 'none';
+            otherFields.style.display = source === 'Other' ? 'block' : 'none';
 
-        // ── Add Budget ──
-        function addBudget(event) {
-            event.preventDefault();
-
-            const program = document.getElementById('budgetProgram').value;
-            const fundingSource = document.getElementById('budgetFundingSource').value;
-            const period = document.getElementById('budgetPeriod').value;
-            const totalBudget = parseFloat(document.getElementById('budgetTotal').value) || 0;
-            const startDate = document.getElementById('budgetStartDate').value;
-            const endDate = document.getElementById('budgetEndDate').value;
-            const notes = document.getElementById('budgetNotes').value;
-
-            if (!program || !fundingSource || !period || !totalBudget || !startDate || !endDate) {
-                showToast('Please fill in all required fields.', 'error');
-                return;
+            // Update donor remaining when donor program changes
+            if (source === 'From another program') {
+                updateDonorRemaining();
             }
+        }
 
-            budgetData.push({
-                id: nextBudgetId++,
-                program,
-                fundingSource,
-                period,
-                totalBudget,
-                spent: 0,
-                startDate,
-                endDate,
-                notes
-            });
-
-            closeAddBudgetModal();
-            renderBudgets();
-            showToast(`Budget for ${program} added successfully!`);
+        // ── Update Donor Remaining ──
+        function updateDonorRemaining() {
+            const donorProgram = document.getElementById('augmentDonorProgram').value;
+            const donor = budgetData.find(b => b.program === donorProgram);
+            if (donor) {
+                const remaining = donor.totalBudget - donor.spent;
+                document.getElementById('donorRemainingDisplay').textContent = `Donor remaining: ₱${remaining.toLocaleString()}`;
+            } else {
+                document.getElementById('donorRemainingDisplay').textContent = 'Donor remaining: ₱0';
+            }
         }
 
         // ── Open Augment Modal ──
-        function openAugmentModal(budgetId) {
+        function openAugmentModal() {
+            document.getElementById('augmentForm').reset();
+            document.getElementById('augmentTransferFields').style.display = 'none';
+            document.getElementById('augmentOtherFields').style.display = 'none';
+            document.getElementById('augmentModal').classList.remove('hidden');
+            document.getElementById('augmentModal').style.display = 'flex';
+        }
+
+        function openAugmentModalForProgram(budgetId) {
             const budget = budgetData.find(b => b.id === budgetId);
             if (!budget) return;
 
-            document.getElementById('augmentProgramId').value = budget.id;
-            document.getElementById('augmentProgramName').textContent = budget.program;
-            document.getElementById('augmentCurrentRemaining').textContent = '₱' + (budget.totalBudget - budget.spent)
-                .toLocaleString();
-            document.getElementById('augmentAmount').value = '';
-            document.getElementById('augmentSource').value = '';
-            document.getElementById('augmentReason').value = '';
-
-            document.getElementById('augmentModal').classList.remove('hidden');
-            document.getElementById('augmentModal').style.display = 'flex';
+            openAugmentModal();
+            document.getElementById('augmentTargetProgram').value = budget.program;
         }
 
         function closeAugmentModal() {
             document.getElementById('augmentModal').classList.add('hidden');
             document.getElementById('augmentModal').style.display = 'none';
+            document.getElementById('augmentForm').reset();
+            document.getElementById('augmentTransferFields').style.display = 'none';
+            document.getElementById('augmentOtherFields').style.display = 'none';
         }
 
         // ── Augment Budget ──
         function augmentBudget(event) {
             event.preventDefault();
 
-            const budgetId = parseInt(document.getElementById('augmentProgramId').value);
+            const targetProgram = document.getElementById('augmentTargetProgram').value;
             const amount = parseFloat(document.getElementById('augmentAmount').value) || 0;
             const source = document.getElementById('augmentSource').value;
             const reason = document.getElementById('augmentReason').value;
 
+            // Validation
+            if (!targetProgram) {
+                showToast('Please select a program to augment.', 'error');
+                return;
+            }
             if (!amount || amount <= 0) {
                 showToast('Please enter a valid amount.', 'error');
                 return;
             }
-
-            const budget = budgetData.find(b => b.id === budgetId);
-            if (!budget) {
-                showToast('Budget not found.', 'error');
+            if (!source) {
+                showToast('Please select a source of augmentation.', 'error');
                 return;
             }
 
-            // Augment the budget (add to total)
-            budget.totalBudget += amount;
+            // Find target budget
+            const target = budgetData.find(b => b.program === targetProgram);
+            if (!target) {
+                showToast('Target program not found.', 'error');
+                return;
+            }
+
+            let sourceLabel = source;
+
+            // If source is "From another program"
+            if (source === 'From another program') {
+                const donorProgram = document.getElementById('augmentDonorProgram').value;
+                if (!donorProgram) {
+                    showToast('Please select the program to transfer from.', 'error');
+                    return;
+                }
+                if (donorProgram === targetProgram) {
+                    showToast('Cannot transfer from the same program.', 'error');
+                    return;
+                }
+
+                const donor = budgetData.find(b => b.program === donorProgram);
+                if (!donor) {
+                    showToast('Donor program not found.', 'error');
+                    return;
+                }
+
+                const donorRemaining = donor.totalBudget - donor.spent;
+                if (amount > donorRemaining) {
+                    showToast(`Insufficient funds. Donor only has ₱${donorRemaining.toLocaleString()} remaining.`, 'error');
+                    return;
+                }
+
+                // Transfer: deduct from donor, add to target
+                donor.spent += amount;
+                sourceLabel = `Transfer from ${donorProgram}`;
+            }
+
+            // If source is "Other"
+            if (source === 'Other') {
+                const otherSource = document.getElementById('augmentOtherSource').value.trim();
+                if (!otherSource) {
+                    showToast('Please specify the source.', 'error');
+                    return;
+                }
+                sourceLabel = otherSource;
+            }
+
+            // Augment the target budget
+            target.totalBudget += amount;
 
             closeAugmentModal();
             renderBudgets();
-            showToast(`Budget for ${budget.program} augmented by ₱${amount.toLocaleString()} from ${source}.`);
+            showToast(`Budget for ${targetProgram} augmented by ₱${amount.toLocaleString()} from ${sourceLabel}.`);
         }
 
         // ── End Period Early ──
@@ -958,23 +970,6 @@ require 'db_connect.php';
                 showToast(
                     `${budget.program} period ended early. ₱${returned.toLocaleString()} returned to LGU. Please start a new period to continue.`
                 );
-            }
-        }
-
-        // ── Edit Budget ──
-        function editBudget(budgetId) {
-            const budget = budgetData.find(b => b.id === budgetId);
-            if (!budget) return;
-
-            const newTotal = prompt(`Edit total budget for ${budget.program}:`, budget.totalBudget);
-            if (newTotal !== null && parseFloat(newTotal) > 0) {
-                const newSpent = prompt(`Edit spent amount for ${budget.program}:`, budget.spent);
-                if (newSpent !== null && parseFloat(newSpent) >= 0) {
-                    budget.totalBudget = parseFloat(newTotal);
-                    budget.spent = parseFloat(newSpent);
-                    renderBudgets();
-                    showToast(`Budget for ${budget.program} updated successfully!`);
-                }
             }
         }
 
@@ -1072,7 +1067,7 @@ require 'db_connect.php';
             if (data.perProgram && data.perProgram.length > 0) {
                 forecastDetails = `
                     <h3 class="text-[13px] font-semibold text-green-600 mb-3">Per-Program Forecast Calculation</h3>
-                    <div class="border border-slate-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto mb-4">
+                    <div class="border border-slate-200 rounded-lg overflow-hidden">
                         <table class="forecast-table w-full text-[11px]">
                             <thead>
                                 <tr>
@@ -1121,7 +1116,7 @@ require 'db_connect.php';
             }
 
             document.getElementById('forecastDetails').innerHTML = forecastDetails;
-            document.getElementById('forecastRecommended').value = data.recommendedBudget || '';
+            document.getElementById('forecastRecommended').value = '₱' + (data.recommendedBudget || 0).toLocaleString();
             document.getElementById('forecastModal').classList.remove('hidden');
             document.getElementById('forecastModal').style.display = 'flex';
         }
@@ -1131,20 +1126,35 @@ require 'db_connect.php';
             document.getElementById('forecastModal').style.display = 'none';
         }
 
-        function saveForecast(event) {
-            event.preventDefault();
-            const recommended = parseFloat(document.getElementById('forecastRecommended').value) || 0;
-            const period = document.getElementById('forecastPeriod').value;
-            const justification = document.getElementById('forecastJustification').value;
-
-            if (!recommended || recommended <= 0) {
-                showToast('Please enter a valid recommended budget.', 'error');
+        // ── Export Forecast CSV ──
+        function exportForecastCSV() {
+            const data = window._forecastData;
+            if (!data || !data.perProgram || data.perProgram.length === 0) {
+                showToast('No forecast data to export.', 'error');
                 return;
             }
 
-            closeForecastModal();
-            showToast(
-                `Forecast saved! Recommended budget for next year (${period}): ₱${recommended.toLocaleString()}`);
+            let csv = 'Municipal Social Welfare and Development Office\n';
+            csv += 'San Enrique, Negros Occidental\n';
+            csv += 'Budget Forecast Report\n\n';
+            csv += 'Program,Period,Current Budget,Spent (YTD),Utilization,Yearly Spend,Recommended (15% Buffer),Status\n';
+
+            data.perProgram.forEach(p => {
+                csv +=
+                    `${p.program},${p.period},${p.budget},${p.spent},${p.utilization}%,${Math.round(p.period === 'Quarterly' ? p.spent * 4 : p.period === 'Half-Year' ? p.spent * 2 : p.spent)},${p.recommended},${p.status.label}\n`;
+            });
+
+            csv += `\nTOTAL RECOMMENDED,${data.recommendedBudget}\n`;
+            csv += `\nGenerated on: ${new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}\n`;
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Budget_Forecast_Report_' + new Date().toISOString().slice(0, 10) + '.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('CSV exported successfully!');
         }
 
         // ── Toast ──
@@ -1160,6 +1170,11 @@ require 'db_connect.php';
                 t.classList.remove('opacity-100', 'translate-y-0');
             }, 3500);
         }
+
+        // ── Event listeners for donor program change ──
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('augmentDonorProgram').addEventListener('change', updateDonorRemaining);
+        });
 
         // ── Initialise ──
         renderBudgets();
