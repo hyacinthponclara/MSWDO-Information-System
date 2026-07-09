@@ -2,6 +2,7 @@
 require 'auth.php';
 requireRole(['Staff']);
 require 'db_connect.php';
+require 'budget_helpers.php';
 
 // ── STAT CARDS ─────────────────────────────────────────────
 $clientsTodayDB = $pdo->query("
@@ -49,6 +50,10 @@ $aics_annual    = $aicsBudget ? (float)$aicsBudget['total'] : 0;
 $aics_used      = $aicsBudget ? (float)$aicsBudget['spent'] : 0;
 $aics_remaining = $aics_annual - $aics_used;
 $aics_pct_used  = $aics_annual > 0 ? round(($aics_used / $aics_annual) * 100) : 0;
+
+// ── BUDGET SUMMARY — ALL PROGRAMS ───────────────────────────
+// Powers the "Budget Summary" list further down the page.
+$programs = getAllProgramBudgets($pdo);
 ?>
 
 <!DOCTYPE html>

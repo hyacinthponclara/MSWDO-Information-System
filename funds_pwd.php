@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-requireRole(['Admin', 'Social Worker']); 
+requireRole(['Admin', 'Staff']); 
 require 'db_connect.php';
 require 'budget_helpers.php';
 
@@ -288,7 +288,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
                     <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">${row.fundSource}</span></td>
                     <td class="px-5 py-3 text-slate-400">${row.date}</td>
                     <td class="px-5 py-3">
-        <a href="project_proposal_view.php" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
+        <a href="project_proposal_view.php?id=${row.id}" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
              View
         </a>
     </td>

@@ -2,6 +2,200 @@
 require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
+
+$availment_id = (int) ($_GET['availment_id'] ?? 0);
+if ($availment_id <= 0) {
+    header('Location: funds_aics.php');
+    exit;
+}
+
+// ── Base availment + client + barangay + program + creator ──
+$stmt = $pdo->prepare("
+    SELECT
+        a.availment_id, a.av_amount, a.av_date_applied, a.av_date_approved,
+        a.av_date_released, a.av_status, a.av_remarks,
+        c.client_id, c.cl_firstname, c.cl_lastname, c.cl_age,
+        b.barangay_name,
+        p.program_name,
+        u.user_firstname AS creator_firstname, u.user_lastname AS creator_lastname
+    FROM AVAILMENT a
+    JOIN CLIENT c ON c.client_id = a.client_id
+    LEFT JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+    JOIN PROGRAM p ON p.program_id = a.program_id
+    LEFT JOIN MSWDO_USER u ON u.user_id = a.user_id
+    WHERE a.availment_id = ?
+");
+$stmt->execute([$availment_id]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$row) {
+    header('Location: funds_aics.php');
+    exit;
+}
+
+// ── Figure out which AICS subtype this availment belongs to ──
+$subtypeMap = [
+    'Medical'     => ['table' => 'AICS_MEDICAL',     'badge' => 'badge-medical'],
+    'Financial'   => ['table' => 'AICS_FINANCIAL',   'badge' => 'badge-financial'],
+    'Educational' => ['table' => 'AICS_EDUCATIONAL', 'badge' => 'badge-educational'],
+    'Livelihood'  => ['table' => 'AICS_LIVELIHOOD',  'badge' => 'badge-livelihood'],
+    'Burial'      => ['table' => 'AICS_BURIAL',      'badge' => 'badge-burial'],
+];
+
+$type = null;
+$subtypeData = null;
+foreach ($subtypeMap as $label => $info) {
+    $subStmt = $pdo->prepare("SELECT * FROM {$info['table']} WHERE availment_id = ? LIMIT 1");
+    $subStmt->execute([$availment_id]);
+    $found = $subStmt->fetch(PDO::FETCH_ASSOC);
+    if ($found) {
+        $type = $label;
+        $subtypeData = $found;
+        break;
+    }
+}
+
+if ($type === null) {
+    // AVAILMENT row exists but has no matching AICS subtype record.
+    // Shouldn't happen in normal use, but don't fatal-error on bad data.
+    header('Location: funds_aics.php');
+    exit;
+}
+
+function formatAicsDate(?string $date): ?string
+{
+    return $date ? date('F j, Y', strtotime($date)) : null;
+}
+
+$clientName = trim($row['cl_firstname'] . ' ' . $row['cl_lastname']);
+
+$availment = [
+    'availment_id'  => 'AV-' . date('Y', strtotime($row['av_date_applied'])) . '-' . str_pad((string) $row['availment_id'], 3, '0', STR_PAD_LEFT),
+    'client'        => $clientName,
+    'client_id'     => $row['client_id'],
+    'barangay'      => $row['barangay_name'] ?? '—',
+    'type'          => $type,
+    'type_badge'    => $subtypeMap[$type]['badge'],
+    'budget_source' => $row['program_name'],
+    'amount'        => (float) $row['av_amount'],
+    'date_applied'  => formatAicsDate($row['av_date_applied']) ?? '—',
+    'date_approved' => formatAicsDate($row['av_date_approved']),
+    'status'        => $row['av_status'],
+    'remarks'       => $row['av_remarks'],
+    'created_by'    => $row['creator_firstname'] ? trim($row['creator_firstname'] . ' ' . $row['creator_lastname']) : '—',
+    'date_created'  => $row['av_date_applied'] ? date('F d, Y h:i A', strtotime($row['av_date_applied'])) : '—',
+    'last_updated'  => date('F d, Y h:i A', strtotime($row['av_date_released'] ?? $row['av_date_approved'] ?? $row['av_date_applied'])),
+];
+
+// ── Subtype-specific fields ──
+// Note: several fields from the original mock (patient age/relationship as
+// free entry, medical abstract text, semester, target start date, deceased
+// name, etc.) aren't captured anywhere in the current schema or in aics.php's
+// upload form — those forms only collect document uploads for this subtype,
+// not the descriptive text fields. Those show as "—" below until the form
+// and schema are extended to actually collect them.
+switch ($type) {
+    case 'Medical':
+        $availment['patient_name'] = $clientName;
+        $availment['patient_age'] = $row['cl_age'] ?? null;
+        $availment['patient_relationship'] = 'Self';
+        $availment['medical_abstract'] = null;
+        $availment['hospital_bill'] = !empty($subtypeData['amed_hospital_bill']) ? 'On file — see Uploaded Documents' : null;
+        break;
+    case 'Financial':
+        $availment['financial_purpose'] = $row['av_remarks'] ?: null;
+        $availment['financial_approval_date'] = formatAicsDate($row['av_date_approved']);
+        break;
+    case 'Educational':
+        $availment['educational_level'] = $subtypeData['aed_educational_level'] ?? null;
+        $availment['school_name'] = $subtypeData['aed_school_name'] ?? null;
+        $availment['semester'] = null;
+        $availment['school_year'] = null;
+        $availment['purpose'] = $subtypeData['aed_purpose'] ?? null;
+        $availment['amount_breakdown'] = null;
+        break;
+    case 'Livelihood':
+        $availment['business_name'] = $subtypeData['aliv_business_name'] ?? null;
+        $availment['business_type'] = $subtypeData['aliv_business_type'] ?? null;
+        $availment['startup_cost'] = isset($subtypeData['aliv_start_up_cost'])
+            ? '₱' . number_format((float) $subtypeData['aliv_start_up_cost'], 2)
+            : null;
+        $availment['target_start_date'] = null;
+        break;
+    case 'Burial':
+        $availment['deceased_name'] = null;
+        $availment['date_of_death'] = null;
+        $availment['relationship_to_claimant'] = null;
+        $availment['funeral_home'] = null;
+        $availment['funeral_cost'] = null;
+        break;
+}
+
+// ── Uploaded documents: every non-null file column for this subtype ──
+$docLabels = [
+    'amed_med_cert' => 'Medical Certificate / Abstract',
+    'amed_lab_result' => 'Laboratory Results / Resita',
+    'amed_valid_id' => 'Valid ID',
+    'amed_cert_indigency' => 'Barangay Indigency Certificate',
+    'amed_hospital_bill' => 'Hospital Bill',
+    'amed_discharge_summary' => 'Discharge Summary',
+    'amed_med_quotation' => 'Medical Quotation (Dialysis)',
+    'amed_mayors_approval' => "Mayor's Approval",
+
+    'afin_approval' => "Mayor's Approval",
+    'afin_supporting_docs' => 'Barangay Indigency Certificate',
+    'afin_supporting_docs_2' => 'Supporting Document',
+
+    'aed_grades' => 'Grades / Report Card',
+    'aed_cert_enrollment' => 'Certificate of Enrollment',
+    'aed_cert_indigency' => 'Barangay Indigency Certificate',
+    'aed_cert_residency' => 'Certificate of Residency',
+    'aed_student_id' => 'Student ID',
+    'aed_claimant_id' => "Claimant's Valid ID",
+
+    'aliv_letter_intent' => 'Letter of Intent',
+    'aliv_livelihood_proposal' => 'Livelihood Proposal',
+    'aliv_valid_id' => 'Valid ID',
+    'aliv_cert_indigency' => 'Barangay Indigency Certificate',
+    'aliv_cert_residency' => 'Certificate of Residency',
+
+    'ab_death_cert' => 'Death Certificate',
+    'ab_funeral_contract' => 'Funeral Contract',
+    'ab_valid_id' => 'Valid ID',
+    'ab_brgy_indigency' => 'Barangay Indigency Certificate',
+    'ab_mayors_approval' => "Mayor's Approval",
+];
+
+$uploadFolders = [
+    'Medical'     => 'uploads/aics/medical/',
+    'Financial'   => 'uploads/aics/financial/',
+    'Educational' => 'uploads/aics/educational/',
+    'Livelihood'  => 'uploads/aics/livelihood/',
+    'Burial'      => 'uploads/aics/burial/',
+];
+$folder = $uploadFolders[$type];
+
+$documents = [];
+foreach ($subtypeData as $col => $value) {
+    if ($value === null || $value === '' || !isset($docLabels[$col])) {
+        continue;
+    }
+    // Multi-file columns (e.g. amed_med_cert) are stored as comma-separated filenames
+    foreach (explode(',', $value) as $filename) {
+        $filename = trim($filename);
+        if ($filename === '') {
+            continue;
+        }
+        $fullPath = $folder . $filename;
+        $documents[] = [
+            'name' => $docLabels[$col],
+            'path' => $fullPath,
+            'size' => file_exists($fullPath) ? round(filesize($fullPath) / 1024) . ' KB' : '—',
+            'date' => file_exists($fullPath) ? date('M j, Y', filemtime($fullPath)) : ($availment['date_applied'] ?? '—'),
+        ];
+    }
+}
+$availment['documents'] = $documents;
 ?>
 
 <!DOCTYPE html>
@@ -207,7 +401,7 @@ require 'db_connect.php';
         <!-- Top Bar -->
         <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 no-print">
             <div class="flex items-center gap-2 text-[13px]">
-                <a href="aics_transactions.php" class="text-slate-400 hover:text-green-600">
+                <a href="funds_aics.php" class="text-slate-400 hover:text-green-600">
                     <i class="fas fa-arrow-left mr-1"></i> AICS Transactions
                 </a>
                 <span class="text-slate-300">/</span>
@@ -217,71 +411,6 @@ require 'db_connect.php';
 
         <main class="p-6 overflow-y-auto">
             <div class="max-w-3xl mx-auto space-y-5">
-
-                <?php
-                // ── Sample AICS Availment Data ──
-                // Change $availment['type'] to test different subtypes:
-                // 'Medical', 'Financial', 'Educational', 'Livelihood', 'Burial'
-                $availment = [
-                    'availment_id' => 'AV-2026-018',
-                    'client' => 'Maria Santos',
-                    'client_id' => 1001,
-                    'barangay' => 'Poblacion',
-                    'type' => 'Medical',          // Change this to test different subtypes
-                    'type_badge' => 'badge-medical',
-                    'budget_source' => 'AICS FBML',
-                    'amount' => 3500.00,
-                    'date_applied' => 'April 10, 2026',
-                    'date_approved' => 'April 12, 2026',
-                    'status' => 'Released',
-                    'status_badge' => 'status-released',
-                    'remarks' => 'Patient admitted for pneumonia. Medical certificate and hospital bill submitted.',
-
-                    // Medical-specific fields
-                    'patient_name' => 'Maria Santos',
-                    'patient_age' => 45,
-                    'patient_relationship' => 'Self',
-                    'medical_abstract' => 'Patient diagnosed with community-acquired pneumonia. Admitted for 3 days.',
-                    'hospital_bill' => '₱12,500.00',
-
-                    // Financial-specific fields (only used if type = Financial)
-                    'financial_purpose' => 'Emergency cash assistance for medical expenses',
-                    'financial_approval_date' => 'April 11, 2026',
-
-                    // Educational-specific fields (only used if type = Educational)
-                    'educational_level' => 'College',
-                    'school_name' => 'University of Negros Occidental',
-                    'semester' => '2nd Semester',
-                    'school_year' => '2025-2026',
-                    'purpose' => 'Tuition Fee',
-                    'amount_breakdown' => 'Tuition: ₱8,000, Misc: ₱2,000',
-
-                    // Livelihood-specific fields (only used if type = Livelihood)
-                    'business_name' => 'Maria\'s Sari-Sari Store',
-                    'business_type' => 'Sari-sari Store',
-                    'startup_cost' => '₱15,000.00',
-                    'target_start_date' => 'May 1, 2026',
-
-                    // Burial-specific fields (only used if type = Burial)
-                    'deceased_name' => 'Juan Santos',
-                    'date_of_death' => 'April 8, 2026',
-                    'relationship_to_claimant' => 'Spouse',
-                    'funeral_home' => 'St. Peter Memorial Chapel',
-                    'funeral_cost' => '₱25,000.00',
-
-                    'documents' => [
-                        ['name' => 'Medical Certificate (RHU)', 'file' => 'medcert_2026-018.pdf', 'size' => '189 KB', 'date' => 'Apr 10, 2026'],
-                        ['name' => 'Laboratory Results', 'file' => 'lab_2026-018.pdf', 'size' => '245 KB', 'date' => 'Apr 10, 2026'],
-                        ['name' => 'Valid ID (Maria Santos)', 'file' => 'id_2026-018.pdf', 'size' => '120 KB', 'date' => 'Apr 10, 2026'],
-                        ['name' => 'Barangay Indigency Certificate', 'file' => 'indigency_2026-018.pdf', 'size' => '95 KB', 'date' => 'Apr 10, 2026'],
-                        ['name' => 'Hospital Bill', 'file' => 'hospital_2026-018.pdf', 'size' => '320 KB', 'date' => 'Apr 11, 2026'],
-                        ['name' => 'Discharge Summary', 'file' => 'discharge_2026-018.pdf', 'size' => '156 KB', 'date' => 'Apr 12, 2026'],
-                    ],
-                    'created_by' => 'Rosa T. Villanueva, RSW',
-                    'date_created' => 'April 10, 2026 09:30 AM',
-                    'last_updated' => 'April 14, 2026 02:00 PM',
-                ];
-                ?>
 
                 <!-- Page Title -->
                 <div class="animate-fade-up flex flex-wrap items-center justify-between gap-3">
@@ -548,6 +677,9 @@ require 'db_connect.php';
                         </div>
                         <div class="section-body">
                             <div class="space-y-2">
+                                <?php if (empty($availment['documents'])): ?>
+                                    <p class="text-[12px] text-slate-400 italic">No documents on file for this availment.</p>
+                                <?php endif; ?>
                                 <?php foreach ($availment['documents'] as $doc): ?>
                                     <div class="attachment-item flex items-center gap-4 p-3 bg-slate-50 border border-slate-200 rounded-xl hover:border-green-400 transition-all">
                                         <div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0">
@@ -558,10 +690,10 @@ require 'db_connect.php';
                                             <p class="text-[11px] text-slate-400"><?= $doc['size'] ?> • Uploaded: <?= $doc['date'] ?></p>
                                         </div>
                                         <div class="flex items-center gap-2 flex-shrink-0">
-                                            <a href="#" class="btn-view px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-2">
+                                            <a href="<?= htmlspecialchars($doc['path']) ?>" target="_blank" class="btn-view px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-2">
                                                 <i class="fas fa-eye"></i> View
                                             </a>
-                                            <a href="#" class="btn-download px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-2">
+                                            <a href="<?= htmlspecialchars($doc['path']) ?>" download class="btn-download px-3 py-1.5 rounded-lg text-[12px] font-medium flex items-center gap-2">
                                                 <i class="fas fa-download"></i> Download
                                             </a>
                                         </div>

@@ -73,6 +73,9 @@
                     Sign in to access the MSWDO portal
                 </p>
 
+                <div id="loginError" class="hidden mb-4 px-4 py-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
+                </div>
+
                 <!-- Form -->
                 <form action="login.php" method="POST" class="space-y-4">
 
@@ -124,6 +127,20 @@
             eyeIcon.classList.toggle('fa-eye');
             eyeIcon.classList.toggle('fa-eye-slash');
         });
+
+        // Show login error messages passed via ?error= from login.php
+        const errorMessages = {
+            empty: 'Please enter both username and password.',
+            invalid: 'Incorrect username or password.',
+            disabled: 'This account has been disabled. Please contact your administrator.',
+        };
+        const params = new URLSearchParams(window.location.search);
+        const errorCode = params.get('error');
+        if (errorCode && errorMessages[errorCode]) {
+            const box = document.getElementById('loginError');
+            box.textContent = errorMessages[errorCode];
+            box.classList.remove('hidden');
+        }
     </script>
 
 </body>

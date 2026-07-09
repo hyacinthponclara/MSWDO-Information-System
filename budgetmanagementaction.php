@@ -3,7 +3,7 @@
     error_reporting(E_ALL);
     ini_set('display_errors', 1);
     require 'auth.php';
-    requireRole(['Admin', 'Social Worker']);
+    requireRole(['Admin']);
     require 'db_connect.php';
 
     // This page never renders anything — it only processes a POST from

@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-requireRole(['Admin', 'Social Worker', 'Staff']);
+requireRole(['Admin','Staff']);
 
 require 'db_connect.php';
 

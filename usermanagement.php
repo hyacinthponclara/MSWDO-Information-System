@@ -1,7 +1,35 @@
 <?php
 require 'auth.php';
-requireRole(['Social Worker', 'Admin']);
+requireRole(['Admin']);
 require 'db_connect.php';
+
+// ── Flash message (set by usermanagement_action.php after a redirect) ──
+$flashMsg  = $_GET['msg'] ?? '';
+$flashType = $_GET['type'] ?? 'success';
+
+$stmt = $pdo->query("
+    SELECT user_id, username, user_firstname, user_middlename, user_lastname,
+           user_role, user_email, user_contactnum, user_isactive, user_last_login
+    FROM MSWDO_USER
+    ORDER BY user_lastname ASC, user_firstname ASC
+");
+
+$usersData = array_map(function ($u) {
+    return [
+        'id'          => (int) $u['user_id'],
+        'firstName'   => $u['user_firstname'],
+        'lastName'    => $u['user_lastname'],
+        'middleName'  => $u['user_middlename'],
+        'username'    => $u['username'],
+        'role'        => $u['user_role'],
+        'email'       => $u['user_email'],
+        'contact'     => $u['user_contactnum'],
+        'isActive'    => (bool) $u['user_isactive'],
+        'lastLogin'   => $u['user_last_login']
+            ? date('Y-m-d h:i A', strtotime($u['user_last_login']))
+            : 'Never',
+    ];
+}, $stmt->fetchAll(PDO::FETCH_ASSOC));
 ?>
 
 <!DOCTYPE html>
@@ -330,34 +358,35 @@ require 'db_connect.php';
                 </button>
             </div>
             <div class="p-6 space-y-4">
-                <form id="userForm" onsubmit="saveUser(event)">
-                    <input type="hidden" id="editUserId" value="" />
+                <form id="userForm" method="POST" action="usermanagement_action.php" onsubmit="return saveUser(event)">
+                    <input type="hidden" id="formAction" name="action" value="add" />
+                    <input type="hidden" id="editUserId" name="id" value="" />
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="field-label req">First Name</label>
-                            <input type="text" id="firstName" class="field" placeholder="e.g. Juan" required />
+                            <input type="text" id="firstName" name="firstName" class="field" placeholder="e.g. Juan" required />
                         </div>
                         <div>
                             <label class="field-label req">Last Name</label>
-                            <input type="text" id="lastName" class="field" placeholder="e.g. Dela Cruz" required />
+                            <input type="text" id="lastName" name="lastName" class="field" placeholder="e.g. Dela Cruz" required />
                         </div>
                     </div>
 
                     <div>
                         <label class="field-label">Middle Name</label>
-                        <input type="text" id="middleName" class="field" placeholder="e.g. Santos" />
+                        <input type="text" id="middleName" name="middleName" class="field" placeholder="e.g. Santos" />
                     </div>
 
                     <div>
                         <label class="field-label req">Username</label>
-                        <input type="text" id="username" class="field" placeholder="e.g. jdelacruz" required />
+                        <input type="text" id="username" name="username" class="field" placeholder="e.g. jdelacruz" required />
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="field-label req" id="passwordLabel">Password</label>
-                            <input type="password" id="password" class="field" placeholder="Min 8 characters" />
+                            <input type="password" id="password" name="password" class="field" placeholder="Min 8 characters" />
                         </div>
                         <div>
                             <label class="field-label req" id="confirmPasswordLabel">Confirm Password</label>
@@ -367,7 +396,7 @@ require 'db_connect.php';
 
                     <div>
                         <label class="field-label req">Role</label>
-                        <select id="role" class="field" required>
+                        <select id="role" name="role" class="field" required>
                             <option value="">Select Role</option>
                             <option value="Admin">Admin</option>
                             <option value="Staff">Staff</option>
@@ -376,16 +405,16 @@ require 'db_connect.php';
 
                     <div>
                         <label class="field-label">Email Address</label>
-                        <input type="email" id="email" class="field" placeholder="e.g. juan@example.com" />
+                        <input type="email" id="email" name="email" class="field" placeholder="e.g. juan@example.com" />
                     </div>
 
                     <div>
                         <label class="field-label">Contact Number</label>
-                        <input type="text" id="contact" class="field" placeholder="e.g. 09123456789" />
+                        <input type="text" id="contact" name="contact" class="field" placeholder="e.g. 09123456789" />
                     </div>
 
                     <div class="flex items-center gap-2 pt-2">
-                        <input type="checkbox" id="isActive" class="w-4 h-4 accent-green-600" checked />
+                        <input type="checkbox" id="isActive" name="isActive" class="w-4 h-4 accent-green-600" checked />
                         <label for="isActive" class="text-[12px] text-slate-600">Account Active</label>
                     </div>
 
@@ -412,54 +441,9 @@ require 'db_connect.php';
     </div>
 
     <script>
-        // ── Sample Users ──
-        let users = [{
-            id: 1,
-            firstName: 'Rosa',
-            lastName: 'Villanueva',
-            middleName: 'T.',
-            username: 'rvillanueva',
-            role: 'Admin',
-            email: 'rosa.villanueva@mswdo.gov.ph',
-            contact: '09123456789',
-            isActive: true,
-            lastLogin: '2026-04-15 08:30 AM'
-        }, {
-            id: 2,
-            firstName: 'Ana',
-            lastName: 'Reyes',
-            middleName: 'M.',
-            username: 'areyes',
-            role: 'Staff',
-            email: 'ana.reyes@mswdo.gov.ph',
-            contact: '09123456788',
-            isActive: true,
-            lastLogin: '2026-04-15 09:15 AM'
-        }, {
-            id: 3,
-            firstName: 'Ben',
-            lastName: 'Torres',
-            middleName: 'G.',
-            username: 'btorres',
-            role: 'Staff',
-            email: 'ben.torres@mswdo.gov.ph',
-            contact: '09123456787',
-            isActive: false,
-            lastLogin: '2026-04-10 04:20 PM'
-        }, {
-            id: 4,
-            firstName: 'Juan',
-            lastName: 'Dela Cruz',
-            middleName: 'R.',
-            username: 'jdelacruz',
-            role: 'Admin',
-            email: 'juan.delacruz@mswdo.gov.ph',
-            contact: '09123456785',
-            isActive: true,
-            lastLogin: '2026-04-13 11:45 AM'
-        },];
+        // ── Users loaded from the database (see PHP block at top of this file) ──
+        let users = <?= json_encode($usersData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
-        let nextId = 5;
         let editUserId = null;
         let filteredData = [...users];
 
@@ -568,6 +552,7 @@ require 'db_connect.php';
         function openAddModal() {
             document.getElementById('modalTitle').textContent = 'Add New User';
             document.getElementById('saveBtnText').textContent = 'Save User';
+            document.getElementById('formAction').value = 'add';
             document.getElementById('editUserId').value = '';
             document.getElementById('userForm').reset();
             document.getElementById('isActive').checked = true;
@@ -585,6 +570,7 @@ require 'db_connect.php';
 
             document.getElementById('modalTitle').textContent = 'Edit User';
             document.getElementById('saveBtnText').textContent = 'Update User';
+            document.getElementById('formAction').value = 'edit';
             document.getElementById('editUserId').value = user.id;
             document.getElementById('firstName').value = user.firstName;
             document.getElementById('lastName').value = user.lastName;
@@ -611,115 +597,75 @@ require 'db_connect.php';
             document.getElementById('userForm').reset();
         }
 
-        // ── Save user with validation ──
+        // ── Validate, then let the form really submit to usermanagement_action.php ──
         function saveUser(event) {
-            event.preventDefault();
-
             const id = document.getElementById('editUserId').value;
             const firstName = document.getElementById('firstName').value.trim();
             const lastName = document.getElementById('lastName').value.trim();
-            const middleName = document.getElementById('middleName').value.trim();
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             const role = document.getElementById('role').value;
-            const email = document.getElementById('email').value.trim();
-            const contact = document.getElementById('contact').value.trim();
-            const isActive = document.getElementById('isActive').checked;
 
-            // ── Validation ──
-            if (!firstName) { showToast('First Name is required.', 'error'); return; }
-            if (!lastName) { showToast('Last Name is required.', 'error'); return; }
-            if (!username) { showToast('Username is required.', 'error'); return; }
-            if (!role) { showToast('Role is required.', 'error'); return; }
+            // ── Client-side validation (server re-validates everything too) ──
+            if (!firstName) { showToast('First Name is required.', 'error'); return false; }
+            if (!lastName) { showToast('Last Name is required.', 'error'); return false; }
+            if (!username) { showToast('Username is required.', 'error'); return false; }
+            if (!role) { showToast('Role is required.', 'error'); return false; }
 
-            // Check username uniqueness
+            // Quick uniqueness check against what's currently on screen
             const existingUser = users.find(u => u.username === username && u.id != id);
             if (existingUser) {
                 showToast('Username already exists. Please choose another.', 'error');
-                return;
+                return false;
             }
 
-            // Password validation for new user
             if (!id) {
                 // New user: password is required
                 if (!password || password.length < 8) {
                     showToast('Password must be at least 8 characters.', 'error');
-                    return;
+                    return false;
                 }
                 if (password !== confirmPassword) {
                     showToast('Passwords do not match.', 'error');
-                    return;
+                    return false;
                 }
-            } else {
-                // Editing: if password is provided, validate it
-                if (password) {
-                    if (password.length < 8) {
-                        showToast('Password must be at least 8 characters.', 'error');
-                        return;
-                    }
-                    if (password !== confirmPassword) {
-                        showToast('Passwords do not match.', 'error');
-                        return;
-                    }
+            } else if (password) {
+                // Editing: if a new password was provided, validate it
+                if (password.length < 8) {
+                    showToast('Password must be at least 8 characters.', 'error');
+                    return false;
+                }
+                if (password !== confirmPassword) {
+                    showToast('Passwords do not match.', 'error');
+                    return false;
                 }
             }
 
-            if (id) {
-                // Edit existing user
-                const userIndex = users.findIndex(u => u.id == id);
-                if (userIndex !== -1) {
-                    users[userIndex].firstName = firstName;
-                    users[userIndex].lastName = lastName;
-                    users[userIndex].middleName = middleName;
-                    users[userIndex].username = username;
-                    users[userIndex].role = role;
-                    users[userIndex].email = email;
-                    users[userIndex].contact = contact;
-                    users[userIndex].isActive = isActive;
-                    if (password) {
-                        // In a real app, hash the password here
-                        // users[userIndex].password = password;
-                    }
-                    showToast(`User ${firstName} ${lastName} updated successfully!`);
-                }
-            } else {
-                // Add new user
-                const newUser = {
-                    id: nextId++,
-                    firstName,
-                    lastName,
-                    middleName,
-                    username,
-                    role,
-                    email,
-                    contact,
-                    isActive,
-                    lastLogin: 'Never',
-                };
-                users.push(newUser);
-                showToast(`User ${firstName} ${lastName} added successfully!`);
-            }
-
-            closeModal();
-            applyFilters();
+            // Validation passed — let the browser submit the form normally.
+            return true;
         }
 
-        // ── Toggle user status ──
+        // ── Toggle user status (posts to the DB, then reloads) ──
         function toggleUserStatus(userId) {
             const user = users.find(u => u.id === userId);
             if (!user) return;
 
-            const action = user.isActive ? 'disable' : 'enable';
             const confirmMsg = user.isActive ?
                 `Are you sure you want to pause (disable) ${user.firstName} ${user.lastName}?` :
                 `Are you sure you want to continue (enable) ${user.firstName} ${user.lastName}?`;
 
-            if (confirm(confirmMsg)) {
-                user.isActive = !user.isActive;
-                showToast(`${user.firstName} ${user.lastName} ${user.isActive ? 'enabled' : 'disabled'} successfully!`);
-                applyFilters();
-            }
+            if (!confirm(confirmMsg)) return;
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = 'usermanagement_action.php';
+            form.innerHTML = `
+                <input type="hidden" name="action" value="toggle_status">
+                <input type="hidden" name="id" value="${user.id}">
+            `;
+            document.body.appendChild(form);
+            form.submit();
         }
 
         // ── Toast ──
@@ -738,6 +684,11 @@ require 'db_connect.php';
 
         // ── Initialise ──
         applyFilters();
+
+        // ── Flash message from usermanagement_action.php (after a redirect) ──
+        <?php if ($flashMsg): ?>
+        showToast(<?= json_encode($flashMsg) ?>, <?= json_encode($flashType) ?>);
+        <?php endif; ?>
 
         // Close modal on backdrop click
         document.getElementById('userModal').addEventListener('click', function (e) {

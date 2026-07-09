@@ -1,3 +1,93 @@
+<?php
+require 'auth.php';
+requireRole(['Admin']);
+require 'db_connect.php';
+
+$proposalId = (int) ($_GET['id'] ?? 0);
+if ($proposalId <= 0) {
+    header('Location: fund_request_reports.php');
+    exit;
+}
+
+$stmt = $pdo->prepare("
+    SELECT
+        pp.*,
+        p.program_name,
+        u.user_firstname,
+        u.user_lastname
+    FROM PROJECT_PROPOSAL pp
+    JOIN PROGRAM p ON p.program_id = pp.program_id
+    LEFT JOIN MSWDO_USER u ON u.user_id = pp.user_id
+    WHERE pp.proposal_id = ?
+    LIMIT 1
+");
+$stmt->execute([$proposalId]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$row) {
+    header('Location: fund_request_reports.php');
+    exit;
+}
+
+// Badge class per program — keyed on the *actual* PROGRAM.program_name
+// strings used as filters in each funds_*.php page's getFundRequests()
+// call (confirmed against funds_daycare.php, funds_pwd.php, funds_senior.php,
+// funds_sfp.php, funds_slp.php, funds_soloparents.php, funds_wac.php),
+// not the shorter display names used in fund_request_reports.php's
+// (currently static/unconnected) badge legend.
+// AICS isn't included: AICS assistance is recorded in AVAILMENT, not
+// PROJECT_PROPOSAL, so an AICS row should never reach this page.
+$badgeMap = [
+    '4Ps'                          => 'badge-4ps',
+    'Solo Parent Program'          => 'badge-solo',
+    'Senior Citizen Program'       => 'badge-senior',
+    'PWD Program'                  => 'badge-pwd',
+    'Day Care Center Program'      => 'badge-daycare',
+    'SLP'                          => 'badge-slp',
+    'SFP'                          => 'badge-sfp',
+    'Women and Child Protection'   => 'badge-women',
+];
+
+$from = new DateTime($row['pp_date_from']);
+$to   = new DateTime($row['pp_date_to']);
+$days = $from->diff($to)->days + 1; // inclusive of both start and end day
+
+// Resolve the attached document's real size off disk, same pattern as
+// confidential_case_view.php uses for its supporting docs.
+$documentName = $row['pp_document'] ?: null;
+$documentPath = 'uploads/project_proposals/' . $documentName;
+$documentSize = '—';
+if ($documentName) {
+    $fullPath = __DIR__ . '/' . $documentPath;
+    $documentSize = file_exists($fullPath) ? round(filesize($fullPath) / 1024) . ' KB' : 'File not found on server';
+}
+
+$request = [
+    'id'               => (int) $row['proposal_id'],
+    'title'            => htmlspecialchars($row['pp_title']),
+    'duration'         => $days . ' ' . ($days === 1 ? 'day' : 'days'),
+    'date_from'        => $from->format('M j, Y'),
+    'date_to'          => $to->format('M j, Y'),
+    'venue'            => htmlspecialchars($row['pp_venue']),
+    'num_participants' => (int) $row['pp_num_participants'],
+    'participant_desc' => htmlspecialchars($row['pp_participant_desc']),
+    'budget'           => (float) $row['pp_budget'],
+    'fund_source'      => htmlspecialchars($row['pp_fund_source']),
+    'program'          => htmlspecialchars($row['program_name']),
+    'program_badge'    => $badgeMap[$row['program_name']] ?? 'badge-4ps',
+    // PROJECT_PROPOSAL has no status column yet — every row here has already
+    // been counted as "spent" against its program's budget (see
+    // budget_helpers.php), so the closest honest label is "Submitted" rather
+    // than implying an approval workflow that doesn't exist in the schema.
+    'status'           => 'Submitted',
+    'submitted_by'     => trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: '—',
+    'date_submitted'   => $row['pp_date_submitted'] ? (new DateTime($row['pp_date_submitted']))->format('F j, Y g:i A') : '—',
+    'document_name'    => $documentName ?? 'No document attached',
+    'document_path'    => $documentPath,
+    'has_document'     => (bool) $documentName,
+    'document_size'    => $documentSize,
+];
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -218,7 +308,7 @@
                 <button onclick="window.print()" class="text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-green-400 hover:text-green-600 transition-all">
                     <i class="fas fa-print mr-1"></i> Print
                 </button>
-                <a href="fund_request_update.php?id=FR-2026-001" class="text-[12px] font-semibold text-white bg-green-600 rounded-lg px-4 py-1.5 hover:bg-green-500 transition-all flex items-center gap-1.5">
+                <a href="fund_request_update.php?id=<?= $request['id'] ?>" class="text-[12px] font-semibold text-white bg-green-600 rounded-lg px-4 py-1.5 hover:bg-green-500 transition-all flex items-center gap-1.5">
                     <i class="fas fa-edit"></i> Update Request
                 </a>
             </div>
@@ -314,26 +404,33 @@
                             <h2 class="text-[14px] font-semibold text-green-600">Attached Document</h2>
                         </div>
                         <div class="section-body">
-                            <div class="attachment-item flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                                <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0">
-                                    <i class="fas fa-file-pdf text-2xl"></i>
+                            <?php if ($request['has_document']): ?>
+                                <div class="attachment-item flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                    <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0">
+                                        <i class="fas fa-file-pdf text-2xl"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-[13px] font-semibold text-slate-800 truncate"><?= htmlspecialchars($request['document_name']) ?></p>
+                                        <p class="text-[11px] text-slate-400"><?= $request['document_size'] ?> • Uploaded: <?= $request['date_submitted'] ?></p>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <a href="<?= htmlspecialchars($request['document_path']) ?>" target="_blank" class="btn-view px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <a href="<?= htmlspecialchars($request['document_path']) ?>" download class="btn-download px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                    </div>
                                 </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-[13px] font-semibold text-slate-800 truncate"><?= $request['document_name'] ?></p>
-                                    <p class="text-[11px] text-slate-400"><?= $request['document_size'] ?> • Uploaded: <?= $request['date_submitted'] ?></p>
+                                <p class="text-[11px] text-slate-400 mt-3">
+                                    <i class="fas fa-info-circle mr-1"></i> The complete project proposal document is attached above.
+                                </p>
+                            <?php else: ?>
+                                <div class="flex items-center gap-4 p-4 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-400">
+                                    <i class="fas fa-file-slash text-2xl"></i>
+                                    <p class="text-[13px]">No document was attached to this request.</p>
                                 </div>
-                                <div class="flex items-center gap-2 flex-shrink-0">
-                                    <a href="#" class="btn-view px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
-                                    <a href="#" class="btn-download px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
-                                </div>
-                            </div>
-                            <p class="text-[11px] text-slate-400 mt-3">
-                                <i class="fas fa-info-circle mr-1"></i> The complete project proposal document is attached above.
-                            </p>
+                            <?php endif; ?>
                         </div>
                     </div>
 

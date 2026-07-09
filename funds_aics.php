@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-requireRole(['Admin', 'Social Worker', 'Staff']);
+requireRole(['Admin', 'Staff']); 
 require 'db_connect.php';
 require 'budget_helpers.php';
 
@@ -41,6 +41,7 @@ foreach ($aicsSubtypes as $sub) {
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $aicsTransactions[] = [
             'id'           => $rowId++,
+            'availmentId'  => (int) $row['availment_id'],
             'beneficiary'  => trim($row['cl_firstname'] . ' ' . $row['cl_lastname']),
             'budgetSource' => $sub['source'],
             'type'         => $sub['type'],
@@ -401,7 +402,7 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
                     <td class="px-5 py-3 font-semibold text-slate-700">₱${row.amount.toLocaleString()}</td>
                     <td class="px-5 py-3 text-slate-400">${row.date}</td>
                     <td class="px-5 py-3">
-                        <a href="aics_view.php" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
+                        <a href="aics_view.php?availment_id=${row.availmentId}" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
                              View
                         </a>
                     </td>

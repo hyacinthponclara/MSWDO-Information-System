@@ -1,7 +1,46 @@
 <?php
 require 'auth.php';
-requireRole(['Admin', 'Social Worker']);
+requireRole(['Admin']);
 require 'db_connect.php';
+
+// ── Pull every confidential case with the client/barangay info the table needs ──
+$stmt = $pdo->query("
+    SELECT wc.protection_id, wc.wc_case_number, wc.wc_case_type, wc.wc_incident_date,
+           wc.wc_status, wc.wc_assigned_worker, wc.wc_narrative,
+           c.client_id, c.cl_firstname, c.cl_lastname,
+           c.cl_is_soloparent, c.cl_is_indigent,
+           b.barangay_name
+    FROM woman_and_children wc
+    LEFT JOIN CLIENT c ON c.client_id = wc.client_id
+    LEFT JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+    ORDER BY wc.protection_id DESC
+");
+$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Shape into exactly what the existing front-end JS (ALL_CASES) expects.
+// "critical" has no dedicated column in the schema, so it's approximated as
+// status = 'Active' (an ongoing case, as opposed to routine Monitoring).
+$allCasesPhp = array_map(function ($r) {
+    $sectors = [];
+    if (!empty($r['cl_is_soloparent'])) $sectors[] = 'solo';
+    if (!empty($r['cl_is_indigent']))   $sectors[] = 'indigent';
+
+    return [
+        'case_id'         => $r['wc_case_number'] ?? ('WC-' . $r['protection_id']),
+        'client'          => trim(($r['cl_firstname'] ?? '') . ' ' . ($r['cl_lastname'] ?? '')) ?: 'Unknown Client',
+        'client_id'       => (int)($r['client_id'] ?? 0),
+        'case_type'       => $r['wc_case_type'],
+        'barangay'        => $r['barangay_name'] ?? '—',
+        'incident_date'   => $r['wc_incident_date'],
+        'status'          => $r['wc_status'],
+        'assigned_worker' => $r['wc_assigned_worker'] ?? '—',
+        'narrative'       => $r['wc_narrative'],
+        'critical'        => $r['wc_status'] === 'Active',
+        'sectors'         => $sectors,
+    ];
+}, $rows);
+
+$flashMsg = $_GET['msg'] ?? '';
 ?>
 
 <!DOCTYPE html>
@@ -449,6 +488,35 @@ require 'db_connect.php';
 
                 </div>
 
+                <div id="quickCard" class="w-64 flex-shrink-0 hidden">
+                    <div class="bg-white rounded-2xl border border-green-200 overflow-hidden sticky top-20">
+                        <div class="h-1 bg-green-600"></div>
+                        <div class="p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-green-600">Case Details</p>
+                                <button onclick="closeQuick()" class="text-slate-300 hover:text-slate-500 text-lg"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="flex items-center gap-3 mb-3">
+                                <div id="qcAvatar"></div>
+                                <div>
+                                    <p id="qcName" class="text-[13px] font-semibold text-green-700"></p>
+                                    <p id="qcCaseId" class="text-[10px] font-mono text-slate-400"></p>
+                                </div>
+                            </div>
+                            <div class="space-y-2 mb-4">
+                                <div class="flex justify-between text-[11px]"><span class="text-slate-400">Case Type</span><span id="qcType" class="font-medium"></span></div>
+                                <div class="flex justify-between text-[11px]"><span class="text-slate-400">Status</span><span id="qcStatus"></span></div>
+                                <div class="flex justify-between text-[11px]"><span class="text-slate-400">Barangay</span><span id="qcBrgy" class="font-medium text-slate-600"></span></div>
+                                <div class="flex justify-between text-[11px]"><span class="text-slate-400">Incident Date</span><span id="qcIncident" class="font-medium text-slate-600"></span></div>
+                                <div class="flex justify-between text-[11px]"><span class="text-slate-400">Assigned To</span><span id="qcWorker" class="font-medium text-slate-600"></span></div>
+                            </div>
+                            <p class="text-[11px] text-slate-500 leading-relaxed mb-4" id="qcNarrative"></p>
+                            <div class="space-y-2">
+                                <a id="qcViewBtn" href="#" class="block text-center w-full py-2.5 bg-green-600 text-white text-[12px] font-semibold rounded-xl hover:bg-green-500 transition-all">View Full Case →</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </main>
@@ -466,112 +534,8 @@ require 'db_connect.php';
     </div>
 
     <script>
-        // ── Sample Confidential Cases ──
-        const ALL_CASES = [{
-            case_id: 'CV-2026-018',
-            client: 'Maria Santos',
-            client_id: 1001,
-            case_type: 'VAWC',
-            barangay: 'Poblacion',
-            incident_date: '2026-04-10',
-            status: 'Active',
-            assigned_worker: 'R. Villanueva',
-            narrative: 'Client reported physical abuse by spouse. Temporary protection order issued. Ongoing counseling sessions.',
-            critical: true,
-            client_avatar: 'MS',
-            sectors: ['solo', 'indigent']
-        }, {
-            case_id: 'CC-2026-007',
-            client: 'Juan Dela Cruz',
-            client_id: 1002,
-            case_type: 'CICL',
-            barangay: 'San Jose',
-            incident_date: '2026-04-05',
-            status: 'Monitoring',
-            assigned_worker: 'R. Villanueva',
-            narrative: 'Minor apprehended for petty theft. Diversion program enrollment completed. Monthly monitoring ongoing.',
-            critical: false,
-            client_avatar: 'JC',
-            sectors: ['indigent']
-        }, {
-            case_id: 'CA-2026-003',
-            client: 'Ana Reyes',
-            client_id: 1003,
-            case_type: 'Child Abuse',
-            barangay: 'Beguiligan',
-            incident_date: '2026-04-02',
-            status: 'Active',
-            assigned_worker: 'R. Villanueva',
-            narrative: 'Child reported physical abuse by guardian. Temporary shelter secured. Coordination with DSWD Provincial in progress.',
-            critical: true,
-            client_avatar: 'AR',
-            sectors: ['indigent']
-        }, {
-            case_id: 'CV-2026-015',
-            client: 'Luz Bautista',
-            client_id: 1004,
-            case_type: 'VAWC',
-            barangay: 'Poblacion',
-            incident_date: '2026-03-28',
-            status: 'Resolved',
-            assigned_worker: 'R. Villanueva',
-            narrative: 'Barangay protection order issued. Case resolved pending final documentation and 30-day monitoring.',
-            critical: false,
-            client_avatar: 'LB',
-            sectors: ['solo']
-        }, {
-            case_id: 'CR-2026-002',
-            client: 'Rodrigo Lim',
-            client_id: 1005,
-            case_type: 'CAR',
-            barangay: 'Bagonawa',
-            incident_date: '2026-03-25',
-            status: 'Active',
-            assigned_worker: 'M. Santos',
-            narrative: 'Child at risk due to neglect. Referral to DSWD for intervention planning. Family assessment ongoing.',
-            critical: false,
-            client_avatar: 'RL',
-            sectors: ['indigent']
-        }, {
-            case_id: 'CV-2026-020',
-            client: 'Elena Dela Cruz',
-            client_id: 1006,
-            case_type: 'VAWC',
-            barangay: 'Baliwagan',
-            incident_date: '2026-03-20',
-            status: 'Referred',
-            assigned_worker: 'M. Santos',
-            narrative: 'Case referred to Provincial DSWD for specialized intervention. Follow-up scheduled.',
-            critical: false,
-            client_avatar: 'EC',
-            sectors: ['indigent']
-        }, {
-            case_id: 'CC-2026-009',
-            client: 'Carlo Reyes',
-            client_id: 1007,
-            case_type: 'CICL',
-            barangay: 'Batuan',
-            incident_date: '2026-03-15',
-            status: 'Closed',
-            assigned_worker: 'R. Villanueva',
-            narrative: 'Diversion program completed successfully. Case closed. Youth reintegrated to family.',
-            critical: false,
-            client_avatar: 'CR',
-            sectors: ['indigent']
-        }, {
-            case_id: 'CA-2026-005',
-            client: 'Josefa Reyes',
-            client_id: 1008,
-            case_type: 'Child Abuse',
-            barangay: 'Guintorilan',
-            incident_date: '2026-03-10',
-            status: 'Monitoring',
-            assigned_worker: 'M. Santos',
-            narrative: 'Child placed in foster care. Monthly monitoring and therapy sessions ongoing.',
-            critical: false,
-            client_avatar: 'JR',
-            sectors: ['indigent']
-        }];
+        // ── Real Confidential Cases (from WOMAN_AND_CHILDREN via PHP) ──
+        const ALL_CASES = <?= json_encode($allCasesPhp) ?>;
 
         const CASE_TYPE_META = {
             'VAWC': { label: 'VAWC', cls: 'badge-vawc', icon: 'fa-shield-alt' },
@@ -737,9 +701,8 @@ require 'db_connect.php';
             document.getElementById('qcWorker').textContent = c.assigned_worker;
             document.getElementById('qcNarrative').textContent = c.narrative;
 
-            // Quick card buttons link to the real case
+            // Quick card button links to the real case
             document.getElementById('qcViewBtn').href = `confidential_case_view.php?id=${c.case_id}`;
-            document.getElementById('qcUpdateBtn').href = `confidential_case_update.php?id=${c.case_id}`;
 
             card.classList.remove('hidden');
         }
@@ -778,6 +741,12 @@ require 'db_connect.php';
                 t.classList.remove('opacity-100', 'translate-y-0');
             }, 2800);
         }
+
+        <?php if ($flashMsg): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            showToast(<?= json_encode($flashMsg) ?>);
+        });
+        <?php endif; ?>
 
         renderTable();
     </script>

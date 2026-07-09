@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-requireRole(['Admin', 'Social Worker']);
+requireRole(['Admin']);
 require 'db_connect.php';
 require 'budget_helpers.php';
 

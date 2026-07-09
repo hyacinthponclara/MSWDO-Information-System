@@ -1,22 +1,16 @@
 <?php
 require 'auth.php';
-requireRole(['Admin', 'Social Worker']); // adjust roles as needed for your team
+requireRole(['Admin']); 
 require 'db_connect.php';
 
-// ── BARANGAY NAMES (must match the GeoJSON adm4_en values exactly) ────────
 $barangayNames = ['Bagonawa', 'Baliwagan', 'Batuan', 'Guintorilan', 'Nayon',
                    'Poblacion', 'Sibucao', 'Tabao Baybay', 'Tabao Rizal', 'Tibsoc'];
 
-// Helper: initialize an empty per-barangay record
 function emptyBrgyRecord() {
     return ['count' => 0, 'amount' => 0.0, 'pwd' => 0, 'senior' => 0,
             'solo' => 0, 'fourPs' => 0, 'beneficiaries' => []];
 }
 
-// ── PWD / SENIOR / SOLO PARENT / 4Ps COUNTS PER BARANGAY ───────────────────
-// These are added onto every program's per-barangay record, same as the
-// original mock data did (they describe the barangay's overall profile,
-// not just beneficiaries of the selected program).
 function countByBarangay(PDO $pdo, string $table, string $availmentFk = 'availment_id') {
     $sql = "
         SELECT b.barangay_name AS barangay, COUNT(*) AS cnt

@@ -138,7 +138,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <a href="funds_pwd.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-wheelchair text-sm"></i> PWD</a>
-            <a href="#"
+            <a href="funds_soloparents.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-user text-sm"></i> Solo Parent</a>
             </a>
@@ -233,7 +233,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <a href="funds_pwd.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-wheelchair text-sm"></i> PWD</a>
-            <a href="#"
+            <a href="funds_soloparents.php"
                 class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                     class="fas fa-user text-sm"></i> Solo Parent</a>
             </a>

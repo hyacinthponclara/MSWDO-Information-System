@@ -1,7 +1,82 @@
 <?php
 require 'auth.php';
-requireRole(['Social Worker', 'Admin']);
+requireRole(['Admin']);
 require 'db_connect.php';
+
+$caseNumber = trim($_GET['id'] ?? '');
+if ($caseNumber === '') {
+    header('Location: confidential_case_search.php');
+    exit;
+}
+
+$stmt = $pdo->prepare("
+    SELECT wc.*,
+           c.cl_firstname, c.cl_lastname,
+           b.barangay_name,
+           u.user_firstname, u.user_lastname
+    FROM woman_and_children wc
+    LEFT JOIN CLIENT c ON c.client_id = wc.client_id
+    LEFT JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+    LEFT JOIN MSWDO_USER u ON u.user_id = wc.user_id
+    WHERE wc.wc_case_number = ?
+    LIMIT 1
+");
+$stmt->execute([$caseNumber]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$row) {
+    header('Location: confidential_case_search.php');
+    exit;
+}
+
+// wc_attachments is stored as JSON, e.g. {"blotter":"file.pdf","photos":["a.jpg","b.jpg"]}.
+// Turn it into a flat list the template can loop over, with a friendly label per type
+// and the real file size read straight off disk.
+$attachmentLabels = [
+    'blotter' => 'Police Blotter / Incident Report',
+    'medical' => 'Medical / Medico-Legal Records',
+    'court'   => 'Court / Legal Documents',
+    'photos'  => 'Photograph / Visual Evidence',
+    'other'   => 'Other Supporting Document',
+];
+$supportingDocs = [];
+if (!empty($row['wc_attachments'])) {
+    $decoded = json_decode($row['wc_attachments'], true);
+    if (is_array($decoded)) {
+        foreach ($decoded as $key => $val) {
+            $files = is_array($val) ? $val : [$val];
+            foreach ($files as $filename) {
+                $path = __DIR__ . '/Uploads/confidential/' . $filename;
+                $supportingDocs[] = [
+                    'name' => $attachmentLabels[$key] ?? ucfirst($key),
+                    'file' => $filename,
+                    'size' => file_exists($path) ? round(filesize($path) / 1024) . ' KB' : 'File not found',
+                ];
+            }
+        }
+    }
+}
+
+$case = [
+    'case_id'         => $row['wc_case_number'] ?? ('WC-' . $row['protection_id']),
+    'case_type'       => $row['wc_case_type'],
+    'status'          => $row['wc_status'],
+    'client'          => trim(($row['cl_firstname'] ?? '') . ' ' . ($row['cl_lastname'] ?? '')) ?: 'Unknown Client',
+    'client_id'       => $row['client_id'] ?? '—',
+    'barangay'        => $row['barangay_name'] ?? '—',
+    'incident_date'   => $row['wc_incident_date'],
+    'incident_place'  => $row['wc_incident_place'],
+    'narrative'       => $row['wc_narrative'],
+    'offender_info'   => $row['wc_offender_info'] ?: 'None reported',
+    'witness_info'    => $row['wc_witness_info'] ?: 'None reported',
+    'actions_taken'   => $row['wc_actions_taken'] ?: 'None recorded',
+    'assigned_worker' => $row['wc_assigned_worker'],
+    'date_created'    => $row['wc_date_created'] ? (new DateTime($row['wc_date_created']))->format('F j, Y g:i A') : '—',
+    'created_by'      => trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: '—',
+    'supporting_docs' => $supportingDocs,
+];
+
+$flashMsg = $_GET['msg'] ?? '';
 ?>
 
 <!DOCTYPE html>
@@ -205,7 +280,7 @@ require 'db_connect.php';
         <!-- Topbar -->
         <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 animate-fade-up no-print">
             <div class="flex items-center gap-2 text-[13px]">
-                <a href="confidential_cases.php" class="text-slate-400 hover:text-green-600">
+                <a href="confidential_case_search.php" class="text-slate-400 hover:text-green-600">
                     <i class="fas fa-arrow-left mr-1"></i> Confidential Cases
                 </a>
                 <span class="text-slate-300">/</span>
@@ -216,9 +291,23 @@ require 'db_connect.php';
         <main class="flex-1 p-6 space-y-5 overflow-y-auto">
 
             <!-- ── PAGE TITLE ── -->
+            <?php
+            $typeBadgeCls = [
+                'VAWC' => 'badge-vawc', 'CICL' => 'badge-cicl',
+                'Child Abuse' => 'badge-childabuse', 'CAR' => 'badge-car',
+            ][$case['case_type']] ?? 'bg-slate-100 text-slate-700';
+            $statusBadgeCls = [
+                'Active' => 'status-active', 'Monitoring' => 'status-monitoring',
+                'Resolved' => 'status-resolved', 'Closed' => 'status-closed', 'Referred' => 'status-referred',
+            ][$case['status']] ?? 'bg-slate-100 text-slate-700';
+            ?>
             <div class="animate-fade-up flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h1 class="text-xl font-serif text-green-600">Confidential Case Summary</h1>
+                    <div class="flex items-center gap-2 mb-1">
+                        <h1 class="text-xl font-serif text-green-600">Confidential Case Summary</h1>
+                        <span class="<?= $typeBadgeCls ?> px-2.5 py-0.5 rounded text-[11px] font-semibold"><?= htmlspecialchars($case['case_type']) ?></span>
+                        <span class="<?= $statusBadgeCls ?> px-2.5 py-0.5 rounded-full text-[11px] font-semibold"><?= htmlspecialchars($case['status']) ?></span>
+                    </div>
                     <p class="text-[13px] text-slate-500 mt-0.5">Complete case record – copy of your submitted case information.</p>
                 </div>
             </div>
@@ -236,19 +325,19 @@ require 'db_connect.php';
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div>
                                 <label class="field-label">Case ID</label>
-                                <div class="field-value font-mono font-semibold text-green-700"><?= $case['case_id'] ?></div>
+                                <div class="field-value font-mono font-semibold text-green-700"><?= htmlspecialchars($case['case_id']) ?></div>
                             </div>
                             <div>
                                 <label class="field-label">Client Name</label>
-                                <div class="field-value font-semibold"><?= $case['client'] ?></div>
+                                <div class="field-value font-semibold"><?= htmlspecialchars($case['client']) ?></div>
                             </div>
                             <div>
                                 <label class="field-label">Client ID</label>
-                                <div class="field-value font-mono"><?= $case['client_id'] ?></div>
+                                <div class="field-value font-mono"><?= htmlspecialchars((string)$case['client_id']) ?></div>
                             </div>
                             <div>
                                 <label class="field-label">Barangay</label>
-                                <div class="field-value"><?= $case['barangay'] ?></div>
+                                <div class="field-value"><?= htmlspecialchars($case['barangay']) ?></div>
                             </div>
                         </div>
                     </div>
@@ -264,11 +353,11 @@ require 'db_connect.php';
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="field-label">Incident Date</label>
-                                <div class="field-value"><?= $case['incident_date'] ?></div>
+                                <div class="field-value"><?= htmlspecialchars($case['incident_date']) ?></div>
                             </div>
                             <div>
                                 <label class="field-label">Incident Place</label>
-                                <div class="field-value"><?= $case['incident_place'] ?></div>
+                                <div class="field-value"><?= htmlspecialchars($case['incident_place']) ?></div>
                             </div>
                         </div>
                     </div>
@@ -281,7 +370,7 @@ require 'db_connect.php';
                         <h2 class="text-[14px] font-semibold text-green-600">Narrative Report</h2>
                     </div>
                     <div class="summary-body">
-                        <div class="field-value whitespace-pre-wrap leading-relaxed"><?= $case['narrative'] ?></div>
+                        <div class="field-value whitespace-pre-wrap leading-relaxed"><?= nl2br(htmlspecialchars($case['narrative'])) ?></div>
                     </div>
                 </div>
 
@@ -293,7 +382,7 @@ require 'db_connect.php';
                             <h2 class="text-[14px] font-semibold text-green-600">Offender Information</h2>
                         </div>
                         <div class="summary-body">
-                            <div class="field-value text-[13px] leading-relaxed"><?= $case['offender_info'] ?></div>
+                            <div class="field-value text-[13px] leading-relaxed"><?= nl2br(htmlspecialchars($case['offender_info'])) ?></div>
                         </div>
                     </div>
                     <div class="summary-card animate-fade-up-2">
@@ -302,7 +391,7 @@ require 'db_connect.php';
                             <h2 class="text-[14px] font-semibold text-green-600">Witness Information</h2>
                         </div>
                         <div class="summary-body">
-                            <div class="field-value text-[13px] leading-relaxed"><?= $case['witness_info'] ?></div>
+                            <div class="field-value text-[13px] leading-relaxed"><?= nl2br(htmlspecialchars($case['witness_info'])) ?></div>
                         </div>
                     </div>
                 </div>
@@ -314,7 +403,7 @@ require 'db_connect.php';
                         <h2 class="text-[14px] font-semibold text-green-600">Actions Taken</h2>
                     </div>
                     <div class="summary-body">
-                        <div class="field-value whitespace-pre-wrap leading-relaxed"><?= $case['actions_taken'] ?></div>
+                        <div class="field-value whitespace-pre-wrap leading-relaxed"><?= nl2br(htmlspecialchars($case['actions_taken'])) ?></div>
                     </div>
                 </div>
 
@@ -325,6 +414,9 @@ require 'db_connect.php';
                         <h2 class="text-[14px] font-semibold text-green-600">Supporting Documents</h2>
                     </div>
                     <div class="summary-body">
+                        <?php if (empty($case['supporting_docs'])): ?>
+                            <p class="text-[12px] text-slate-400 italic">No supporting documents were attached to this case.</p>
+                        <?php else: ?>
                         <div class="space-y-2">
                             <?php foreach ($case['supporting_docs'] as $doc): ?>
                                 <div class="attachment-item flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg hover:border-green-400 transition-all">
@@ -332,18 +424,19 @@ require 'db_connect.php';
                                         <i class="fas fa-file-pdf text-xl"></i>
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-[13px] font-medium text-slate-700 truncate"><?= $doc['name'] ?></p>
-                                        <p class="text-[11px] text-slate-400"><?= $doc['size'] ?> • Uploaded: Apr 10, 2026</p>
+                                        <p class="text-[13px] font-medium text-slate-700 truncate"><?= htmlspecialchars($doc['name']) ?></p>
+                                        <p class="text-[11px] text-slate-400"><?= htmlspecialchars($doc['size']) ?> · Case created: <?= htmlspecialchars($case['date_created']) ?></p>
                                     </div>
-                                    <a href="#" class="btn-view px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
+                                    <a href="Uploads/confidential/<?= urlencode($doc['file']) ?>" target="_blank" class="btn-view px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
                                         <i class="fas fa-eye"></i> View
                                     </a>
-                                    <a href="#" class="btn-download px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
+                                    <a href="Uploads/confidential/<?= urlencode($doc['file']) ?>" download class="btn-download px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
                                         <i class="fas fa-download"></i> Download
                                     </a>
                                 </div>
                             <?php endforeach; ?>
                         </div>
+                        <?php endif; ?>
                         <p class="text-[11px] text-slate-400 mt-3">
                             <i class="fas fa-info-circle mr-1"></i> Documents are stored securely. Access is restricted to authorized personnel.
                         </p>
@@ -360,15 +453,15 @@ require 'db_connect.php';
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div>
                                 <label class="field-label">Assigned Worker</label>
-                                <div class="field-value font-medium"><?= $case['assigned_worker'] ?></div>
+                                <div class="field-value font-medium"><?= htmlspecialchars($case['assigned_worker']) ?></div>
                             </div>
                             <div>
                                 <label class="field-label">Date Created</label>
-                                <div class="field-value text-slate-500"><?= $case['date_created'] ?></div>
+                                <div class="field-value text-slate-500"><?= htmlspecialchars($case['date_created']) ?></div>
                             </div>
                             <div>
                                 <label class="field-label">Created By</label>
-                                <div class="field-value text-slate-500"><?= $case['created_by'] ?></div>
+                                <div class="field-value text-slate-500"><?= htmlspecialchars($case['created_by']) ?></div>
                             </div>
                         </div>
                     </div>
@@ -412,6 +505,12 @@ require 'db_connect.php';
                 t.classList.remove('opacity-100', 'translate-y-0');
             }, 3000);
         }
+
+        <?php if ($flashMsg): ?>
+        document.addEventListener('DOMContentLoaded', function() {
+            showToast(<?= json_encode($flashMsg) ?>);
+        });
+        <?php endif; ?>
     </script>
 </body>
 

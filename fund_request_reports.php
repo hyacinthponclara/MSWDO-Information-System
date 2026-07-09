@@ -1,16 +1,95 @@
 <?php
 require 'auth.php';
-requireRole(['Admin', 'Social Worker']); 
+requireRole(['Admin', 'Staff']); 
 require 'db_connect.php';
-?>
+require 'budget_helpers.php';
 
+// ── Project-proposal-backed programs ────────────────────────────────────
+// Maps the short display label (used by the existing badgeClasses/filter
+// dropdown in the JS below — unchanged) to the real PROGRAM.program_name
+// string each funds_*.php page filters on. Confirmed against funds_4ps.php,
+// funds_daycare.php, funds_pwd.php, funds_senior.php, funds_sfp.php,
+// funds_slp.php, funds_soloparents.php, funds_wac.php.
+$programNameMap = [
+    '4Ps'             => '4Ps',
+    'Solo Parents'    => 'Solo Parent Program',
+    'Senior Citizen'  => 'Senior Citizen Program',
+    'PWD'             => 'PWD Program',
+    'Day Care'        => 'Day Care Center Program',
+    'SFP'             => 'SFP',
+    'SLP'             => 'SLP',
+    'Women and Children' => 'Women and Child Protection',
+];
+
+$allRequests = [];
+
+foreach ($programNameMap as $label => $dbProgramName) {
+    foreach (getFundRequests($pdo, $dbProgramName) as $r) {
+        $allRequests[] = [
+            'program'      => $label,
+            'title'        => $r['title'],
+            'duration'     => $r['duration'],
+            'venue'        => $r['venue'],
+            'participants' => $r['participants'],
+            'budget'       => $r['budget'],
+            'source'       => $r['fundSource'],
+            'date'         => $r['date'],
+        ];
+    }
+}
+
+// ── AICS availments ──────────────────────────────────────────────────────
+// AICS assistance lives in AVAILMENT + 5 subtype tables, not
+// PROJECT_PROPOSAL, and has no per-row fund-source column — same structure
+// funds_aics.php already relies on. Union all 5 subtypes together here too,
+// rather than inventing a different query shape for this report.
+$aicsSubtypes = [
+    ['table' => 'AICS_FINANCIAL',   'type' => 'Financial'],
+    ['table' => 'AICS_BURIAL',      'type' => 'Burial'],
+    ['table' => 'AICS_MEDICAL',     'type' => 'Medical'],
+    ['table' => 'AICS_LIVELIHOOD',  'type' => 'Livelihood'],
+    ['table' => 'AICS_EDUCATIONAL', 'type' => 'Educational'],
+];
+
+foreach ($aicsSubtypes as $sub) {
+    $stmt = $pdo->prepare("
+        SELECT
+            a.av_amount,
+            a.av_date_applied,
+            c.cl_firstname,
+            c.cl_lastname
+        FROM {$sub['table']} t
+        JOIN AVAILMENT a ON a.availment_id = t.availment_id
+        JOIN CLIENT c ON c.client_id = a.client_id
+    ");
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $beneficiary = trim($row['cl_firstname'] . ' ' . $row['cl_lastname']);
+        $allRequests[] = [
+            'program'      => 'AICS',
+            'title'        => $beneficiary . ' - ' . $sub['type'],
+            'duration'     => 'N/A',
+            'venue'        => 'MSWDO Office',
+            'participants' => '1',
+            'budget'       => (float) $row['av_amount'],
+            // AICS has no fund-source column of its own; this reflects
+            // that AICS FBML/Educational are jointly funded, not a
+            // per-transaction value pulled from the database.
+            'source'       => 'LGU + DSWD',
+            'date'         => (new DateTime($row['av_date_applied']))->format('Y-m-d'),
+        ];
+    }
+}
+
+usort($allRequests, fn($a, $b) => strcmp($b['date'], $a['date']));
+?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Program Fund Requests Report – MSWDO San Enrique</title>
+    <title>Program Reports – MSWDO San Enrique</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
@@ -176,7 +255,7 @@ require 'db_connect.php';
         <!-- Top Bar -->
         <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
-                <span class="text-green-600 font-semibold">Program Fund Requests Report</span>
+                <span class="text-green-600 font-semibold">Program Reports</span>
             </div>
         </header>
 
@@ -185,8 +264,8 @@ require 'db_connect.php';
             <!-- Page Title -->
             <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
                 <div>
-                    <h1 class="text-xl font-serif text-green-600">Program Fund Requests Report</h1>
-                    <p class="text-[13px] text-slate-500 mt-0.5">Consolidated view of all program fund requests.</p>
+                    <h1 class="text-xl font-serif text-green-600">Program Reports</h1>
+                    <p class="text-[13px] text-slate-500 mt-0.5">Consolidated view of all program reports.</p>
                 </div>
                 <button onclick="exportCSV()" class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700">
                     <i class="fas fa-file-csv mr-1"></i> Export CSV
@@ -205,7 +284,7 @@ require 'db_connect.php';
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200 p-4">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wider">Programs Covered</p>
-                    <p class="text-2xl font-bold text-green-600" id="totalPrograms">0</p>
+                    <p class="text-2xl font-bold text-green-600" >9</p>
                 </div>
             </div>
 
@@ -293,54 +372,7 @@ require 'db_connect.php';
 
     <script>
         // ── Consolidated Data from All Programs ──
-        const allData = [
-            // AICS Transactions
-            { program: 'AICS', title: 'Maria Santos - Medical', duration: 'N/A', venue: 'MSWDO Office', participants: '1', budget: 3500, source: 'LGU + DSWD', date: '2026-04-14' },
-            { program: 'AICS', title: 'Elena Dela Cruz - Burial', duration: 'N/A', venue: 'MSWDO Office', participants: '1', budget: 5000, source: 'LGU + DSWD', date: '2026-04-12' },
-            { program: 'AICS', title: 'Rodrigo Lim - Livelihood', duration: 'N/A', venue: 'MSWDO Office', participants: '1', budget: 8000, source: 'LGU + DSWD', date: '2026-04-10' },
-            { program: 'AICS', title: 'Carlo Reyes - Educational', duration: 'N/A', venue: 'MSWDO Office', participants: '1', budget: 5000, source: 'LGU + DSWD', date: '2026-04-11' },
-            { program: 'AICS', title: 'Ana Delos Santos - Educational', duration: 'N/A', venue: 'MSWDO Office', participants: '1', budget: 2500, source: 'LGU + DSWD', date: '2026-04-09' },
-
-            // 4Ps
-            { program: '4Ps', title: 'Feeding Program for Malnourished Children', duration: '10 days', venue: 'Barangay Poblacion', participants: '50 children', budget: 5000, source: 'DSWD', date: '2026-04-14' },
-            { program: '4Ps', title: 'Livelihood Skills Training for 4Ps Beneficiaries', duration: '5 days', venue: 'MSWDO Office', participants: '30 beneficiaries', budget: 8000, source: 'DSWD', date: '2026-04-12' },
-            { program: '4Ps', title: 'Community Garden Project', duration: '15 days', venue: 'Barangay Bagonawa', participants: '20 families', budget: 3000, source: 'DSWD', date: '2026-04-10' },
-
-            // Solo Parents
-            { program: 'Solo Parents', title: 'Livelihood Training for Solo Parents (Sari-Sari Store)', duration: '5 days', venue: 'Barangay Poblacion', participants: '25 solo parents', budget: 15000, source: 'LGU', date: '2026-04-15' },
-            { program: 'Solo Parents', title: 'Educational Assistance for Solo Parents\' Children', duration: '3 days', venue: 'MSWDO Office', participants: '40 children', budget: 20000, source: 'LGU', date: '2026-04-13' },
-            { program: 'Solo Parents', title: 'Solo Parents Organization Capacity Building', duration: '2 days', venue: 'Municipal Hall', participants: '30 solo parents', budget: 12000, source: 'LGU', date: '2026-04-11' },
-
-            // Senior Citizen
-            { program: 'Senior Citizen', title: 'Social Pension Top-Up for Indigent Seniors', duration: '5 days', venue: 'All Barangays', participants: '200 seniors', budget: 50000, source: 'LGU', date: '2026-04-15' },
-            { program: 'Senior Citizen', title: 'SCID Issuance Drive (Senior Citizen ID)', duration: '10 days', venue: 'MSWDO Office', participants: '150 seniors', budget: 15000, source: 'LGU', date: '2026-04-13' },
-            { program: 'Senior Citizen', title: 'Medical Mission for Senior Citizens', duration: '2 days', venue: 'Municipal Hall', participants: '120 seniors', budget: 35000, source: 'LGU', date: '2026-04-11' },
-
-            // PWD
-            { program: 'PWD', title: 'PWD ID Issuance Drive', duration: '10 days', venue: 'MSWDO Office', participants: '80 PWDs', budget: 15000, source: 'Provincial', date: '2026-04-15' },
-            { program: 'PWD', title: 'PWD Financial Assistance Distribution', duration: '5 days', venue: 'All Barangays', participants: '100 PWDs', budget: 40000, source: 'Provincial', date: '2026-04-13' },
-            { program: 'PWD', title: 'Medical Mission for PWDs', duration: '2 days', venue: 'Municipal Hall', participants: '60 PWDs', budget: 25000, source: 'Provincial', date: '2026-04-11' },
-
-            // Day Care
-            { program: 'Day Care', title: 'Day Care Center Safety and Facility Assessment', duration: '5 days', venue: 'All Barangays', participants: '10 day care centers', budget: 15000, source: 'DSWD', date: '2026-04-15' },
-            { program: 'Day Care', title: 'Learning Materials Procurement', duration: '3 days', venue: 'MSWDO Office', participants: '800 children', budget: 30000, source: 'DSWD', date: '2026-04-13' },
-            { program: 'Day Care', title: 'Child Development Worker Accreditation Support', duration: '10 days', venue: 'All Barangays', participants: '20 workers', budget: 12000, source: 'DSWD', date: '2026-04-11' },
-
-            // SFP
-            { program: 'SFP', title: 'SFP Feeding Cycle 1 - 120 Days Implementation', duration: '120 days', venue: 'All 10 Barangays', participants: '800 children', budget: 400000, source: 'DSWD', date: '2026-04-15' },
-            { program: 'SFP', title: 'SFP Nutrition Status Monitoring', duration: '10 days', venue: 'All Day Care Centers', participants: '800 children', budget: 15000, source: 'DSWD', date: '2026-04-13' },
-            { program: 'SFP', title: 'Food Supplies Procurement (Cycle 1)', duration: '5 days', venue: 'MSWDO Office', participants: 'All Day Care Centers', budget: 250000, source: 'DSWD', date: '2026-04-11' },
-
-            // SLP
-            { program: 'SLP', title: 'Sari-Sari Store Livelihood Package for 4Ps Graduates', duration: '5 days', venue: 'Barangay Poblacion', participants: '25 beneficiaries', budget: 15000, source: 'LGU', date: '2026-04-15' },
-            { program: 'SLP', title: 'Rice Retailing Business Proposal Development', duration: '7 days', venue: 'MSWDO Office', participants: '20 beneficiaries', budget: 18000, source: 'LGU', date: '2026-04-13' },
-            { program: 'SLP', title: 'Frozen Goods Business Training and Start-Up Assistance', duration: '10 days', venue: 'Barangay Bagonawa', participants: '15 beneficiaries', budget: 22000, source: 'LGU', date: '2026-04-11' },
-
-            // Women and Children
-            { program: 'Women and Children', title: 'VAWC Case Management and Counseling Services', duration: '30 days', venue: 'MSWDO Office', participants: '5 cases', budget: 15000, source: 'LGU', date: '2026-04-15' },
-            { program: 'Women and Children', title: 'CICL and CAR Orientation and Awareness Campaign', duration: '5 days', venue: 'All Barangays', participants: '200 youth', budget: 12000, source: 'LGU', date: '2026-04-13' },
-            { program: 'Women and Children', title: 'VAWC Rescue Operations and Temporary Shelter Support', duration: '10 days', venue: 'MSWDO Office', participants: '3 cases', budget: 10000, source: 'LGU', date: '2026-04-11' },
-        ];
+        const allData = <?= json_encode($allRequests) ?>;
 
         // ── Program Badge Classes ──
         const badgeClasses = {
@@ -480,7 +512,7 @@ require 'db_connect.php';
             let csv = '';
             csv += 'Municipal Social Welfare and Development Office\n';
             csv += 'San Enrique, Negros Occidental\n';
-            csv += 'Program Fund Requests Report\n\n';
+            csv += 'Program Report\n\n';
 
             csv += 'Program Filter: ' + programLabel + '\n';
             if (fromDate) csv += 'Date From: ' + fromDate + '\n';
@@ -500,7 +532,7 @@ require 'db_connect.php';
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'Program_Fund_Requests_Report_' + new Date().toISOString().slice(0, 10) + '.csv';
+            a.download = 'Program_Reports_' + new Date().toISOString().slice(0, 10) + '.csv';
             a.click();
             URL.revokeObjectURL(url);
             showToast('CSV exported successfully!');
