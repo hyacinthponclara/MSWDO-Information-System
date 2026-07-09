@@ -253,7 +253,7 @@ require 'db_connect.php';
                 </div>
             </div>
 
-            <!-- Transactions Table (no Status column) -->
+            <!-- Transactions Table with Action Column -->
             <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-up-3">
                 <div class="overflow-x-auto">
                     <table class="w-full text-[12px]" id="transactionTable">
@@ -268,6 +268,7 @@ require 'db_connect.php';
                                 <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold" data-sort="date" onclick="sortTable('date')">
                                     Date Applied <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
+                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100" id="tableBody">
@@ -301,18 +302,18 @@ require 'db_connect.php';
     </div>
 
     <script>
-        // ── Sample Data (no status) ──
+        // ── Sample Data with IDs ──
         const transactions = [
-            { beneficiary: 'Maria Santos', budgetSource: 'FBML', type: 'Medical', amount: 3500, date: '2026-04-14' },
-            { beneficiary: 'Elena Dela Cruz', budgetSource: 'FBML', type: 'Burial', amount: 5000, date: '2026-04-12' },
-            { beneficiary: 'Rodrigo Lim', budgetSource: 'FBML', type: 'Livelihood', amount: 8000, date: '2026-04-10' },
-            { beneficiary: 'Carlo Reyes', budgetSource: 'Educational', type: 'Educational', amount: 5000, date: '2026-04-11' },
-            { beneficiary: 'Ana Delos Santos', budgetSource: 'Educational', type: 'Educational', amount: 2500, date: '2026-04-09' },
-            { beneficiary: 'Josefa Reyes', budgetSource: 'Educational', type: 'Educational', amount: 1200, date: '2026-04-08' },
-            { beneficiary: 'Juan Dela Cruz', budgetSource: 'FBML', type: 'Medical', amount: 4500, date: '2026-04-07' },
-            { beneficiary: 'Luz Bautista', budgetSource: 'FBML', type: 'Financial', amount: 2000, date: '2026-04-06' },
-            { beneficiary: 'Pedro Cruz', budgetSource: 'FBML', type: 'Medical', amount: 3200, date: '2026-04-05' },
-            { beneficiary: 'Rosa Villanueva', budgetSource: 'Educational', type: 'Educational', amount: 8000, date: '2026-04-04' },
+            { id: 1, beneficiary: 'Maria Santos', budgetSource: 'FBML', type: 'Medical', amount: 3500, date: '2026-04-14' },
+            { id: 2, beneficiary: 'Elena Dela Cruz', budgetSource: 'FBML', type: 'Burial', amount: 5000, date: '2026-04-12' },
+            { id: 3, beneficiary: 'Rodrigo Lim', budgetSource: 'FBML', type: 'Livelihood', amount: 8000, date: '2026-04-10' },
+            { id: 4, beneficiary: 'Carlo Reyes', budgetSource: 'Educational', type: 'Educational', amount: 5000, date: '2026-04-11' },
+            { id: 5, beneficiary: 'Ana Delos Santos', budgetSource: 'Educational', type: 'Educational', amount: 2500, date: '2026-04-09' },
+            { id: 6, beneficiary: 'Josefa Reyes', budgetSource: 'Educational', type: 'Educational', amount: 1200, date: '2026-04-08' },
+            { id: 7, beneficiary: 'Juan Dela Cruz', budgetSource: 'FBML', type: 'Medical', amount: 4500, date: '2026-04-07' },
+            { id: 8, beneficiary: 'Luz Bautista', budgetSource: 'FBML', type: 'Financial', amount: 2000, date: '2026-04-06' },
+            { id: 9, beneficiary: 'Pedro Cruz', budgetSource: 'FBML', type: 'Medical', amount: 3200, date: '2026-04-05' },
+            { id: 10, beneficiary: 'Rosa Villanueva', budgetSource: 'Educational', type: 'Educational', amount: 8000, date: '2026-04-04' },
         ];
 
         let currentSort = { key: 'date', dir: 'asc' };
@@ -361,6 +362,11 @@ require 'db_connect.php';
                     <td class="px-5 py-3 text-slate-600">${row.type}</td>
                     <td class="px-5 py-3 font-semibold text-slate-700">₱${row.amount.toLocaleString()}</td>
                     <td class="px-5 py-3 text-slate-400">${row.date}</td>
+                    <td class="px-5 py-3">
+                        <a href="aics_view.php" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
+                             View
+                        </a>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
