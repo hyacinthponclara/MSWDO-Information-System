@@ -224,6 +224,10 @@ require 'db_connect.php';
                                 <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold" data-sort="date" onclick="sortTable('date')">
                                     Date Submitted <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Action</th>
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100" id="tableBody">
@@ -258,16 +262,16 @@ require 'db_connect.php';
     <script>
         // ── Sample Data (PWD fund requests) ──
         const fundRequests = [
-            { title: 'PWD ID Issuance Drive', duration: '10 days', venue: 'MSWDO Office', participants: '80 PWDs', budget: 15000, fundSource: 'Provincial', date: '2026-04-15' },
-            { title: 'PWD Financial Assistance Distribution', duration: '5 days', venue: 'All Barangays', participants: '100 PWDs', budget: 40000, fundSource: 'Provincial', date: '2026-04-13' },
-            { title: 'Medical Mission for PWDs', duration: '2 days', venue: 'Municipal Hall', participants: '60 PWDs', budget: 25000, fundSource: 'Provincial', date: '2026-04-11' },
-            { title: 'PWD Livelihood Skills Training', duration: '7 days', venue: 'Barangay Poblacion', participants: '30 PWDs', budget: 18000, fundSource: 'Provincial', date: '2026-04-09' },
-            { title: 'Assistive Device Distribution (Wheelchairs, Canes, etc.)', duration: '3 days', venue: 'MSWDO Office', participants: '40 PWDs', budget: 35000, fundSource: 'Provincial', date: '2026-04-07' },
-            { title: 'PWD Organization Capacity Building', duration: '2 days', venue: 'Barangay Bagonawa', participants: '25 PWDs', budget: 12000, fundSource: 'Provincial', date: '2026-04-05' },
-            { title: 'PWD Disability Assessment and Profiling', duration: '15 days', venue: 'All Barangays', participants: '150 PWDs', budget: 20000, fundSource: 'Provincial', date: '2026-04-03' },
-            { title: 'PWD Employment Assistance Program', duration: '5 days', venue: 'Municipal Hall', participants: '35 PWDs', budget: 22000, fundSource: 'Provincial', date: '2026-04-01' },
-            { title: 'PWD Education Assistance', duration: '3 days', venue: 'MSWDO Office', participants: '50 PWD students', budget: 28000, fundSource: 'Provincial', date: '2026-03-30' },
-            { title: 'PWD Disaster Preparedness Training', duration: '2 days', venue: 'Barangay Batuan', participants: '20 PWDs', budget: 10000, fundSource: 'Provincial', date: '2026-03-28' },
+            { id: 1, title: 'PWD ID Issuance Drive', duration: '10 days', venue: 'MSWDO Office', participants: '80 PWDs', budget: 15000, fundSource: 'Provincial', date: '2026-04-15' },
+            { id: 2, title: 'PWD Financial Assistance Distribution', duration: '5 days', venue: 'All Barangays', participants: '100 PWDs', budget: 40000, fundSource: 'Provincial', date: '2026-04-13' },
+            { id: 3, title: 'Medical Mission for PWDs', duration: '2 days', venue: 'Municipal Hall', participants: '60 PWDs', budget: 25000, fundSource: 'Provincial', date: '2026-04-11' },
+            { id: 4, title: 'PWD Livelihood Skills Training', duration: '7 days', venue: 'Barangay Poblacion', participants: '30 PWDs', budget: 18000, fundSource: 'Provincial', date: '2026-04-09' },
+            { id: 5, title: 'Assistive Device Distribution (Wheelchairs, Canes, etc.)', duration: '3 days', venue: 'MSWDO Office', participants: '40 PWDs', budget: 35000, fundSource: 'Provincial', date: '2026-04-07' },
+            { id: 6, title: 'PWD Organization Capacity Building', duration: '2 days', venue: 'Barangay Bagonawa', participants: '25 PWDs', budget: 12000, fundSource: 'Provincial', date: '2026-04-05' },
+            { id: 7, title: 'PWD Disability Assessment and Profiling', duration: '15 days', venue: 'All Barangays', participants: '150 PWDs', budget: 20000, fundSource: 'Provincial', date: '2026-04-03' },
+            { id: 8, title: 'PWD Employment Assistance Program', duration: '5 days', venue: 'Municipal Hall', participants: '35 PWDs', budget: 22000, fundSource: 'Provincial', date: '2026-04-01' },
+            { id: 9, title: 'PWD Education Assistance', duration: '3 days', venue: 'MSWDO Office', participants: '50 PWD students', budget: 28000, fundSource: 'Provincial', date: '2026-03-30' },
+            { id: 10, title: 'PWD Disaster Preparedness Training', duration: '2 days', venue: 'Barangay Batuan', participants: '20 PWDs', budget: 10000, fundSource: 'Provincial', date: '2026-03-28' },
         ];
 
         let currentSort = { key: 'date', dir: 'asc' };
@@ -287,6 +291,11 @@ require 'db_connect.php';
                     <td class="px-5 py-3 font-semibold text-slate-700">₱${row.budget.toLocaleString()}</td>
                     <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">${row.fundSource}</span></td>
                     <td class="px-5 py-3 text-slate-400">${row.date}</td>
+                    <td class="px-5 py-3">
+        <a href="project_proposal_view.html" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
+             View
+        </a>
+    </td>
                 `;
                 tbody.appendChild(tr);
             });

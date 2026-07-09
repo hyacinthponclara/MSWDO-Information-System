@@ -224,6 +224,10 @@ require 'db_connect.php';
                                 <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold" data-sort="date" onclick="sortTable('date')">
                                     Date Submitted <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Action</th>
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100" id="tableBody">
@@ -258,16 +262,16 @@ require 'db_connect.php';
     <script>
         // ── Sample Data (Day Care fund requests) ──
         const fundRequests = [
-            { title: 'Day Care Center Safety and Facility Assessment', duration: '5 days', venue: 'All Barangays', participants: '10 day care centers', budget: 15000, fundSource: 'DSWD', date: '2026-04-15' },
-            { title: 'Learning Materials Procurement (Books, Pencils, Paper)', duration: '3 days', venue: 'MSWDO Office', participants: '800 children', budget: 30000, fundSource: 'DSWD', date: '2026-04-13' },
-            { title: 'Child Development Worker Accreditation Support', duration: '10 days', venue: 'All Barangays', participants: '20 workers', budget: 12000, fundSource: 'DSWD', date: '2026-04-11' },
-            { title: 'Day Care Center Repairs and Maintenance', duration: '15 days', venue: 'Barangay Poblacion', participants: '1 center', budget: 25000, fundSource: 'DSWD', date: '2026-04-09' },
-            { title: 'Audio-Visual Equipment for Day Care Centers', duration: '2 days', venue: 'All Barangays', participants: '10 centers', budget: 35000, fundSource: 'DSWD', date: '2026-04-07' },
-            { title: 'Day Care Workers Training and Capacity Building', duration: '3 days', venue: 'Municipal Hall', participants: '25 workers', budget: 18000, fundSource: 'DSWD', date: '2026-04-05' },
-            { title: 'Playground Equipment Installation', duration: '5 days', venue: 'Barangay Bagonawa', participants: '1 center', budget: 22000, fundSource: 'DSWD', date: '2026-04-03' },
-            { title: 'Child Development Worker Hiring Support', duration: '7 days', venue: 'MSWDO Office', participants: '5 new workers', budget: 10000, fundSource: 'DSWD', date: '2026-04-01' },
-            { title: 'Day Care Center Accreditation Processing', duration: '10 days', venue: 'All Barangays', participants: '8 centers', budget: 8000, fundSource: 'DSWD', date: '2026-03-30' },
-            { title: 'Parent Education and Involvement Program', duration: '4 days', venue: 'Barangay Batuan', participants: '50 parents', budget: 15000, fundSource: 'DSWD', date: '2026-03-28' },
+            { id: 1, title: 'Day Care Center Safety and Facility Assessment', duration: '5 days', venue: 'All Barangays', participants: '10 day care centers', budget: 15000, fundSource: 'DSWD', date: '2026-04-15' },
+            { id: 2, title: 'Learning Materials Procurement (Books, Pencils, Paper)', duration: '3 days', venue: 'MSWDO Office', participants: '800 children', budget: 30000, fundSource: 'DSWD', date: '2026-04-13' },
+            { id: 3, title: 'Child Development Worker Accreditation Support', duration: '10 days', venue: 'All Barangays', participants: '20 workers', budget: 12000, fundSource: 'DSWD', date: '2026-04-11' },
+            { id: 4, title: 'Day Care Center Repairs and Maintenance', duration: '15 days', venue: 'Barangay Poblacion', participants: '1 center', budget: 25000, fundSource: 'DSWD', date: '2026-04-09' },
+            { id: 5, title: 'Audio-Visual Equipment for Day Care Centers', duration: '2 days', venue: 'All Barangays', participants: '10 centers', budget: 35000, fundSource: 'DSWD', date: '2026-04-07' },
+            { id: 6, title: 'Day Care Workers Training and Capacity Building', duration: '3 days', venue: 'Municipal Hall', participants: '25 workers', budget: 18000, fundSource: 'DSWD', date: '2026-04-05' },
+            { id: 7, title: 'Playground Equipment Installation', duration: '5 days', venue: 'Barangay Bagonawa', participants: '1 center', budget: 22000, fundSource: 'DSWD', date: '2026-04-03' },
+            { id: 8, title: 'Child Development Worker Hiring Support', duration: '7 days', venue: 'MSWDO Office', participants: '5 new workers', budget: 10000, fundSource: 'DSWD', date: '2026-04-01' },
+            { id: 9, title: 'Day Care Center Accreditation Processing', duration: '10 days', venue: 'All Barangays', participants: '8 centers', budget: 8000, fundSource: 'DSWD', date: '2026-03-30' },
+            { id: 10, title: 'Parent Education and Involvement Program', duration: '4 days', venue: 'Barangay Batuan', participants: '50 parents', budget: 15000, fundSource: 'DSWD', date: '2026-03-28' },
         ];
 
         let currentSort = { key: 'date', dir: 'asc' };
@@ -287,6 +291,11 @@ require 'db_connect.php';
                     <td class="px-5 py-3 font-semibold text-slate-700">₱${row.budget.toLocaleString()}</td>
                     <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">${row.fundSource}</span></td>
                     <td class="px-5 py-3 text-slate-400">${row.date}</td>
+                    <td class="px-5 py-3">
+        <a href="project_proposal_view.html" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
+             View
+        </a>
+    </td>
                 `;
                 tbody.appendChild(tr);
             });

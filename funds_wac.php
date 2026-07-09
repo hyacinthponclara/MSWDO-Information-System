@@ -224,6 +224,10 @@ require 'db_connect.php';
                                 <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold" data-sort="date" onclick="sortTable('date')">
                                     Date Submitted <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Action</th>
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100" id="tableBody">
@@ -258,16 +262,16 @@ require 'db_connect.php';
     <script>
         // ── Sample Data (Women and Children fund requests) ──
         const fundRequests = [
-            { title: 'VAWC Case Management and Counseling Services', duration: '30 days', venue: 'MSWDO Office', participants: '5 cases', budget: 15000, fundSource: 'LGU', date: '2026-04-15' },
-            { title: 'CICL and CAR Orientation and Awareness Campaign', duration: '5 days', venue: 'All Barangays', participants: '200 youth', budget: 12000, fundSource: 'LGU', date: '2026-04-13' },
-            { title: 'VAWC Rescue Operations and Temporary Shelter Support', duration: '10 days', venue: 'MSWDO Office', participants: '3 cases', budget: 10000, fundSource: 'LGU', date: '2026-04-11' },
-            { title: 'Child Abuse Prevention and Protection Training', duration: '3 days', venue: 'Municipal Hall', participants: '50 parents', budget: 8000, fundSource: 'LGU', date: '2026-04-09' },
-            { title: 'VAWC Legal Assistance and Referral Services', duration: '15 days', venue: 'MSWDO Office', participants: '8 cases', budget: 12000, fundSource: 'LGU', date: '2026-04-07' },
-            { title: 'Children in Conflict with the Law (CICL) Diversion Program', duration: '20 days', venue: 'MSWDO Office', participants: '4 CICL', budget: 15000, fundSource: 'LGU', date: '2026-04-05' },
-            { title: 'Child at Risk (CAR) Intervention and Monitoring', duration: '10 days', venue: 'All Barangays', participants: '15 children', budget: 10000, fundSource: 'LGU', date: '2026-04-03' },
-            { title: 'VAWC Barangay Protection Order (BPO) Assistance', duration: '5 days', venue: 'MSWDO Office', participants: '6 cases', budget: 8000, fundSource: 'LGU', date: '2026-04-01' },
-            { title: 'Women and Children Protection Capacity Building for VAWC Desk Officers', duration: '2 days', venue: 'Municipal Hall', participants: '30 desk officers', budget: 15000, fundSource: 'LGU', date: '2026-03-30' },
-            { title: 'Psychosocial Support for VAWC and Child Abuse Victims', duration: '10 days', venue: 'MSWDO Office', participants: '10 victims', budget: 12000, fundSource: 'LGU', date: '2026-03-28' },
+            { id: 1, title: 'VAWC Case Management and Counseling Services', duration: '30 days', venue: 'MSWDO Office', participants: '5 cases', budget: 15000, fundSource: 'LGU', date: '2026-04-15' },
+            { id: 2, title: 'CICL and CAR Orientation and Awareness Campaign', duration: '5 days', venue: 'All Barangays', participants: '200 youth', budget: 12000, fundSource: 'LGU', date: '2026-04-13' },
+            { id: 3, title: 'VAWC Rescue Operations and Temporary Shelter Support', duration: '10 days', venue: 'MSWDO Office', participants: '3 cases', budget: 10000, fundSource: 'LGU', date: '2026-04-11' },
+            { id: 4, title: 'Child Abuse Prevention and Protection Training', duration: '3 days', venue: 'Municipal Hall', participants: '50 parents', budget: 8000, fundSource: 'LGU', date: '2026-04-09' },
+            { id: 5, title: 'VAWC Legal Assistance and Referral Services', duration: '15 days', venue: 'MSWDO Office', participants: '8 cases', budget: 12000, fundSource: 'LGU', date: '2026-04-07' },
+            { id: 6, title: 'Children in Conflict with the Law (CICL) Diversion Program', duration: '20 days', venue: 'MSWDO Office', participants: '4 CICL', budget: 15000, fundSource: 'LGU', date: '2026-04-05' },
+            { id: 7, title: 'Child at Risk (CAR) Intervention and Monitoring', duration: '10 days', venue: 'All Barangays', participants: '15 children', budget: 10000, fundSource: 'LGU', date: '2026-04-03' },
+            { id: 8, title: 'VAWC Barangay Protection Order (BPO) Assistance', duration: '5 days', venue: 'MSWDO Office', participants: '6 cases', budget: 8000, fundSource: 'LGU', date: '2026-04-01' },
+            { id: 9, title: 'Women and Children Protection Capacity Building for VAWC Desk Officers', duration: '2 days', venue: 'Municipal Hall', participants: '30 desk officers', budget: 15000, fundSource: 'LGU', date: '2026-03-30' },
+            { id: 10, title: 'Psychosocial Support for VAWC and Child Abuse Victims', duration: '10 days', venue: 'MSWDO Office', participants: '10 victims', budget: 12000, fundSource: 'LGU', date: '2026-03-28' },
         ];
 
         let currentSort = { key: 'date', dir: 'asc' };
@@ -287,6 +291,11 @@ require 'db_connect.php';
                     <td class="px-5 py-3 font-semibold text-slate-700">₱${row.budget.toLocaleString()}</td>
                     <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">${row.fundSource}</span></td>
                     <td class="px-5 py-3 text-slate-400">${row.date}</td>
+                    <td class="px-5 py-3">
+        <a href="project_proposal_view.html" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
+             View
+        </a>
+    </td>
                 `;
                 tbody.appendChild(tr);
             });

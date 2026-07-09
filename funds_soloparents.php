@@ -224,6 +224,10 @@ require 'db_connect.php';
                                 <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold" data-sort="date" onclick="sortTable('date')">
                                     Date Submitted <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Action</th>
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100" id="tableBody">
@@ -258,16 +262,16 @@ require 'db_connect.php';
     <script>
         // ── Sample Data (Solo Parents fund requests) ──
         const fundRequests = [
-            { title: 'Livelihood Training for Solo Parents (Sari-Sari Store)', duration: '5 days', venue: 'Barangay Poblacion', participants: '25 solo parents', budget: 15000, fundSource: 'LGU', date: '2026-04-15' },
-            { title: 'Educational Assistance for Solo Parents\' Children', duration: '3 days', venue: 'MSWDO Office', participants: '40 children', budget: 20000, fundSource: 'LGU', date: '2026-04-13' },
-            { title: 'Solo Parents Organization Capacity Building', duration: '2 days', venue: 'Municipal Hall', participants: '30 solo parents', budget: 12000, fundSource: 'LGU', date: '2026-04-11' },
-            { title: 'SPID Issuance Drive', duration: '10 days', venue: 'All Barangays', participants: '50 solo parents', budget: 8000, fundSource: 'LGU', date: '2026-04-09' },
-            { title: 'Livelihood Assistance (Rice Retailing)', duration: '7 days', venue: 'Barangay Bagonawa', participants: '20 solo parents', budget: 18000, fundSource: 'LGU', date: '2026-04-07' },
-            { title: 'Solo Parents Emergency Cash Assistance', duration: '1 day', venue: 'MSWDO Office', participants: '35 solo parents', budget: 25000, fundSource: 'LGU', date: '2026-04-05' },
-            { title: 'Parenting and Stress Management Seminar', duration: '2 days', venue: 'Barangay Batuan', participants: '28 solo parents', budget: 10000, fundSource: 'LGU', date: '2026-04-03' },
-            { title: 'Solo Parents Cooperative Formation', duration: '15 days', venue: 'All Barangays', participants: '45 solo parents', budget: 22000, fundSource: 'LGU', date: '2026-04-01' },
-            { title: 'Livelihood Assistance (Food Vending)', duration: '5 days', venue: 'Barangay Baliwagan', participants: '15 solo parents', budget: 16000, fundSource: 'LGU', date: '2026-03-30' },
-            { title: 'SPID Renewal Assistance', duration: '8 days', venue: 'MSWDO Office', participants: '60 solo parents', budget: 7000, fundSource: 'LGU', date: '2026-03-28' },
+            { id: 1, title: 'Livelihood Training for Solo Parents (Sari-Sari Store)', duration: '5 days', venue: 'Barangay Poblacion', participants: '25 solo parents', budget: 15000, fundSource: 'LGU', date: '2026-04-15' },
+            { id: 2, title: 'Educational Assistance for Solo Parents\' Children', duration: '3 days', venue: 'MSWDO Office', participants: '40 children', budget: 20000, fundSource: 'LGU', date: '2026-04-13' },
+            { id: 3, title: 'Solo Parents Organization Capacity Building', duration: '2 days', venue: 'Municipal Hall', participants: '30 solo parents', budget: 12000, fundSource: 'LGU', date: '2026-04-11' },
+            { id: 4, title: 'SPID Issuance Drive', duration: '10 days', venue: 'All Barangays', participants: '50 solo parents', budget: 8000, fundSource: 'LGU', date: '2026-04-09' },
+            { id: 5, title: 'Livelihood Assistance (Rice Retailing)', duration: '7 days', venue: 'Barangay Bagonawa', participants: '20 solo parents', budget: 18000, fundSource: 'LGU', date: '2026-04-07' },
+            { id: 6, title: 'Solo Parents Emergency Cash Assistance', duration: '1 day', venue: 'MSWDO Office', participants: '35 solo parents', budget: 25000, fundSource: 'LGU', date: '2026-04-05' },
+            { id: 7, title: 'Parenting and Stress Management Seminar', duration: '2 days', venue: 'Barangay Batuan', participants: '28 solo parents', budget: 10000, fundSource: 'LGU', date: '2026-04-03' },
+            { id: 8, title: 'Solo Parents Cooperative Formation', duration: '15 days', venue: 'All Barangays', participants: '45 solo parents', budget: 22000, fundSource: 'LGU', date: '2026-04-01' },
+            { id: 9, title: 'Livelihood Assistance (Food Vending)', duration: '5 days', venue: 'Barangay Baliwagan', participants: '15 solo parents', budget: 16000, fundSource: 'LGU', date: '2026-03-30' },
+            { id: 10, title: 'SPID Renewal Assistance', duration: '8 days', venue: 'MSWDO Office', participants: '60 solo parents', budget: 7000, fundSource: 'LGU', date: '2026-03-28' },
         ];
 
         let currentSort = { key: 'date', dir: 'asc' };
@@ -287,6 +291,11 @@ require 'db_connect.php';
                     <td class="px-5 py-3 font-semibold text-slate-700">₱${row.budget.toLocaleString()}</td>
                     <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">${row.fundSource}</span></td>
                     <td class="px-5 py-3 text-slate-400">${row.date}</td>
+                    <td class="px-5 py-3">
+        <a href="project_proposal_view.html" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
+             View
+        </a>
+    </td>
                 `;
                 tbody.appendChild(tr);
             });
