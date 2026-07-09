@@ -227,7 +227,6 @@ $recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
 
             </div>
 
-            <!-- ── QUICK ACTIONS ── -->
             <<!-- ── QUICK ACTIONS ── -->
 <div class="animate-fade-up grid grid-cols-2 sm:grid-cols-4 gap-4">
     <a href="clientregistrationform.php">
@@ -275,7 +274,7 @@ $recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
                         <span class="bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Admin
                             View</span>
                     </div>
-                    <a href="#" class="text-[11px] text-green-500 font-medium hover:text-green-700">Manage budgets →</a>
+                    <a href="budgetmanagement.php" class="text-[11px] text-green-500 font-medium hover:text-green-700">Manage budgets →</a>
                 </div>
                 <div class="p-5">
                     <div class="space-y-3" id="budgetFull"></div>
@@ -288,7 +287,6 @@ $recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
             <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 overflow-hidden">
                 <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                     <h2 class="text-[13px] font-semibold text-green-600">Recent Activity</h2>
-                    <a href="#" class="text-[11px] text-green-500 font-medium hover:text-green-700">View all logs →</a>
                 </div>
                 <div class="divide-y divide-slate-100">
                     <?php if (empty($recent_activity)): ?>
