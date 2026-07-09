@@ -2,6 +2,13 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker']); 
 require 'db_connect.php';
+require 'budget_helpers.php';
+
+// -- BUDGET SUMMARY CARD (same formula as every other budget page) --
+$fundBudget = getProgramBudget($pdo, ['SLP']);
+
+// -- FUND REQUESTS TABLE (live from PROJECT_PROPOSAL) --
+$fundRequestsPhp = getFundRequests($pdo, 'SLP');
 ?>
 
 <!DOCTYPE html>
@@ -166,24 +173,24 @@ require 'db_connect.php';
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱450,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Allocated</p>
-                            <p class="text-xl font-bold text-amber-600">₱292,500</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                            <p class="text-xl font-bold text-blue-600">₱157,500</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fundBudget['remaining'], 0) ?></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 65%</span>
-                            <span>Remaining: 35%</span>
+                            <span>Used: <?= $fundBudget['pct_used'] ?>%</span>
+                            <span>Remaining: <?= 100 - $fundBudget['pct_used'] ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:65%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $fundBudget['pct_used'] ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -261,18 +268,7 @@ require 'db_connect.php';
 
     <script>
         // ── Sample Data (SLP fund requests) ──
-        const fundRequests = [
-            { id: 1, title: 'Sari-Sari Store Livelihood Package for 4Ps Graduates', duration: '5 days', venue: 'Barangay Poblacion', participants: '25 beneficiaries', budget: 15000, fundSource: 'LGU', date: '2026-04-15' },
-            { id: 2, title: 'Rice Retailing Business Proposal Development', duration: '7 days', venue: 'MSWDO Office', participants: '20 beneficiaries', budget: 18000, fundSource: 'LGU', date: '2026-04-13' },
-            { id: 3, title: 'Frozen Goods Business Training and Start-Up Assistance', duration: '10 days', venue: 'Barangay Bagonawa', participants: '15 beneficiaries', budget: 22000, fundSource: 'LGU', date: '2026-04-11' },
-            { id: 4, title: 'SLP Skills Training and Livelihood Assessment', duration: '3 days', venue: 'Municipal Hall', participants: '30 beneficiaries', budget: 12000, fundSource: 'LGU', date: '2026-04-09' },
-            { id: 5, title: 'Livelihood Project Monitoring and Evaluation', duration: '5 days', venue: 'All Barangays', participants: '50 beneficiaries', budget: 10000, fundSource: 'LGU', date: '2026-04-07' },
-            { id: 6, title: 'Food Processing Livelihood Assistance', duration: '10 days', venue: 'Barangay Baliwagan', participants: '18 beneficiaries', budget: 20000, fundSource: 'LGU', date : '2026-04-05' },
-            { id: 7, title: 'SLP Business Proposal Review and Approval', duration: '3 days', venue: 'MSWDO Office', participants: '20 beneficiaries', budget: 8000, fundSource: 'LGU', date: '2026-04-03' },
-            { id: 8, title: 'Livelihood Equipment and Materials Procurement', duration: '5 days', venue: 'All Barangays', participants: '40 beneficiaries', budget: 35000, fundSource: 'LGU', date: '2026-04-01' },
-            { id: 9, title: 'SLP Graduates Tracking and Documentation', duration: '10 days', venue: 'MSWDO Office', participants: '60 beneficiaries', budget: 12000, fundSource: 'LGU', date: '2026-03-30' },
-            { id: 10, title: 'Dressmaking and Tailoring Livelihood Training', duration: '15 days', venue: 'Barangay Batuan', participants: '12 beneficiaries', budget: 18000, fundSource: 'LGU', date: '2026-03-28' },
-        ];
+        const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...fundRequests];

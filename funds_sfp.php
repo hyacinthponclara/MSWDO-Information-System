@@ -2,6 +2,13 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker']);
 require 'db_connect.php';
+require 'budget_helpers.php';
+
+// -- BUDGET SUMMARY CARD (same formula as every other budget page) --
+$fundBudget = getProgramBudget($pdo, ['SFP']);
+
+// -- FUND REQUESTS TABLE (live from PROJECT_PROPOSAL) --
+$fundRequestsPhp = getFundRequests($pdo, 'SFP');
 ?>
 
 <!DOCTYPE html>
@@ -166,24 +173,24 @@ require 'db_connect.php';
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱800,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Allocated</p>
-                            <p class="text-xl font-bold text-amber-600">₱520,000</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                            <p class="text-xl font-bold text-blue-600">₱280,000</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fundBudget['remaining'], 0) ?></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 65%</span>
-                            <span>Remaining: 35%</span>
+                            <span>Used: <?= $fundBudget['pct_used'] ?>%</span>
+                            <span>Remaining: <?= 100 - $fundBudget['pct_used'] ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:65%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $fundBudget['pct_used'] ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -261,18 +268,7 @@ require 'db_connect.php';
 
     <script>
         // ── Sample Data (SFP fund requests) ──
-        const fundRequests = [
-            { id: 1, title: 'SFP Feeding Cycle 1 - 120 Days Implementation', duration: '120 days', venue: 'All 10 Barangays', participants: '800 children', budget: 400000, fundSource: 'DSWD', date: '2026-04-15' },
-            { id: 2, title: 'SFP Nutrition Status Monitoring', duration: '10 days', venue: 'All Day Care Centers', participants: '800 children', budget: 15000, fundSource: 'DSWD', date: '2026-04-13' },
-            { id: 3, title: 'Food Supplies Procurement (Cycle 1)', duration: '5 days', venue: 'MSWDO Office', participants: 'All Day Care Centers', budget: 250000, fundSource: 'DSWD', date: '2026-04-11' },
-            { id: 4, title: 'SFP Feeding Cycle 2 Planning and Coordination', duration: '3 days', venue: 'MSWDO Office', participants: '10 Day Care Workers', budget: 10000, fundSource: 'DSWD', date: '2026-04-09' },
-            { id: 5, title: 'RENI-Compliant Meal Planning Training', duration: '2 days', venue: 'Municipal Hall', participants: '20 Day Care Workers', budget: 15000, fundSource: 'DSWD', date: '2026-04-07' },
-            { id: 6, title: 'SFP Food Supplies Delivery (Cycle 1)', duration: '3 days', venue: 'All Barangays', participants: '10 Day Care Centers', budget: 20000, fundSource: 'DSWD', date: '2026-04-05' },
-            { id: 7, title: 'SFP Child Growth Monitoring', duration: '15 days', venue: 'All Day Care Centers', participants: '800 children', budget: 18000, fundSource: 'DSWD', date: '2026-04-03' },
-            { id: 8, title: 'SFP Coordination Meeting with DSWD Region', duration: '1 day', venue: 'Regional Office', participants: 'MSWDO Staff', budget: 8000, fundSource: 'DSWD', date: '2026-04-01' },
-            { id: 9, title: 'SFP Feeding Cycle 2 Implementation', duration: '120 days', venue: 'All 10 Barangays', participants: '800 children', budget: 400000, fundSource: 'DSWD', date: '2026-03-30' },
-            { id: 10, title: 'SFP End-of-Cycle Evaluation and Reporting', duration: '5 days', venue: 'MSWDO Office', participants: 'MSWDO Staff', budget: 12000, fundSource: 'DSWD', date: '2026-03-28' },
-        ];
+        const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...fundRequests];

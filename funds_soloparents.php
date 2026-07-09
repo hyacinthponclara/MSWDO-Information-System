@@ -2,6 +2,13 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker']); 
 require 'db_connect.php';
+require 'budget_helpers.php';
+
+// -- BUDGET SUMMARY CARD (same formula as every other budget page) --
+$fundBudget = getProgramBudget($pdo, ['Solo Parent Program']);
+
+// -- FUND REQUESTS TABLE (live from PROJECT_PROPOSAL) --
+$fundRequestsPhp = getFundRequests($pdo, 'Solo Parent Program');
 ?>
 
 <!DOCTYPE html>
@@ -166,24 +173,24 @@ require 'db_connect.php';
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱300,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Allocated</p>
-                            <p class="text-xl font-bold text-amber-600">₱195,500</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                            <p class="text-xl font-bold text-blue-600">₱104,500</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fundBudget['remaining'], 0) ?></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 65%</span>
-                            <span>Remaining: 35%</span>
+                            <span>Used: <?= $fundBudget['pct_used'] ?>%</span>
+                            <span>Remaining: <?= 100 - $fundBudget['pct_used'] ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:65%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $fundBudget['pct_used'] ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -261,18 +268,7 @@ require 'db_connect.php';
 
     <script>
         // ── Sample Data (Solo Parents fund requests) ──
-        const fundRequests = [
-            { id: 1, title: 'Livelihood Training for Solo Parents (Sari-Sari Store)', duration: '5 days', venue: 'Barangay Poblacion', participants: '25 solo parents', budget: 15000, fundSource: 'LGU', date: '2026-04-15' },
-            { id: 2, title: 'Educational Assistance for Solo Parents\' Children', duration: '3 days', venue: 'MSWDO Office', participants: '40 children', budget: 20000, fundSource: 'LGU', date: '2026-04-13' },
-            { id: 3, title: 'Solo Parents Organization Capacity Building', duration: '2 days', venue: 'Municipal Hall', participants: '30 solo parents', budget: 12000, fundSource: 'LGU', date: '2026-04-11' },
-            { id: 4, title: 'SPID Issuance Drive', duration: '10 days', venue: 'All Barangays', participants: '50 solo parents', budget: 8000, fundSource: 'LGU', date: '2026-04-09' },
-            { id: 5, title: 'Livelihood Assistance (Rice Retailing)', duration: '7 days', venue: 'Barangay Bagonawa', participants: '20 solo parents', budget: 18000, fundSource: 'LGU', date: '2026-04-07' },
-            { id: 6, title: 'Solo Parents Emergency Cash Assistance', duration: '1 day', venue: 'MSWDO Office', participants: '35 solo parents', budget: 25000, fundSource: 'LGU', date: '2026-04-05' },
-            { id: 7, title: 'Parenting and Stress Management Seminar', duration: '2 days', venue: 'Barangay Batuan', participants: '28 solo parents', budget: 10000, fundSource: 'LGU', date: '2026-04-03' },
-            { id: 8, title: 'Solo Parents Cooperative Formation', duration: '15 days', venue: 'All Barangays', participants: '45 solo parents', budget: 22000, fundSource: 'LGU', date: '2026-04-01' },
-            { id: 9, title: 'Livelihood Assistance (Food Vending)', duration: '5 days', venue: 'Barangay Baliwagan', participants: '15 solo parents', budget: 16000, fundSource: 'LGU', date: '2026-03-30' },
-            { id: 10, title: 'SPID Renewal Assistance', duration: '8 days', venue: 'MSWDO Office', participants: '60 solo parents', budget: 7000, fundSource: 'LGU', date: '2026-03-28' },
-        ];
+        const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...fundRequests];

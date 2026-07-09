@@ -2,6 +2,13 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker']); 
 require 'db_connect.php';
+require 'budget_helpers.php';
+
+// -- BUDGET SUMMARY CARD (same formula as every other budget page) --
+$fundBudget = getProgramBudget($pdo, ['Day Care Center Program']);
+
+// -- FUND REQUESTS TABLE (live from PROJECT_PROPOSAL) --
+$fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
 ?>
 
 <!DOCTYPE html>
@@ -166,24 +173,24 @@ require 'db_connect.php';
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱350,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Allocated</p>
-                            <p class="text-xl font-bold text-amber-600">₱200,000</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                            <p class="text-xl font-bold text-blue-600">₱150,000</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fundBudget['remaining'], 0) ?></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 57%</span>
-                            <span>Remaining: 43%</span>
+                            <span>Used: <?= $fundBudget['pct_used'] ?>%</span>
+                            <span>Remaining: <?= 100 - $fundBudget['pct_used'] ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:57%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $fundBudget['pct_used'] ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -261,18 +268,7 @@ require 'db_connect.php';
 
     <script>
         // ── Sample Data (Day Care fund requests) ──
-        const fundRequests = [
-            { id: 1, title: 'Day Care Center Safety and Facility Assessment', duration: '5 days', venue: 'All Barangays', participants: '10 day care centers', budget: 15000, fundSource: 'DSWD', date: '2026-04-15' },
-            { id: 2, title: 'Learning Materials Procurement (Books, Pencils, Paper)', duration: '3 days', venue: 'MSWDO Office', participants: '800 children', budget: 30000, fundSource: 'DSWD', date: '2026-04-13' },
-            { id: 3, title: 'Child Development Worker Accreditation Support', duration: '10 days', venue: 'All Barangays', participants: '20 workers', budget: 12000, fundSource: 'DSWD', date: '2026-04-11' },
-            { id: 4, title: 'Day Care Center Repairs and Maintenance', duration: '15 days', venue: 'Barangay Poblacion', participants: '1 center', budget: 25000, fundSource: 'DSWD', date: '2026-04-09' },
-            { id: 5, title: 'Audio-Visual Equipment for Day Care Centers', duration: '2 days', venue: 'All Barangays', participants: '10 centers', budget: 35000, fundSource: 'DSWD', date: '2026-04-07' },
-            { id: 6, title: 'Day Care Workers Training and Capacity Building', duration: '3 days', venue: 'Municipal Hall', participants: '25 workers', budget: 18000, fundSource: 'DSWD', date: '2026-04-05' },
-            { id: 7, title: 'Playground Equipment Installation', duration: '5 days', venue: 'Barangay Bagonawa', participants: '1 center', budget: 22000, fundSource: 'DSWD', date: '2026-04-03' },
-            { id: 8, title: 'Child Development Worker Hiring Support', duration: '7 days', venue: 'MSWDO Office', participants: '5 new workers', budget: 10000, fundSource: 'DSWD', date: '2026-04-01' },
-            { id: 9, title: 'Day Care Center Accreditation Processing', duration: '10 days', venue: 'All Barangays', participants: '8 centers', budget: 8000, fundSource: 'DSWD', date: '2026-03-30' },
-            { id: 10, title: 'Parent Education and Involvement Program', duration: '4 days', venue: 'Barangay Batuan', participants: '50 parents', budget: 15000, fundSource: 'DSWD', date: '2026-03-28' },
-        ];
+        const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...fundRequests];

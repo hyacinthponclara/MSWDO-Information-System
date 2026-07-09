@@ -2,6 +2,13 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker']); 
 require 'db_connect.php';
+require 'budget_helpers.php';
+
+// -- BUDGET SUMMARY CARD (same formula as every other budget page) --
+$fundBudget = getProgramBudget($pdo, ['Senior Citizen Program']);
+
+// -- FUND REQUESTS TABLE (live from PROJECT_PROPOSAL) --
+$fundRequestsPhp = getFundRequests($pdo, 'Senior Citizen Program');
 ?>
 
 <!DOCTYPE html>
@@ -166,24 +173,24 @@ require 'db_connect.php';
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱800,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Allocated</p>
-                            <p class="text-xl font-bold text-amber-600">₱520,000</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                            <p class="text-xl font-bold text-blue-600">₱280,000</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fundBudget['remaining'], 0) ?></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 65%</span>
-                            <span>Remaining: 35%</span>
+                            <span>Used: <?= $fundBudget['pct_used'] ?>%</span>
+                            <span>Remaining: <?= 100 - $fundBudget['pct_used'] ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:65%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $fundBudget['pct_used'] ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -261,18 +268,7 @@ require 'db_connect.php';
 
     <script>
         // ── Sample Data (Senior Citizen fund requests) ──
-        const fundRequests = [
-            { id: 1 , title: 'Social Pension Top-Up for Indigent Seniors', duration: '5 days', venue: 'All Barangays', participants: '200 seniors', budget: 50000, fundSource: 'LGU', date: '2026-04-15' },
-            { id: 2, title: 'SCID Issuance Drive (Senior Citizen ID)', duration: '10 days', venue: 'MSWDO Office', participants: '150 seniors', budget: 15000, fundSource: 'LGU', date: '2026-04-13' },
-            { id: 3, title: 'Medical Mission for Senior Citizens', duration: '2 days', venue: 'Municipal Hall', participants: '120 seniors', budget: 35000, fundSource: 'LGU', date: '2026-04-11' },
-            { id: 4, title: 'Centenarian Benefit Processing', duration: '5 days', venue: 'MSWDO Office', participants: '5 centenarians', budget: 50000, fundSource: 'LGU', date: '2026-04-09' },
-            { id: 5, title: 'Feeding Program for Indigent Seniors', duration: '20 days', venue: 'Barangay Poblacion', participants: '80 seniors', budget: 40000, fundSource: 'LGU', date: '2026-04-07' },
-            { id: 6, title: 'Senior Citizen Organization Capacity Building', duration: '2 days', venue: 'Barangay Bagonawa', participants: '60 seniors', budget: 18000, fundSource: 'LGU', date: '2026-04-05' },
-            { id: 7, title: 'Home Visitation and Assistance for Bedridden Seniors', duration: '10 days', venue: 'All Barangays', participants: '30 bedridden seniors', budget: 25000, fundSource: 'LGU', date: '2026-04-03' },
-            { id: 8, title: 'Senior Citizen Sports and Wellness Program', duration: '3 days', venue: 'Municipal Gym', participants: '100 seniors', budget: 30000, fundSource: 'LGU', date: '2026-04-01' },
-            { id: 9, title: 'OCTOGENARIAN (80-85) and NONAGENARIAN (90-95) Assistance', duration: '7 days', venue: 'All Barangays', participants: '40 seniors', budget: 45000, fundSource: 'LGU', date: '2026-03-30' },
-            { id: 10, title: 'Senior Citizen Christmas Package Distribution', duration: '5 days', venue: 'All Barangays', participants: '250 seniors', budget: 60000, fundSource: 'LGU', date: '2026-03-28' },
-        ];
+        const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...fundRequests];

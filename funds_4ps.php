@@ -2,6 +2,13 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker']); 
 require 'db_connect.php';
+require 'budget_helpers.php';
+
+// -- BUDGET SUMMARY CARD (same formula as every other budget page) --
+$fundBudget = getProgramBudget($pdo, ['4Ps']);
+
+// -- FUND REQUESTS TABLE (live from PROJECT_PROPOSAL) --
+$fundRequestsPhp = getFundRequests($pdo, '4Ps');
 ?>
 
 <!DOCTYPE html>
@@ -179,24 +186,24 @@ require 'db_connect.php';
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱30,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Allocated</p>
-                            <p class="text-xl font-bold text-amber-600">₱18,500</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                            <p class="text-xl font-bold text-blue-600">₱11,500</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fundBudget['remaining'], 0) ?></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 62%</span>
-                            <span>Remaining: 38%</span>
+                            <span>Used: <?= $fundBudget['pct_used'] ?>%</span>
+                            <span>Remaining: <?= 100 - $fundBudget['pct_used'] ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:62%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $fundBudget['pct_used'] ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -295,18 +302,7 @@ require 'db_connect.php';
 
     <script>
         // ── Sample Data (4Ps fund requests) ──
-        const fundRequests = [
-            { id: 1, title: 'Feeding Program for Malnourished Children', duration: '10 days', venue: 'Barangay Poblacion', participants: '50 children', budget: 5000, fundSource: 'DSWD', date: '2026-04-14' },
-            { id: 2, title: 'Livelihood Skills Training for 4Ps Beneficiaries', duration: '5 days', venue: 'MSWDO Office', participants: '30 beneficiaries', budget: 8000, fundSource: 'DSWD', date: '2026-04-12' },
-            { id: 3, title: 'Community Garden Project', duration: '15 days', venue: 'Barangay Bagonawa', participants: '20 families', budget: 3000, fundSource: 'DSWD', date: '2026-04-10' },
-            { id: 4, title: 'Parenting Seminar and Family Development Session', duration: '2 days', venue: 'Municipal Hall', participants: '40 parents', budget: 2500, fundSource: 'DSWD', date: '2026-04-08' },
-            { id: 5, title: 'School Supplies Distribution', duration: '3 days', venue: 'All Barangays', participants: '100 children', budget: 4000, fundSource: 'DSWD', date: '2026-04-06' },
-            { id: 6, title: 'Health and Nutrition Monitoring', duration: '20 days', venue: 'Barangay Health Centers', participants: '200 children', budget: 2000, fundSource: 'DSWD', date: '2026-04-05' },
-            { id: 7, title: 'Community Clean-Up Drive (4Ps)', duration: '7 days', venue: 'All Barangays', participants: '150 volunteers', budget: 3500, fundSource: 'DSWD', date: '2026-04-03' },
-            { id: 8, title: 'Financial Literacy Workshop', duration: '3 days', venue: 'MSWDO Office', participants: '60 beneficiaries', budget: 2200, fundSource: 'DSWD', date: '2026-04-02' },
-            { id: 9, title: 'Emergency Food Assistance', duration: '1 day', venue: 'Barangay Baliwagan', participants: '80 families', budget: 6000, fundSource: 'DSWD', date: '2026-04-02'},
-            { id: 10, title: 'Educational Support for 4Ps Children', duration: '5 days', venue: 'Barangay Batuan', participants: '45 children', budget: 2800, fundSource: 'DSWD', date: '2026-03-28' },
-        ];
+        const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...fundRequests];

@@ -2,6 +2,55 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker', 'Staff']);
 require 'db_connect.php';
+require 'budget_helpers.php';
+
+// ── BUDGET SUMMARY CARDS (same formula as every other budget page) ──
+$aicsFbmlBudget = getProgramBudget($pdo, ['AICS FBML']);
+$aicsEduBudget  = getProgramBudget($pdo, ['AICS Educational']);
+
+// ── TRANSACTIONS TABLE ──────────────────────────────────────────────
+// AICS FBML availments are split across 4 subtype tables (financial, burial,
+// medical, livelihood); AICS Educational has its own subtype table. Union
+// them all together, tagging each with its type and budget source, so the
+// table shows every real availment instead of hardcoded rows.
+$aicsSubtypes = [
+    ['table' => 'AICS_FINANCIAL',   'type' => 'Financial',   'source' => 'FBML'],
+    ['table' => 'AICS_BURIAL',      'type' => 'Burial',      'source' => 'FBML'],
+    ['table' => 'AICS_MEDICAL',     'type' => 'Medical',     'source' => 'FBML'],
+    ['table' => 'AICS_LIVELIHOOD',  'type' => 'Livelihood',  'source' => 'FBML'],
+    ['table' => 'AICS_EDUCATIONAL', 'type' => 'Educational', 'source' => 'Educational'],
+];
+
+$aicsTransactions = [];
+$rowId = 1;
+foreach ($aicsSubtypes as $sub) {
+    $stmt = $pdo->prepare("
+        SELECT
+            a.availment_id,
+            a.av_amount,
+            a.av_date_applied,
+            a.av_status,
+            c.cl_firstname,
+            c.cl_lastname
+        FROM {$sub['table']} t
+        JOIN AVAILMENT a ON a.availment_id = t.availment_id
+        JOIN CLIENT c ON c.client_id = a.client_id
+        ORDER BY a.av_date_applied DESC
+    ");
+    $stmt->execute();
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $aicsTransactions[] = [
+            'id'           => $rowId++,
+            'beneficiary'  => trim($row['cl_firstname'] . ' ' . $row['cl_lastname']),
+            'budgetSource' => $sub['source'],
+            'type'         => $sub['type'],
+            'amount'       => (float) $row['av_amount'],
+            'status'       => $row['av_status'],
+            'date'         => $row['av_date_applied'],
+        ];
+    }
+}
+usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
 ?>
 
 <!DOCTYPE html>
@@ -167,24 +216,24 @@ require 'db_connect.php';
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱1,800,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($aicsFbmlBudget['total'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Spent</p>
-                            <p class="text-xl font-bold text-amber-600">₱1,260,000</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($aicsFbmlBudget['spent'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                            <p class="text-xl font-bold text-blue-600">₱540,000</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($aicsFbmlBudget['remaining'], 0) ?></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 70%</span>
-                            <span>Remaining: 30%</span>
+                            <span>Used: <?= $aicsFbmlBudget['pct_used'] ?>%</span>
+                            <span>Remaining: <?= 100 - $aicsFbmlBudget['pct_used'] ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:70%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $aicsFbmlBudget['pct_used'] ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -198,24 +247,24 @@ require 'db_connect.php';
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱200,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($aicsEduBudget['total'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Spent</p>
-                            <p class="text-xl font-bold text-amber-600">₱120,000</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($aicsEduBudget['spent'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                            <p class="text-xl font-bold text-blue-600">₱80,000</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($aicsEduBudget['remaining'], 0) ?></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 60%</span>
-                            <span>Remaining: 40%</span>
+                            <span>Used: <?= $aicsEduBudget['pct_used'] ?>%</span>
+                            <span>Remaining: <?= 100 - $aicsEduBudget['pct_used'] ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:60%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $aicsEduBudget['pct_used'] ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -302,19 +351,8 @@ require 'db_connect.php';
     </div>
 
     <script>
-        // ── Sample Data with IDs ──
-        const transactions = [
-            { id: 1, beneficiary: 'Maria Santos', budgetSource: 'FBML', type: 'Medical', amount: 3500, date: '2026-04-14' },
-            { id: 2, beneficiary: 'Elena Dela Cruz', budgetSource: 'FBML', type: 'Burial', amount: 5000, date: '2026-04-12' },
-            { id: 3, beneficiary: 'Rodrigo Lim', budgetSource: 'FBML', type: 'Livelihood', amount: 8000, date: '2026-04-10' },
-            { id: 4, beneficiary: 'Carlo Reyes', budgetSource: 'Educational', type: 'Educational', amount: 5000, date: '2026-04-11' },
-            { id: 5, beneficiary: 'Ana Delos Santos', budgetSource: 'Educational', type: 'Educational', amount: 2500, date: '2026-04-09' },
-            { id: 6, beneficiary: 'Josefa Reyes', budgetSource: 'Educational', type: 'Educational', amount: 1200, date: '2026-04-08' },
-            { id: 7, beneficiary: 'Juan Dela Cruz', budgetSource: 'FBML', type: 'Medical', amount: 4500, date: '2026-04-07' },
-            { id: 8, beneficiary: 'Luz Bautista', budgetSource: 'FBML', type: 'Financial', amount: 2000, date: '2026-04-06' },
-            { id: 9, beneficiary: 'Pedro Cruz', budgetSource: 'FBML', type: 'Medical', amount: 3200, date: '2026-04-05' },
-            { id: 10, beneficiary: 'Rosa Villanueva', budgetSource: 'Educational', type: 'Educational', amount: 8000, date: '2026-04-04' },
-        ];
+        // ── Live data from the database ──
+        const transactions = <?= json_encode($aicsTransactions) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...transactions];

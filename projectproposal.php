@@ -21,6 +21,55 @@ function saveFile($field, $folder)
 
 $errors = [];
 
+// Determine which program this proposal is for: GET on first load
+// (from the card the user clicked on requestfund.php), POST on resubmit
+// after a validation error.
+$program_id = (int) ($_POST['program_id'] ?? $_GET['program_id'] ?? 0);
+
+$progStmt = $pdo->prepare("SELECT program_id, program_name, prog_annual_budget FROM PROGRAM WHERE program_id = ?");
+$progStmt->execute([$program_id]);
+$program = $progStmt->fetch(PDO::FETCH_ASSOC);
+
+// No valid program selected (e.g. someone loaded this page directly) -
+// send them back to pick one instead of letting an untied proposal through.
+if (!$program) {
+    header("Location: requestfund.php");
+    exit;
+}
+
+// Remaining budget = annual budget - approved/released client availments
+// - amounts already reserved by project proposals (proposals reserve funds
+// immediately on submission, not just once approved).
+// $forUpdate locks the PROGRAM row so two people submitting at the same
+// moment can't both slip in under a budget that only has room for one.
+function getRemainingBudget($pdo, $program_id, $annual_budget, $forUpdate = false)
+{
+    if ($forUpdate) {
+        $lock = $pdo->prepare("SELECT program_id FROM PROGRAM WHERE program_id = ? FOR UPDATE");
+        $lock->execute([$program_id]);
+    }
+
+    $availStmt = $pdo->prepare("
+        SELECT COALESCE(SUM(av_amount), 0)
+        FROM AVAILMENT
+        WHERE program_id = ? AND av_status IN ('Approved', 'Released')
+    ");
+    $availStmt->execute([$program_id]);
+    $spentAvailment = (float) $availStmt->fetchColumn();
+
+    $propStmt = $pdo->prepare("
+        SELECT COALESCE(SUM(pp_budget), 0)
+        FROM PROJECT_PROPOSAL
+        WHERE program_id = ?
+    ");
+    $propStmt->execute([$program_id]);
+    $spentProposals = (float) $propStmt->fetchColumn();
+
+    return (float) $annual_budget - $spentAvailment - $spentProposals;
+}
+
+$remaining_budget = getRemainingBudget($pdo, $program_id, $program['prog_annual_budget']);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_id = $_SESSION['user_id'];
 
@@ -52,6 +101,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($pp_budget <= 0) {
         $errors[] = 'Enter a valid budgetary requirement.';
+    } elseif ($pp_budget > $remaining_budget) {
+        $errors[] = 'Requested amount (₱' . number_format($pp_budget, 2) . ') exceeds the remaining budget for '
+            . $program['program_name'] . ' (₱' . number_format($remaining_budget, 2) . ' remaining).';
     }
     if ($pp_fund_source === '') {
         $errors[] = 'Source of fund is required.';
@@ -63,30 +115,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        $pp_document = saveFile('pp_document', 'uploads/project_proposals/');
+        $pdo->beginTransaction();
+        try {
+            // Re-check under lock in case another proposal/availment was
+            // approved in the moment between page load and this submit.
+            $lockedRemaining = getRemainingBudget($pdo, $program_id, $program['prog_annual_budget'], true);
 
-        $stmt = $pdo->prepare("
-            INSERT INTO PROJECT_PROPOSAL (
-                user_id, pp_title, pp_date_from, pp_date_to, pp_venue,
-                pp_num_participants, pp_participant_desc, pp_budget,
-                pp_fund_source, pp_document
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([
-            $user_id,
-            $pp_title,
-            $pp_date_from,
-            $pp_date_to,
-            $pp_venue,
-            $pp_num_participants,
-            $pp_participant_desc,
-            $pp_budget,
-            $pp_fund_source,
-            $pp_document
-        ]);
+            if ($pp_budget > $lockedRemaining) {
+                $pdo->rollBack();
+                $remaining_budget = $lockedRemaining;
+                $errors[] = 'Requested amount (₱' . number_format($pp_budget, 2) . ') exceeds the remaining budget for '
+                    . $program['program_name'] . ' (₱' . number_format($lockedRemaining, 2) . ' remaining). '
+                    . 'This may have changed since the page loaded — please review and resubmit.';
+            } else {
+                $pp_document = saveFile('pp_document', 'uploads/project_proposals/');
 
-        header("Location: projectproposal.php?submitted=1");
-        exit;
+                $stmt = $pdo->prepare("
+                    INSERT INTO PROJECT_PROPOSAL (
+                        user_id, program_id, pp_title, pp_date_from, pp_date_to, pp_venue,
+                        pp_num_participants, pp_participant_desc, pp_budget,
+                        pp_fund_source, pp_document
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $user_id,
+                    $program_id,
+                    $pp_title,
+                    $pp_date_from,
+                    $pp_date_to,
+                    $pp_venue,
+                    $pp_num_participants,
+                    $pp_participant_desc,
+                    $pp_budget,
+                    $pp_fund_source,
+                    $pp_document
+                ]);
+
+                $pdo->commit();
+
+                header("Location: projectproposal.php?program_id=" . $program_id . "&submitted=1");
+                exit;
+            }
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            $errors[] = 'Something went wrong while saving your proposal. Please try again.';
+        }
     }
 }
 ?>
@@ -297,6 +370,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="animate-fade-up">
                     <h1 class="text-xl font-serif text-green-600">Submit Project Proposal</h1>
+                    <p class="text-[13px] text-slate-500 mt-1">
+                        For program: <span class="font-semibold text-green-700"><?= htmlspecialchars($program['program_name']) ?></span>
+                    </p>
                 </div>
 
                 <?php if (!empty($errors)): ?>
@@ -310,6 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
 
                 <form id="proposalForm" method="POST" action="projectproposal.php" enctype="multipart/form-data">
+                    <input type="hidden" name="program_id" value="<?= (int) $program_id ?>">
 
                     <!-- ── Project Information ── -->
                     <div class="section-card animate-fade-up-1">
@@ -369,9 +446,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="relative">
                                     <span
                                         class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₱</span>
-                                    <input type="number" min="0" step="0.01" id="budgetReq" name="pp_budget"
+                                    <input type="number" min="0" max="<?= $remaining_budget > 0 ? htmlspecialchars($remaining_budget) : 0 ?>" step="0.01" id="budgetReq" name="pp_budget"
                                         class="field pl-8" value="<?= htmlspecialchars($_POST['pp_budget'] ?? '') ?>">
                                 </div>
+                                <input type="hidden" id="remainingBudget" value="<?= (float) $remaining_budget ?>">
+                                <p class="text-[11px] mt-1.5">
+                                    <i class="fas fa-wallet mr-1"></i>
+                                    Remaining budget for <?= htmlspecialchars($program['program_name']) ?>:
+                                    <span class="font-semibold <?= $remaining_budget > 0 ? 'text-green-600' : 'text-red-600' ?>">
+                                        ₱<?= number_format($remaining_budget, 2) ?>
+                                    </span>
+                                </p>
                             </div>
 
                             <div>
@@ -529,6 +614,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!participantDesc) { showToast('Please enter a description of participants.', 'error'); return; }  
             if (!budget || parseFloat(budget) <= 0) {
                 showToast('Enter a valid budget amount.', 'error');
+                return;
+            }
+            const remainingBudget = parseFloat(document.getElementById('remainingBudget').value);
+            if (parseFloat(budget) > remainingBudget) {
+                showToast(`Requested amount exceeds the remaining budget (₱${remainingBudget.toLocaleString(undefined, {minimumFractionDigits: 2})} left).`, 'error');
                 return;
             }
             if (!fundSource) { showToast('Please enter the Source of Fund.', 'error'); return; }

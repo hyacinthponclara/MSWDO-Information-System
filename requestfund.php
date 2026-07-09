@@ -136,56 +136,56 @@ require 'db_connect.php';
                 <div class="animate-fade-up-1 grid grid-cols-2 sm:grid-cols-4 gap-4">
 
                     <!-- 4Ps -->
-                    <a href="projectproposal.php" class="prog-card">
+                    <a href="projectproposal.php?program_id=3" class="prog-card">
                         <div class="card-icon"><i class="fas fa-home"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">4Ps</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Pantawid Pamilyang Pilipino Program</p>
                     </a>
 
                     <!-- SLP -->
-                    <a href="projectproposal.php" class="prog-card">
+                    <a href="projectproposal.php?program_id=4" class="prog-card">
                         <div class="card-icon"><i class="fas fa-hand-holding-usd"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">SLP</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Sustainable Livelihood Program</p>
                     </a>
 
                     <!-- SFP -->
-                    <a href="projectproposal.php" class="prog-card">
+                    <a href="projectproposal.php?program_id=5" class="prog-card">
                         <div class="card-icon"><i class="fas fa-utensils"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">SFP</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Supplementary Feeding Program</p>
                     </a>
 
                     <!-- Day Care -->
-                    <a href="projectproposal.php" class="prog-card">
+                    <a href="projectproposal.php?program_id=6" class="prog-card">
                         <div class="card-icon"><i class="fas fa-school"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">Day Care</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Day Care Program</p>
                     </a>
 
                     <!-- Senior Citizen -->
-                    <a href="projectproposal.php" class="prog-card">
+                    <a href="projectproposal.php?program_id=8" class="prog-card">
                         <div class="card-icon"><i class="fas fa-user-friends"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">Senior Citizens Program</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Pension & ID</p>
                     </a>
 
                     <!-- PWD -->
-                    <a href="projectproposal.php" class="prog-card">
+                    <a href="projectproposal.php?program_id=9" class="prog-card">
                         <div class="card-icon"><i class="fas fa-wheelchair"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">PWD</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Persons with Disabilities Program</p>
                     </a>
 
                     <!-- Solo Parent -->
-                    <a href="projectproposal.php" class="prog-card">
+                    <a href="projectproposal.php?program_id=10" class="prog-card">
                         <div class="card-icon"><i class="fas fa-user"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">Solo Parents Program</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">ID & Assistance</p>
                     </a>
 
                     <!-- Women & Child Protection -->
-                    <a href="projectproposal.php" class="prog-card">
+                    <a href="projectproposal.php?program_id=7" class="prog-card">
                         <div class="card-icon"><i class="fas fa-shield-alt"></i></div>
                         <p class="text-[14px] font-semibold text-hunter-600">Women & Child Protection</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">Women & Child Protection Program</p>

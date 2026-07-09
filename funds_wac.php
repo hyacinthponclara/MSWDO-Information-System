@@ -2,6 +2,13 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker']); 
 require 'db_connect.php';
+require 'budget_helpers.php';
+
+// -- BUDGET SUMMARY CARD (same formula as every other budget page) --
+$fundBudget = getProgramBudget($pdo, ['Women and Child Protection']);
+
+// -- FUND REQUESTS TABLE (live from PROJECT_PROPOSAL) --
+$fundRequestsPhp = getFundRequests($pdo, 'Women and Child Protection');
 ?>
 
 <!DOCTYPE html>
@@ -166,24 +173,24 @@ require 'db_connect.php';
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱100,000</p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Allocated</p>
-                            <p class="text-xl font-bold text-amber-600">₱65,000</p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?></p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                            <p class="text-xl font-bold text-blue-600">₱35,000</p>
+                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fundBudget['remaining'], 0) ?></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Used: 65%</span>
-                            <span>Remaining: 35%</span>
+                            <span>Used: <?= $fundBudget['pct_used'] ?>%</span>
+                            <span>Remaining: <?= 100 - $fundBudget['pct_used'] ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:65%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $fundBudget['pct_used'] ?>%"></div>
                         </div>
                     </div>
                 </div>
@@ -261,18 +268,7 @@ require 'db_connect.php';
 
     <script>
         // ── Sample Data (Women and Children fund requests) ──
-        const fundRequests = [
-            { id: 1, title: 'VAWC Case Management and Counseling Services', duration: '30 days', venue: 'MSWDO Office', participants: '5 cases', budget: 15000, fundSource: 'LGU', date: '2026-04-15' },
-            { id: 2, title: 'CICL and CAR Orientation and Awareness Campaign', duration: '5 days', venue: 'All Barangays', participants: '200 youth', budget: 12000, fundSource: 'LGU', date: '2026-04-13' },
-            { id: 3, title: 'VAWC Rescue Operations and Temporary Shelter Support', duration: '10 days', venue: 'MSWDO Office', participants: '3 cases', budget: 10000, fundSource: 'LGU', date: '2026-04-11' },
-            { id: 4, title: 'Child Abuse Prevention and Protection Training', duration: '3 days', venue: 'Municipal Hall', participants: '50 parents', budget: 8000, fundSource: 'LGU', date: '2026-04-09' },
-            { id: 5, title: 'VAWC Legal Assistance and Referral Services', duration: '15 days', venue: 'MSWDO Office', participants: '8 cases', budget: 12000, fundSource: 'LGU', date: '2026-04-07' },
-            { id: 6, title: 'Children in Conflict with the Law (CICL) Diversion Program', duration: '20 days', venue: 'MSWDO Office', participants: '4 CICL', budget: 15000, fundSource: 'LGU', date: '2026-04-05' },
-            { id: 7, title: 'Child at Risk (CAR) Intervention and Monitoring', duration: '10 days', venue: 'All Barangays', participants: '15 children', budget: 10000, fundSource: 'LGU', date: '2026-04-03' },
-            { id: 8, title: 'VAWC Barangay Protection Order (BPO) Assistance', duration: '5 days', venue: 'MSWDO Office', participants: '6 cases', budget: 8000, fundSource: 'LGU', date: '2026-04-01' },
-            { id: 9, title: 'Women and Children Protection Capacity Building for VAWC Desk Officers', duration: '2 days', venue: 'Municipal Hall', participants: '30 desk officers', budget: 15000, fundSource: 'LGU', date: '2026-03-30' },
-            { id: 10, title: 'Psychosocial Support for VAWC and Child Abuse Victims', duration: '10 days', venue: 'MSWDO Office', participants: '10 victims', budget: 12000, fundSource: 'LGU', date: '2026-03-28' },
-        ];
+        const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...fundRequests];

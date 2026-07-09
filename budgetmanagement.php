@@ -17,25 +17,29 @@ SELECT
     p.prog_start_date,
     p.prog_end_date,
 
-    COALESCE(SUM(a.av_amount),0) AS spent,
+    COALESCE(av.spent_availment, 0) AS spent_availment,
+    COALESCE(pp.spent_proposals, 0) AS spent_proposals,
+
+    COALESCE(av.spent_availment, 0) + COALESCE(pp.spent_proposals, 0) AS spent,
 
     p.prog_annual_budget -
-    COALESCE(SUM(a.av_amount),0) AS remaining
+    COALESCE(av.spent_availment, 0) -
+    COALESCE(pp.spent_proposals, 0) AS remaining
 
 FROM PROGRAM p
 
-LEFT JOIN AVAILMENT a
-ON a.program_id = p.program_id
-AND a.av_status IN ('Approved','Released')
+LEFT JOIN (
+    SELECT program_id, SUM(av_amount) AS spent_availment
+    FROM AVAILMENT
+    WHERE av_status IN ('Approved','Released')
+    GROUP BY program_id
+) av ON av.program_id = p.program_id
 
-GROUP BY
-    p.program_id,
-    p.program_name,
-    p.prog_period,
-    p.prog_funding_source,
-    p.prog_annual_budget,
-    p.prog_start_date,
-    p.prog_end_date");
+LEFT JOIN (
+    SELECT program_id, SUM(pp_budget) AS spent_proposals
+    FROM PROJECT_PROPOSAL
+    GROUP BY program_id
+) pp ON pp.program_id = p.program_id");
 
 $programs = $programStmt->fetchAll(PDO::FETCH_ASSOC);
 

@@ -2,6 +2,7 @@
 require 'auth.php';
 requireRole(['Admin', 'Social Worker']);
 require 'db_connect.php';
+require 'budget_helpers.php';
 
 // ── STAT CARDS ─────────────────────────────────────────────
 $totalClientsDB = $pdo->query("SELECT COUNT(*) FROM CLIENT");
@@ -15,29 +16,20 @@ $availmentsMonthDB = $pdo->query("
 ");
 $availments_this_month = (int)$availmentsMonthDB->fetchColumn();
 
-$budgetAlertsDB = $pdo->query("
-    SELECT COUNT(*)
-    FROM PROGRAM
-    WHERE prog_remaining_budget IS NOT NULL
-      AND prog_annual_budget IS NOT NULL
-      AND prog_remaining_budget < (prog_annual_budget * 0.2)
-");
-$budget_alerts = (int)$budgetAlertsDB->fetchColumn();
+// ── BUDGET SUMMARY — ALL PROGRAMS (single source of truth) ─
+// spent = approved/released availments + project proposals, same formula
+// budgetmanagement.php uses, so every page agrees on the same numbers.
+$programs = getAllProgramBudgets($pdo);
 
-// ── BUDGET SUMMARY — ALL PROGRAMS ──────────────────────────
-$budgetDB = $pdo->query("
-    SELECT
-        p.program_name,
-        p.prog_annual_budget AS total,
-        COALESCE(SUM(a.av_amount), 0) AS spent
-    FROM PROGRAM p
-    LEFT JOIN AVAILMENT a
-        ON a.program_id = p.program_id
-       AND a.av_status IN ('Approved', 'Released')
-    GROUP BY p.program_id, p.program_name, p.prog_annual_budget
-    ORDER BY p.program_name ASC
-");
-$programs = $budgetDB->fetchAll(PDO::FETCH_ASSOC);
+// A program is "low" when less than 20% of its budget remains. Computed
+// live from the figures above rather than the old prog_remaining_budget
+// column, which was never kept up to date (always NULL).
+$budget_alerts = 0;
+foreach ($programs as $p) {
+    if ($p['total'] > 0 && $p['remaining'] < ($p['total'] * 0.2)) {
+        $budget_alerts++;
+    }
+}
 
 // ── RECENT ACTIVITY (last 6 availments) ────────────────────
 $activityDB = $pdo->query("
