@@ -104,11 +104,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Confidential</p>
         <a href="confidential.php"
             class="sidebar-item flex items-center justify-between px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <span class="flex items-center gap-2.5"><i class="fas fa-lock text-sm"></i> Confidential Cases</span>
+            <span class="flex items-center gap-2.5"><i class="fas fa-lock text-sm"></i> Confidential Case</span>
         </a>
-        <a href="#"
+        <a href="confidential_case_search.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-            <i class="fas fa-search text-sm"></i> Case Search
+            <i class="fas fa-search text-sm"></i> Case List
         </a>
 
         <details class="group" open>

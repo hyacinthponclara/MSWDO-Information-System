@@ -17,7 +17,7 @@ $client = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$client) {
     header("Location: clientslist.php");
     exit;
-}                                                                       
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_id = $_SESSION['user_id'];
@@ -52,14 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // the client as row 1
     $clientRow = [
-        'name'         => trim($client['cl_firstname'] . ' ' . $client['cl_lastname']),
+        'name' => trim($client['cl_firstname'] . ' ' . $client['cl_lastname']),
         'relationship' => 'Client (Self)',
-        'age'          => $client['cl_age'],
-        'sex'          => $client['cl_sex'],
+        'age' => $client['cl_age'],
+        'sex' => $client['cl_sex'],
         'civil_status' => $client['cl_civilstatus'],
-        'education'    => $client['cl_educ_attain'] ?? '',
-        'occupation'   => $client['cl_occupation'] ?? '',
-        'income'       => (float) ($client['cl_monthly_income'] ?? 0),
+        'education' => $client['cl_educ_attain'] ?? '',
+        'occupation' => $client['cl_occupation'] ?? '',
+        'income' => (float) ($client['cl_monthly_income'] ?? 0),
     ];
     $family_composition_json = json_encode(array_merge([$clientRow], $regFamily2));
 
@@ -118,7 +118,7 @@ $famStmt = $pdo->prepare("
     SELECT family_composition_json
     FROM CASE_STUDY
     WHERE client_id = ?
-      AND problem_presented = 'Initial registration'
+    AND problem_presented = 'Initial registration'
     ORDER BY created_at ASC
     LIMIT 1
 ");
@@ -621,51 +621,83 @@ if ($has_prev_dswd_assistance) {
                                 <table class="w-full text-[11px]">
                                     <thead>
                                         <tr class="bg-slate-50 border-b border-slate-200">
-                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-6">#</th>
-                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Name</th>
-                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-28">Relationship</th>
-                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-14">Age</th>
-                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-16">Sex</th>
-                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">Civil Status</th>
-                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">Education</th>
-                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Occupation</th>
-                                            <th class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">Income/mo (₱)</th>
+                                            <th
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-6">
+                                                #</th>
+                                            <th
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                                Name</th>
+                                            <th
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-28">
+                                                Relationship</th>
+                                            <th
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-14">
+                                                Age</th>
+                                            <th
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-16">
+                                                Sex</th>
+                                            <th
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">
+                                                Civil Status</th>
+                                            <th
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">
+                                                Education</th>
+                                            <th
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                                Occupation</th>
+                                            <th
+                                                class="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-slate-400 font-semibold w-24">
+                                                Income/mo (₱)</th>
                                         </tr>
                                     </thead>
                                     <tbody id="famBody">
                                         <!-- Row 1: the client (always locked) -->
                                         <tr class="fam-row border-b border-slate-100 bg-navy-50/40">
                                             <td class="px-3 py-2 text-slate-400 font-medium">1</td>
-                                            <td class="px-3 py-2 font-semibold text-navy-700"><?= htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_lastname']) ?></td>
+                                            <td class="px-3 py-2 font-semibold text-navy-700">
+                                                <?= htmlspecialchars($client['cl_firstname'] . ' ' . $client['cl_lastname']) ?>
+                                            </td>
                                             <td class="px-3 py-2 text-navy-500 italic">Client (Self)</td>
                                             <td class="px-3 py-2"><?= htmlspecialchars($client['cl_age'] ?? '—') ?></td>
                                             <td class="px-3 py-2"><?= htmlspecialchars($client['cl_sex'] ?? '—') ?></td>
-                                            <td class="px-3 py-2"><?= htmlspecialchars($client['cl_civilstatus'] ?? '—') ?></td>
-                                            <td class="px-3 py-2"><?= htmlspecialchars($client['cl_educ_attain'] ?? '—') ?></td>
-                                            <td class="px-3 py-2"><?= htmlspecialchars($client['cl_occupation'] ?? '—') ?></td>
-                                            <td class="px-3 py-2 font-medium text-navy-700">₱<?= number_format($client_income, 2) ?></td>
+                                            <td class="px-3 py-2">
+                                                <?= htmlspecialchars($client['cl_civilstatus'] ?? '—') ?>
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <?= htmlspecialchars($client['cl_educ_attain'] ?? '—') ?>
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                <?= htmlspecialchars($client['cl_occupation'] ?? '—') ?>
+                                            </td>
+                                            <td class="px-3 py-2 font-medium text-navy-700">
+                                                ₱<?= number_format($client_income, 2) ?></td>
                                         </tr>
                                         <!-- Registered family members — view only -->
                                         <?php if (empty($registrationFamily)): ?>
-                                        <tr>
-                                            <td colspan="9" class="px-3 py-4 text-center text-[11px] text-slate-400 italic">
-                                                No family members were added during registration.
-                                            </td>
-                                        </tr>
+                                            <tr>
+                                                <td colspan="9"
+                                                    class="px-3 py-4 text-center text-[11px] text-slate-400 italic">
+                                                    No family members were added during registration.
+                                                </td>
+                                            </tr>
                                         <?php else: ?>
-                                        <?php foreach ($registrationFamily as $i => $member): ?>
-                                        <tr class="fam-row border-b border-slate-100">
-                                            <td class="px-3 py-2 text-slate-400 font-medium"><?= $i + 2 ?></td>
-                                            <td class="px-3 py-2"><?= htmlspecialchars($member['name'] ?? '—') ?></td>
-                                            <td class="px-3 py-2 text-slate-500"><?= htmlspecialchars($member['relation'] ?? $member['relationship'] ?? '—') ?></td>
-                                            <td class="px-3 py-2"><?= htmlspecialchars($member['age'] ?? '—') ?></td>
-                                            <td class="px-3 py-2">—</td>
-                                            <td class="px-3 py-2">—</td>
-                                            <td class="px-3 py-2">—</td>
-                                            <td class="px-3 py-2"><?= htmlspecialchars($member['occupation'] ?? '—') ?></td>
-                                            <td class="px-3 py-2 font-medium">₱<?= number_format((float)($member['income'] ?? 0), 2) ?></td>
-                                        </tr>
-                                        <?php endforeach; ?>
+                                            <?php foreach ($registrationFamily as $i => $member): ?>
+                                                <tr class="fam-row border-b border-slate-100">
+                                                    <td class="px-3 py-2 text-slate-400 font-medium"><?= $i + 2 ?></td>
+                                                    <td class="px-3 py-2"><?= htmlspecialchars($member['name'] ?? '—') ?></td>
+                                                    <td class="px-3 py-2 text-slate-500">
+                                                        <?= htmlspecialchars($member['relation'] ?? $member['relationship'] ?? '—') ?>
+                                                    </td>
+                                                    <td class="px-3 py-2"><?= htmlspecialchars($member['age'] ?? '—') ?></td>
+                                                    <td class="px-3 py-2">—</td>
+                                                    <td class="px-3 py-2">—</td>
+                                                    <td class="px-3 py-2">—</td>
+                                                    <td class="px-3 py-2"><?= htmlspecialchars($member['occupation'] ?? '—') ?>
+                                                    </td>
+                                                    <td class="px-3 py-2 font-medium">
+                                                        ₱<?= number_format((float) ($member['income'] ?? 0), 2) ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
@@ -674,7 +706,8 @@ if ($has_prev_dswd_assistance) {
                             <!-- Combined income display -->
                             <div class="flex items-center justify-end mt-3 gap-4 text-[12px]">
                                 <span class="text-slate-400">Combined monthly income:</span>
-                                <span id="totalIncome" class="font-bold text-navy-600 text-[14px]">₱<?= number_format($client_income, 2) ?></span>
+                                <span id="totalIncome"
+                                    class="font-bold text-navy-600 text-[14px]">₱<?= number_format($client_income, 2) ?></span>
                             </div>
 
                             <!-- Hidden fields submitted to DB -->
@@ -779,7 +812,7 @@ if ($has_prev_dswd_assistance) {
                                     <div>
                                         <div class="calc-row">
                                             <span class="calc-label">Utilities (electric, water)</span>
-                                            <div class="relative calc-input">   
+                                            <div class="relative calc-input">
                                                 <span
                                                     class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[12px]">₱</span>
                                                 <input type="number" class="field pl-6 text-[12px] py-2" placeholder="0"
