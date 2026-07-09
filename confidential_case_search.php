@@ -449,68 +449,6 @@ require 'db_connect.php';
 
                 </div>
 
-                <!-- Quick view card -->
-                <div id="quickCard"
-                    class="hidden w-72 flex-shrink-0 bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden animate-fade-in sticky top-20">
-                    <div class="p-4">
-                        <div class="flex items-center justify-between mb-3">
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Case Quick View</p>
-                            <button onclick="closeQuick()"
-                                class="text-slate-300 hover:text-slate-500 text-lg leading-none">✕</button>
-                        </div>
-                        <div class="flex items-center gap-3 mb-4">
-                            <div id="qcAvatar"
-                                class="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                            </div>
-                            <div>
-                                <p id="qcName" class="text-[13px] font-semibold text-green-700"></p>
-                                <p id="qcCaseId" class="text-[10px] text-slate-400 mt-0.5"></p>
-                            </div>
-                        </div>
-                        <div class="space-y-2 mb-4">
-                            <div class="flex justify-between text-[11px]">
-                                <span class="text-slate-400">Case Type</span>
-                                <span id="qcType" class="font-medium text-slate-700"></span>
-                            </div>
-                            <div class="flex justify-between text-[11px]">
-                                <span class="text-slate-400">Status</span>
-                                <span id="qcStatus" class="font-medium"></span>
-                            </div>
-                            <div class="flex justify-between text-[11px]">
-                                <span class="text-slate-400">Barangay</span>
-                                <span id="qcBrgy" class="font-medium text-slate-700"></span>
-                            </div>
-                            <div class="flex justify-between text-[11px]">
-                                <span class="text-slate-400">Incident Date</span>
-                                <span id="qcIncident" class="font-medium text-slate-700"></span>
-                            </div>
-                            <div class="flex justify-between text-[11px]">
-                                <span class="text-slate-400">Assigned Worker</span>
-                                <span id="qcWorker" class="font-medium text-slate-700"></span>
-                            </div>
-                            <div class="pt-2 border-t border-slate-100">
-                                <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Case Narrative</p>
-                                <p id="qcNarrative" class="text-[11px] text-slate-600 leading-relaxed line-clamp-3"></p>
-                            </div>
-                            <div class="flex justify-between text-[11px] pt-1">
-                                <span class="text-slate-400">Sensitive</span>
-                                <span class="text-red-500 font-semibold"><i class="fas fa-lock mr-1"></i>
-                                    Confidential</span>
-                            </div>
-                        </div>
-                        <div class="space-y-2">
-                            <a id="qcViewBtn" href="#"
-                                class="block w-full py-2.5 bg-green-600 text-white text-[12px] font-semibold rounded-xl hover:bg-green-500 transition-all text-center">
-                                <i class="fas fa-eye mr-1"></i> View Full Case
-                            </a>
-                            <a id="qcUpdateBtn" href="#"
-                                class="block w-full py-2.5 border border-green-200 bg-green-50 text-green-700 text-[12px] font-medium rounded-xl hover:bg-green-100 transition-all text-center">
-                                <i class="fas fa-edit mr-1"></i> Update Case
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
             </div>
 
         </main>
@@ -724,7 +662,6 @@ require 'db_connect.php';
                                 class="text-[11px] font-semibold text-green-600 border border-green-200 bg-green-50 rounded-lg px-2.5 py-1.5 hover:bg-green-100 transition-all whitespace-nowrap">
                                 View Case
                             </a>
-                            <span class="row-arrow text-green-400 text-sm">→</span>
                         </div>
                     </td>
                 </tr>`;
