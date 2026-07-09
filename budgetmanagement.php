@@ -1,7 +1,59 @@
 <?php
 require 'auth.php';
-requireRole(['Admin', 'Social Worker']); 
+requireRole(['Admin']);
 require 'db_connect.php';
+
+// ── Flash message (set by budgetmanagementaction.php after a redirect) ──────────────
+$flashMsg = $_GET['msg'] ?? '';
+$flashType = $_GET['type'] ?? 'success';
+
+$programStmt = $pdo->query("
+SELECT
+    p.program_id,
+    p.program_name,
+    p.prog_period,
+    p.prog_funding_source,
+    p.prog_annual_budget,
+    p.prog_start_date,
+    p.prog_end_date,
+
+    COALESCE(SUM(a.av_amount),0) AS spent,
+
+    p.prog_annual_budget -
+    COALESCE(SUM(a.av_amount),0) AS remaining
+
+FROM PROGRAM p
+
+LEFT JOIN AVAILMENT a
+ON a.program_id = p.program_id
+AND a.av_status IN ('Approved','Released')
+
+GROUP BY
+    p.program_id,
+    p.program_name,
+    p.prog_period,
+    p.prog_funding_source,
+    p.prog_annual_budget,
+    p.prog_start_date,
+    p.prog_end_date");
+
+$programs = $programStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$budgetDataPhp = array_map(function ($p) {
+    return [
+        'id' => (int) $p['program_id'],
+        'program' => $p['program_name'],
+        'fundingSource' => $p['prog_funding_source'] ?? 'LGU',
+        'period' => $p['prog_period'],
+
+        'totalBudget' => (float) $p['prog_annual_budget'],
+        'spent' => (float) $p['spent'],
+
+        'startDate' => null,
+        'endDate' => null,
+        'notes' => ''
+    ];
+}, $programs);
 ?>
 
 <!DOCTYPE html>
@@ -80,10 +132,12 @@ require 'db_connect.php';
         .sidebar-item {
             transition: all .15s ease;
         }
+
         .sidebar-item:hover {
             background: rgba(255, 255, 255, .07);
             color: rgba(255, 255, 255, .95);
         }
+
         .sidebar-item.active {
             background: rgba(26, 92, 58, .25);
             border-left-color: #C49A2A;
@@ -93,6 +147,7 @@ require 'db_connect.php';
         .stat-card {
             transition: transform .2s ease, box-shadow .2s ease;
         }
+
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(26, 92, 58, .1);
@@ -101,6 +156,7 @@ require 'db_connect.php';
         .btn-action {
             transition: all .15s ease;
         }
+
         .btn-action:hover {
             transform: translateY(-1px);
         }
@@ -108,6 +164,7 @@ require 'db_connect.php';
         .table-row {
             transition: background .12s;
         }
+
         .table-row:hover {
             background: #EEF6F0;
         }
@@ -125,14 +182,17 @@ require 'db_connect.php';
             font-family: 'DM Sans', sans-serif;
             transition: all .2s;
         }
+
         .field:focus {
             border-color: #1A5C3A;
             background: #fff;
             box-shadow: 0 0 0 3px rgba(26, 92, 58, .12);
         }
+
         .field::placeholder {
             color: #94A3B8;
         }
+
         select.field {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
@@ -140,6 +200,7 @@ require 'db_connect.php';
             background-size: 16px;
             appearance: none;
         }
+
         textarea.field {
             resize: vertical;
             line-height: 1.7;
@@ -154,6 +215,7 @@ require 'db_connect.php';
             color: #4A7A5A;
             margin-bottom: 6px;
         }
+
         .req::after {
             content: '*';
             color: #EF4444;
@@ -163,6 +225,7 @@ require 'db_connect.php';
         ::-webkit-scrollbar {
             width: 4px;
         }
+
         ::-webkit-scrollbar-thumb {
             background: rgba(26, 92, 58, .2);
             border-radius: 2px;
@@ -181,10 +244,12 @@ require 'db_connect.php';
             background: #FEE2E2;
             color: #DC2626;
         }
+
         .status-warning {
             background: #FEF3C7;
             color: #D97706;
         }
+
         .status-ok {
             background: #D1FAE5;
             color: #059669;
@@ -206,23 +271,28 @@ require 'db_connect.php';
             border-bottom: 1px solid #D4E8DC;
             text-align: left;
         }
+
         .forecast-table td {
             padding: 8px 12px;
             border-bottom: 1px solid #D4E8DC;
             font-size: 12px;
         }
+
         .forecast-table tr:hover td {
             background: #EEF6F0;
         }
+
         .forecast-total {
             background: #EEF6F0;
             font-weight: 700;
             border-top: 2px solid #1A5C3A;
         }
+
         .forecast-total td {
             padding: 10px 12px;
             font-size: 13px;
         }
+
         .forecast-note {
             background: #F0FDF4;
             border: 1px solid #A7F3D0;
@@ -232,6 +302,7 @@ require 'db_connect.php';
             color: #065F46;
             margin-top: 12px;
         }
+
         .forecast-note strong {
             color: #065F46;
         }
@@ -239,9 +310,11 @@ require 'db_connect.php';
         .bg-gray-100 {
             background-color: #F3F4F6;
         }
+
         .cursor-not-allowed {
             cursor: not-allowed;
         }
+
         .opacity-75 {
             opacity: 0.75;
         }
@@ -256,7 +329,8 @@ require 'db_connect.php';
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <!-- Top Bar -->
-        <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
                 <span class="text-green-600 font-semibold">Budget Management</span>
             </div>
@@ -268,7 +342,8 @@ require 'db_connect.php';
             <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
                 <div>
                     <h1 class="text-xl font-serif text-green-600">Budget Management</h1>
-                    <p class="text-[13px] text-slate-500 mt-0.5">Monitor program budgets, augment funds, end periods early, and forecast next year's budget.</p>
+                    <p class="text-[13px] text-slate-500 mt-0.5">Monitor program budgets, augment funds, end periods
+                        early, and forecast next year's budget.</p>
                 </div>
             </div>
 
@@ -297,7 +372,8 @@ require 'db_connect.php';
                 <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                     <h2 class="text-[13px] font-semibold text-green-600">Program Budgets</h2>
                     <div class="flex items-center gap-2">
-                        <button onclick="openAugmentModal()" class="btn-action text-[12px] font-semibold text-white bg-amber-600 rounded-lg px-3 py-1.5 hover:bg-amber-700 transition-all flex items-center gap-1.5">
+                        <button onclick="openAugmentModal()"
+                            class="btn-action text-[12px] font-semibold text-white bg-amber-600 rounded-lg px-3 py-1.5 hover:bg-amber-700 transition-all flex items-center gap-1.5">
                             <i class="fas fa-hand-holding-usd"></i> Augmentation
                         </button>
                     </div>
@@ -306,15 +382,33 @@ require 'db_connect.php';
                     <table class="w-full text-[12px]">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-100">
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Program</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Funding Source</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Period</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Total Budget</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Spent</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Remaining</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Utilization</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Status</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Actions</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Program</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Funding Source</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Period</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Total Budget</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Spent</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Remaining</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Utilization</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Status</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100" id="budgetTableBody">
@@ -329,12 +423,14 @@ require 'db_connect.php';
 
                 <!-- Budget Analysis Card -->
                 <div class="bg-white rounded-2xl border border-slate-200 p-5">
-                    <h2 class="text-[13px] font-semibold text-green-600 mb-4"><i class="fas fa-chart-pie mr-1.5 text-green-400"></i>Budget Analysis</h2>
+                    <h2 class="text-[13px] font-semibold text-green-600 mb-4"><i
+                            class="fas fa-chart-pie mr-1.5 text-green-400"></i>Budget Analysis</h2>
                     <div class="space-y-3" id="analysisContent">
                         <!-- Injected by JS -->
                     </div>
                     <div class="mt-4 pt-4 border-t border-slate-100">
-                        <button onclick="showAnalysisReport()" class="text-[11px] font-medium text-green-600 hover:text-green-800 transition-colors">
+                        <button onclick="showAnalysisReport()"
+                            class="text-[11px] font-medium text-green-600 hover:text-green-800 transition-colors">
                             <i class="fas fa-file-alt mr-1"></i> View Full Analysis Report
                         </button>
                     </div>
@@ -343,13 +439,15 @@ require 'db_connect.php';
                 <!-- Forecast Card -->
                 <div class="bg-white rounded-2xl border border-slate-200 p-5">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-[13px] font-semibold text-green-600"><i class="fas fa-chart-line mr-1.5 text-green-400"></i>Forecast</h2>
+                        <h2 class="text-[13px] font-semibold text-green-600"><i
+                                class="fas fa-chart-line mr-1.5 text-green-400"></i>Forecast</h2>
                     </div>
                     <div id="forecastContent">
                         <!-- Injected by JS -->
                     </div>
                     <div class="mt-4 pt-4 border-t border-slate-100">
-                        <button onclick="openForecastModal()" class="text-[11px] font-medium text-emerald-600 hover:text-emerald-800 transition-colors">
+                        <button onclick="openForecastModal()"
+                            class="text-[11px] font-medium text-emerald-600 hover:text-emerald-800 transition-colors">
                             <i class="fas fa-calculator mr-1"></i> Propose Next Year's Budget
                         </button>
                     </div>
@@ -359,7 +457,8 @@ require 'db_connect.php';
         </main>
 
         <!-- Footer -->
-        <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+        <footer
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
             <span>MSWDO San Enrique Information System</span>
         </footer>
     </div>
@@ -367,40 +466,39 @@ require 'db_connect.php';
     <!-- ══════════════════════════ AUGMENT BUDGET MODAL ══════════════════════════ -->
     <div id="augmentModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in">
-            <div class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <div
+                class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                 <h2 class="text-[16px] font-semibold text-green-600">Augment Budget</h2>
                 <button onclick="closeAugmentModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
             <div class="p-6 space-y-4">
-                <form id="augmentForm" onsubmit="augmentBudget(event)">
+                <form id="augmentForm" method="POST" action="budgetmanagementaction.php">
+                    <input type="hidden" name="action" value="augment">
                     <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-                        <p class="text-[12px] text-slate-600">Augmentation adds funds from savings to a program. You can either add funds from an external source or transfer from another program's remaining budget.</p>
+                        <p class="text-[12px] text-slate-600">Augmentation adds funds from savings to a program. You can
+                            either add funds from an external source or transfer from another program's remaining
+                            budget.</p>
                     </div>
                     <div>
                         <label class="field-label req">Program to Augment</label>
-                        <select id="augmentTargetProgram" class="field" required>
+                        <select name="target_program_id" id="augmentTargetProgram" class="field" required>
                             <option value="">Select Program</option>
-                            <option value="AICS FBML">AICS FBML</option>
-                            <option value="AICS Educational">AICS Educational</option>
-                            <option value="4Ps">4Ps</option>
-                            <option value="SLP">SLP</option>
-                            <option value="SFP">SFP</option>
-                            <option value="Day Care">Day Care</option>
-                            <option value="Senior Citizen">Senior Citizen</option>
-                            <option value="PWD">PWD</option>
-                            <option value="Solo Parent">Solo Parent</option>
-                            <option value="Women and Children">Women and Children</option>
+                            <?php foreach ($programs as $p): ?>
+                                <option value="<?= $p['program_id'] ?>"><?= htmlspecialchars($p['program_name']) ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div>
                         <label class="field-label req">Additional Amount (₱)</label>
-                        <input type="number" min="0" step="0.01" id="augmentAmount" class="field" placeholder="0.00" required />
+                        <input type="number" min="0" step="0.01" name="amount" id="augmentAmount" class="field"
+                            placeholder="0.00" required />
                     </div>
                     <div>
                         <label class="field-label req">Source of Augmentation</label>
-                        <select id="augmentSource" class="field" required onchange="toggleAugmentSourceFields()">
+                        <select name="source" id="augmentSource" class="field" required
+                            onchange="toggleAugmentSourceFields()">
                             <option value="">Select Source</option>
                             <option value="From another program">From another program</option>
                             <option value="LGU Supplemental Budget">LGU Supplemental Budget</option>
@@ -413,20 +511,15 @@ require 'db_connect.php';
                     <div id="augmentTransferFields" style="display:none;">
                         <div>
                             <label class="field-label req">Transfer From Program</label>
-                            <select id="augmentDonorProgram" class="field" required>
+                            <select name="donor_program_id" id="augmentDonorProgram" class="field" required>
                                 <option value="">Select Program</option>
-                                <option value="AICS FBML">AICS FBML</option>
-                                <option value="AICS Educational">AICS Educational</option>
-                                <option value="4Ps">4Ps</option>
-                                <option value="SLP">SLP</option>
-                                <option value="SFP">SFP</option>
-                                <option value="Day Care">Day Care</option>
-                                <option value="Senior Citizen">Senior Citizen</option>
-                                <option value="PWD">PWD</option>
-                                <option value="Solo Parent">Solo Parent</option>
-                                <option value="Women and Children">Women and Children</option>
+                                <?php foreach ($programs as $p): ?>
+                                    <option value="<?= $p['program_id'] ?>"><?= htmlspecialchars($p['program_name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
                             </select>
-                            <p class="text-[10px] text-slate-400 mt-1" id="donorRemainingDisplay">Program remaining: ₱0</p>
+                            <p class="text-[10px] text-slate-400 mt-1" id="donorRemainingDisplay">Program remaining: ₱0
+                            </p>
                         </div>
                     </div>
 
@@ -434,20 +527,24 @@ require 'db_connect.php';
                     <div id="augmentOtherFields" style="display:none;">
                         <div>
                             <label class="field-label req">Specify Source</label>
-                            <input type="text" id="augmentOtherSource" class="field" placeholder="e.g., DSWD Emergency Fund" />
+                            <input type="text" name="other_source" id="augmentOtherSource" class="field"
+                                placeholder="e.g., DSWD Emergency Fund" />
                         </div>
                     </div>
 
                     <div>
                         <label class="field-label">Reason</label>
-                        <textarea id="augmentReason" class="field" rows="2" placeholder="Reason for augmentation..."></textarea>
+                        <textarea name="reason" id="augmentReason" class="field" rows="2"
+                            placeholder="Reason for augmentation..."></textarea>
                     </div>
 
                     <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
-                        <button type="button" onclick="closeAugmentModal()" class="text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2 hover:border-green-400 hover:text-green-600 transition-all">
+                        <button type="button" onclick="closeAugmentModal()"
+                            class="text-[13px] font-medium text-slate-600 border border-slate-200 rounded-xl px-5 py-2 hover:border-green-400 hover:text-green-600 transition-all">
                             Cancel
                         </button>
-                        <button type="submit" class="text-[13px] font-semibold text-white bg-amber-600 rounded-xl px-6 py-2 hover:bg-amber-500 transition-all">
+                        <button type="submit"
+                            class="text-[13px] font-semibold text-white bg-amber-600 rounded-xl px-6 py-2 hover:bg-amber-500 transition-all">
                             <i class="fas fa-hand-holding-usd mr-1.5"></i> Augment Budget
                         </button>
                     </div>
@@ -458,8 +555,10 @@ require 'db_connect.php';
 
     <!-- ══════════════════════════ FORECAST MODAL ══════════════════════════ -->
     <div id="forecastModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in">
-            <div class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <div
+            class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in">
+            <div
+                class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                 <h2 class="text-[16px] font-semibold text-green-600">Budget Forecast</h2>
                 <button onclick="closeForecastModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
                     <i class="fas fa-times text-xl"></i>
@@ -467,7 +566,9 @@ require 'db_connect.php';
             </div>
             <div class="p-6 space-y-4">
                 <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                    <p class="text-[12px] text-slate-600">Based on current spending patterns, the system calculates the recommended budget for each program and the total for next year. A <strong>15% buffer</strong> is added to account for inflation and unexpected needs.</p>
+                    <p class="text-[12px] text-slate-600">Based on current spending patterns, the system calculates the
+                        recommended budget for each program and the total for next year. A <strong>15% buffer</strong>
+                        is added to account for inflation and unexpected needs.</p>
                 </div>
 
                 <div id="forecastDetails">
@@ -475,8 +576,13 @@ require 'db_connect.php';
                 </div>
 
                 <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <p class="text-[12px] font-semibold text-blue-700"><i class="fas fa-info-circle mr-1.5"></i>Forecast Methodology</p>
-                    <p class="text-[11px] text-slate-600 mt-1">The recommended budget is calculated using the formula: <strong>(Current Annual Spending + 15% Buffer)</strong>. This ensures that programs have enough funds to continue operations without running out. The buffer accounts for inflation, increased demand, and unforeseen expenses.</p>
+                    <p class="text-[12px] font-semibold text-blue-700"><i class="fas fa-info-circle mr-1.5"></i>Forecast
+                        Methodology</p>
+                    <p class="text-[11px] text-slate-600 mt-1">The recommended budget is calculated using the formula:
+                        <strong>(Current Annual Spending + 15% Buffer)</strong>. This ensures that programs have enough
+                        funds to continue operations without running out. The buffer accounts for inflation, increased
+                        demand, and unforeseen expenses.
+                    </p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -492,13 +598,15 @@ require 'db_connect.php';
                         <label class="field-label">Total Recommended Budget</label>
                         <div class="relative">
                             <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₱</span>
-                            <input type="text" id="forecastRecommended" class="field pl-8 bg-gray-100 cursor-not-allowed opacity-75" readonly />
+                            <input type="text" id="forecastRecommended"
+                                class="field pl-8 bg-gray-100 cursor-not-allowed opacity-75" readonly />
                         </div>
                     </div>
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
-                    <button type="button" onclick="exportForecastCSV()" class="text-[13px] font-semibold text-white bg-blue-600 rounded-xl px-6 py-2 hover:bg-blue-500 transition-all">
+                    <button type="button" onclick="exportForecastCSV()"
+                        class="text-[13px] font-semibold text-white bg-blue-600 rounded-xl px-6 py-2 hover:bg-blue-500 transition-all">
                         <i class="fas fa-file-csv mr-1.5"></i> Export CSV
                     </button>
                 </div>
@@ -507,116 +615,15 @@ require 'db_connect.php';
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-green-700 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
+    <div id="toast"
+        class="fixed bottom-6 right-6 bg-green-700 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
         <i class="fas fa-check-circle text-green-300"></i>
         <span id="toastMsg">Action completed!</span>
     </div>
 
     <script>
-        // ── Sample Budget Data ──
-        let budgetData = [{
-            id: 1,
-            program: 'AICS FBML',
-            fundingSource: 'LGU',
-            period: 'Quarterly',
-            totalBudget: 450000,
-            spent: 350000,
-            startDate: '2026-01-01',
-            endDate: '2026-03-31',
-            notes: ''
-        }, {
-            id: 2,
-            program: 'AICS Educational',
-            fundingSource: 'LGU',
-            period: 'Quarterly',
-            totalBudget: 50000,
-            spent: 48000,
-            startDate: '2026-01-01',
-            endDate: '2026-03-31',
-            notes: ''
-        }, {
-            id: 3,
-            program: 'Senior Citizen',
-            fundingSource: 'LGU',
-            period: 'Annually',
-            totalBudget: 800000,
-            spent: 520000,
-            startDate: '2026-01-01',
-            endDate: '2026-12-31',
-            notes: ''
-        }, {
-            id: 4,
-            program: 'PWD',
-            fundingSource: 'LGU',
-            period: 'Half-Year',
-            totalBudget: 200000,
-            spent: 130000,
-            startDate: '2026-01-01',
-            endDate: '2026-06-30',
-            notes: ''
-        }, {
-            id: 5,
-            program: 'SFP',
-            fundingSource: 'LGU',
-            period: 'Annually',
-            totalBudget: 200000,
-            spent: 195000,
-            startDate: '2026-01-01',
-            endDate: '2026-12-31',
-            notes: ''
-        }, {
-            id: 6,
-            program: '4Ps',
-            fundingSource: 'LGU',
-            period: 'Annually',
-            totalBudget: 30000,
-            spent: 18500,
-            startDate: '2026-01-01',
-            endDate: '2026-12-31',
-            notes: ''
-        }, {
-            id: 7,
-            program: 'Solo Parent',
-            fundingSource: 'LGU',
-            period: 'Quarterly',
-            totalBudget: 150000,
-            spent: 72000,
-            startDate: '2026-01-01',
-            endDate: '2026-03-31',
-            notes: ''
-        }, {
-            id: 8,
-            program: 'Women and Children',
-            fundingSource: 'LGU',
-            period: 'Annually',
-            totalBudget: 100000,
-            spent: 28000,
-            startDate: '2026-01-01',
-            endDate: '2026-12-31',
-            notes: ''
-        }, {
-            id: 9,
-            program: 'SLP',
-            fundingSource: 'LGU',
-            period: 'Annually',
-            totalBudget: 450000,
-            spent: 150000,
-            startDate: '2026-01-01',
-            endDate: '2026-12-31',
-            notes: ''
-        }, {
-            id: 10,
-            program: 'Day Care',
-            fundingSource: 'LGU',
-            period: 'Annually',
-            totalBudget: 350000,
-            spent: 200000,
-            startDate: '2026-01-01',
-            endDate: '2026-12-31',
-            notes: ''
-        }, ];
-
-        let nextBudgetId = 11;
+        // ── Real Budget Data (from PROGRAM table via PHP) ──
+        let budgetData = <?= json_encode($budgetDataPhp) ?>;
 
         // ── Status functions ──
         function getStatus(remaining, total) {
@@ -662,9 +669,13 @@ require 'db_connect.php';
                     <td class="px-5 py-3"><span class="${status.class} px-2.5 py-0.5 rounded-full text-[10px] font-semibold">${status.label}</span></td>
                     <td class="px-5 py-3">
                         <div class="flex items-center gap-1.5">
-                            <button onclick="endPeriodEarly(${budget.id})" class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors" title="End Period Early">
-                                <i class="fas fa-stop-circle mr-1"></i> End Early
-                            </button>
+                            <form method="POST" action="budgetmanagementaction.php" onsubmit='return confirmEndPeriod(${JSON.stringify(budget.program)}, ${remaining});' style="display:inline;">
+                                <input type="hidden" name="action" value="end_period">
+                                <input type="hidden" name="program_id" value="${budget.id}">
+                                <button type="submit" class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors" title="End Period Early">
+                                    <i class="fas fa-stop-circle mr-1"></i> End Early
+                                </button>
+                            </form>
                         </div>
                     </td>
                 `;
@@ -736,7 +747,7 @@ require 'db_connect.php';
             budgetData.forEach(b => {
                 const yearlySpent = b.period === 'Quarterly' ? b.spent * 4 :
                     b.period === 'Half-Year' ? b.spent * 2 :
-                    b.spent;
+                        b.spent;
                 const recommended = Math.round(yearlySpent * 1.15);
                 totalRecommended += recommended;
                 const status = getStatus(b.totalBudget - b.spent, b.totalBudget);
@@ -802,7 +813,7 @@ require 'db_connect.php';
                 perProgram: budgetData.map(b => {
                     const yearlySpent = b.period === 'Quarterly' ? b.spent * 4 :
                         b.period === 'Half-Year' ? b.spent * 2 :
-                        b.spent;
+                            b.spent;
                     return {
                         program: b.program,
                         period: b.period,
@@ -839,8 +850,8 @@ require 'db_connect.php';
 
         // ── Update Donor Remaining ──
         function updateDonorRemaining() {
-            const donorProgram = document.getElementById('augmentDonorProgram').value;
-            const donor = budgetData.find(b => b.program === donorProgram);
+            const donorId = document.getElementById('augmentDonorProgram').value;
+            const donor = budgetData.find(b => String(b.id) === String(donorId));
             if (donor) {
                 const remaining = donor.totalBudget - donor.spent;
                 document.getElementById('donorRemainingDisplay').textContent = `Donor remaining: ₱${remaining.toLocaleString()}`;
@@ -863,7 +874,7 @@ require 'db_connect.php';
             if (!budget) return;
 
             openAugmentModal();
-            document.getElementById('augmentTargetProgram').value = budget.program;
+            document.getElementById('augmentTargetProgram').value = budget.id;
         }
 
         function closeAugmentModal() {
@@ -874,103 +885,12 @@ require 'db_connect.php';
             document.getElementById('augmentOtherFields').style.display = 'none';
         }
 
-        // ── Augment Budget ──
-        function augmentBudget(event) {
-            event.preventDefault();
-
-            const targetProgram = document.getElementById('augmentTargetProgram').value;
-            const amount = parseFloat(document.getElementById('augmentAmount').value) || 0;
-            const source = document.getElementById('augmentSource').value;
-            const reason = document.getElementById('augmentReason').value;
-
-            // Validation
-            if (!targetProgram) {
-                showToast('Please select a program to augment.', 'error');
-                return;
-            }
-            if (!amount || amount <= 0) {
-                showToast('Please enter a valid amount.', 'error');
-                return;
-            }
-            if (!source) {
-                showToast('Please select a source of augmentation.', 'error');
-                return;
-            }
-
-            // Find target budget
-            const target = budgetData.find(b => b.program === targetProgram);
-            if (!target) {
-                showToast('Target program not found.', 'error');
-                return;
-            }
-
-            let sourceLabel = source;
-
-            // If source is "From another program"
-            if (source === 'From another program') {
-                const donorProgram = document.getElementById('augmentDonorProgram').value;
-                if (!donorProgram) {
-                    showToast('Please select the program to transfer from.', 'error');
-                    return;
-                }
-                if (donorProgram === targetProgram) {
-                    showToast('Cannot transfer from the same program.', 'error');
-                    return;
-                }
-
-                const donor = budgetData.find(b => b.program === donorProgram);
-                if (!donor) {
-                    showToast('Donor program not found.', 'error');
-                    return;
-                }
-
-                const donorRemaining = donor.totalBudget - donor.spent;
-                if (amount > donorRemaining) {
-                    showToast(`Insufficient funds. Donor only has ₱${donorRemaining.toLocaleString()} remaining.`, 'error');
-                    return;
-                }
-
-                // Transfer: deduct from donor, add to target
-                donor.spent += amount;
-                sourceLabel = `Transfer from ${donorProgram}`;
-            }
-
-            // If source is "Other"
-            if (source === 'Other') {
-                const otherSource = document.getElementById('augmentOtherSource').value.trim();
-                if (!otherSource) {
-                    showToast('Please specify the source.', 'error');
-                    return;
-                }
-                sourceLabel = otherSource;
-            }
-
-            // Augment the target budget
-            target.totalBudget += amount;
-
-            closeAugmentModal();
-            renderBudgets();
-            showToast(`Budget for ${targetProgram} augmented by ₱${amount.toLocaleString()} from ${sourceLabel}.`);
-        }
-
-        // ── End Period Early ──
-        function endPeriodEarly(budgetId) {
-            const budget = budgetData.find(b => b.id === budgetId);
-            if (!budget) return;
-
-            const remaining = budget.totalBudget - budget.spent;
+        // ── Confirm before ending a period early (the actual DB update now
+        //    happens server-side in budgetmanagementaction.php after this returns true) ──
+        function confirmEndPeriod(programName, remaining) {
             const confirmMsg =
-                `End the current ${budget.period} period early for ${budget.program}?\n\nRemaining budget: ₱${remaining.toLocaleString()}\nThis will be returned to the LGU.`;
-
-            if (confirm(confirmMsg)) {
-                const returned = remaining;
-                budget.spent = budget.totalBudget;
-
-                renderBudgets();
-                showToast(
-                    `${budget.program} period ended early. ₱${returned.toLocaleString()} returned to LGU. Please start a new period to continue.`
-                );
-            }
+                `End the current period early for ${programName}?\n\nRemaining budget: ₱${remaining.toLocaleString()}\nThis will be returned to the LGU.`;
+            return confirm(confirmMsg);
         }
 
         // ── Show Analysis Report ──
@@ -1172,9 +1092,16 @@ require 'db_connect.php';
         }
 
         // ── Event listeners for donor program change ──
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('augmentDonorProgram').addEventListener('change', updateDonorRemaining);
         });
+
+        // ── Flash message from budgetmanagementaction.php (after a redirect) ──
+        <?php if ($flashMsg): ?>
+            document.addEventListener('DOMContentLoaded', function () {
+                showToast(<?= json_encode($flashMsg) ?>, <?= json_encode($flashType) ?>);
+            });
+        <?php endif; ?>
 
         // ── Initialise ──
         renderBudgets();

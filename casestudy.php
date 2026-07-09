@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-requireRole(['Social Worker']);
+requireRole(['Admin']);
 require 'db_connect.php';
 
 $client_id = (int) ($_GET['client_id'] ?? 0);
