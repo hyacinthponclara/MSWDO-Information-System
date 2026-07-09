@@ -210,57 +210,19 @@ $aics_pct_used  = $aics_annual > 0 ? round(($aics_used / $aics_annual) * 100) : 
                 </div>
             </div>
 
-            <!-- Program Quick Access -->
-            <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-[13px] font-semibold text-green-600">Program Quick Access</h2>
-                    <span class="text-[11px] text-slate-400">Click to start an availment</span>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="progGrid">
-                    <div class="prog-tile bg-white border rounded-xl p-3.5 cursor-pointer flex items-center gap-3 border-green-200 hover:border-green-400"
-                        onclick="window.location.href='aics.php'">
-                        <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-xl flex-shrink-0">
-                            <i class="fas fa-capsules text-green-400"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-[12px] font-semibold text-green-700 truncate">AICS</p>
-                            <p class="text-[10px] text-slate-400 mt-0.5"><?= number_format($aics_this_week) ?> this week</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- AICS Budget Card -->
-            <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-[13px] font-semibold text-green-600">AICS Budget</h2>
-                    <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">View Only</span>
+                       <!-- ── BUDGET SUMMARY ── -->
+            <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-[13px] font-semibold text-green-600">Budget Summary — All Programs</h2>
+                    </div>
+                    <a href="budgetmanagement.php" class="text-[11px] text-green-500 font-medium hover:text-green-700">Manage budgets →</a>
                 </div>
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-[12px] text-slate-500">Annual Budget</span>
-                        <span class="text-[13px] font-bold text-green-600">₱<?= number_format($aics_annual, 2) ?></span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-[12px] text-slate-500">Used</span>
-                        <span class="text-[13px] font-semibold text-amber-500">₱<?= number_format($aics_used, 2) ?></span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-[12px] text-slate-500">Remaining</span>
-                        <span class="text-[13px] font-bold text-green-600">₱<?= number_format($aics_remaining, 2) ?></span>
-                    </div>
-                    <div class="mt-2">
-                        <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-                            <span><?= $aics_pct_used ?>% used</span>
-                            <span><?= 100 - $aics_pct_used ?>% remaining</span>
-                        </div>
-                        <div class="bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div class="prog-bar-fill h-2 rounded-full bg-green-500" style="width:0%" data-target="<?= $aics_pct_used ?>%"></div>
-                        </div>
-                    </div>
-                    <div class="text-[10px] text-slate-400 pt-3 border-t border-slate-100">
-                        Last updated: <?= date('F j, Y \a\t g:i A') ?>
-                    </div>
+                <div class="p-5">
+                    <div class="space-y-3" id="budgetFull"></div>
+                    <p class="text-[10px] text-slate-400 mt-3 pt-3 border-t border-slate-100">Admin can reallocate funds via
+                        Budget Management.</p>
                 </div>
             </div>
 
@@ -283,6 +245,50 @@ $aics_pct_used  = $aics_annual > 0 ? round(($aics_used / $aics_annual) * 100) : 
 
     <script>
         // Animate progress bar
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                document.querySelectorAll('.prog-bar-fill').forEach(el => {
+                    el.style.width = el.dataset.target;
+                });
+            }, 300);
+        });
+    </script>
+    <script>
+        // ── Budget Summary — All Programs (from database) ──
+        const budgetFullData = <?= json_encode(array_map(function ($p) {
+            $annual = (float)$p['total'];
+            $used   = (float)$p['spent'];
+            return [
+                'name'      => $p['program_name'],
+                'annual'    => $annual,
+                'used'      => $used,
+                'remaining' => $annual - $used,
+            ];
+        }, $programs)) ?>;
+
+        const container = document.getElementById('budgetFull');
+        budgetFullData.forEach(b => {
+            const pct = b.annual > 0 ? Math.round((b.used / b.annual) * 100) : 0;
+            const barColor = pct > 80 ? 'bg-red-400' : pct > 60 ? 'bg-amber-400' : 'bg-emerald-400';
+            const textColor = pct > 80 ? 'text-red-500' : pct > 60 ? 'text-amber-500' : 'text-emerald-600';
+            container.innerHTML += `
+                <div class="flex items-center gap-3 text-[12px]">
+                    <span class="w-24 text-slate-600 flex-shrink-0 truncate font-medium">${b.name}</span>
+                    <div class="flex-1">
+                        <div class="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                            <span>₱${b.used.toLocaleString()} used</span>
+                            <span>₱${b.remaining.toLocaleString()} remaining</span>
+                        </div>
+                        <div class="bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div class="prog-bar-fill h-2 rounded-full ${barColor}" style="width:0%" data-target="${pct}%"></div>
+                        </div>
+                    </div>
+                    <span class="w-20 text-right font-semibold ${textColor} flex-shrink-0">${pct}%</span>
+                </div>
+            `;
+        });
+
+        // Animate bars
         requestAnimationFrame(() => {
             setTimeout(() => {
                 document.querySelectorAll('.prog-bar-fill').forEach(el => {
