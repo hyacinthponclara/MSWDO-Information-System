@@ -219,7 +219,7 @@ $recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
 
             </div>
 
-            <<!-- ── QUICK ACTIONS ── -->
+            <!-- ── QUICK ACTIONS ── -->
 <div class="animate-fade-up grid grid-cols-2 sm:grid-cols-4 gap-4">
     <a href="clientregistrationform.php">
         <button class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group w-full">

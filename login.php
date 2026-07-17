@@ -16,7 +16,7 @@ if (empty($username) || empty($password)) {
 }
 
 
-$stmt = $pdo->prepare("SELECT * FROM MSWDO_USER WHERE username = ? LIMIT 1");
+$stmt = $pdo->prepare("SELECT * FROM mswdo_user WHERE username = ? LIMIT 1");
 $stmt->execute([$username]);
 $user = $stmt->fetch();
 
