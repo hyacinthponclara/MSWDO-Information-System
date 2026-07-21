@@ -6,17 +6,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MSWDO Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['DM Sans', 'sans-serif'] },
+                    fontFamily: {
+                        sans: ['DM Sans', 'sans-serif'],
+                        serif: ['Fraunces', 'serif']
+                    },
                     colors: {
-                        brand: { DEFAULT: '#1a6b4a', light: '#e6f4ee', mid: '#2e8a61', dark: '#134d35' },
-                        sidebar: '#0f2a44'
+                        forest: {
+                            50: '#eaf5ef',
+                            100: '#cfe8db',
+                            300: '#7dbd9b',
+                            500: '#1f7a52',
+                            600: '#166241',
+                            700: '#124f35',
+                            800: '#0e3d29',
+                            900: '#092a1c'
+                        },
+                        gold: {
+                            400: '#d3b168',
+                            500: '#c19a45'
+                        }
                     }
                 }
             }
@@ -27,86 +42,112 @@
         body {
             font-family: 'DM Sans', sans-serif;
         }
+        .font-display {
+            font-family: 'Fraunces', serif;
+        }
+        .seal-ring {
+            border: 1px solid rgba(211, 177, 104, 0.35);
+        }
     </style>
 </head>
 
-<body class="bg-gray-100">
+<body class="bg-forest-50">
 
-    <div class="min-h-screen flex">
+    <div class="min-h-screen flex flex-col md:flex-row">
 
-        <!-- LEFT SIDE -->
-        <div class="w-1/2 relative flex flex-col justify-between p-10 overflow-hidden text-white">
+        <!-- HERO / LEFT SIDE -->
+        <div class="relative flex flex-col justify-between overflow-hidden text-white
+                    h-56 sm:h-64 md:h-auto md:w-[46%]
+                    p-6 sm:p-8 md:p-10">
 
-            <div class="absolute inset-0 ">
-                <img src="mswd.jpg"
+            <div class="absolute inset-0">
+                <img src="mswd.jpg" alt=""
                     class="w-full h-full object-cover object-[center_30%] scale-150">
             </div>
 
-            <div class="absolute inset-0 bg-[#0f2a44]/85"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-forest-900/90 via-forest-800/85 to-forest-900/95"></div>
 
-            <div class="relative z-10">
+
+            <div class="relative z-10 hidden md:block">
                 <br><br><br><br>
 
-                <h1 class="text-5xl font-semibold leading-snug">
+                <h1 class="font-display font-semibold leading-snug text-[2.75rem]">
                     MSWDO San Enrique<br>
-                    Information System
+                    <span class="text-gold-400">Information System</span>
                 </h1>
 
-                <p class="text-lg text-gray-200 mt-4">
+                <p class="text-sm text-forest-100/85 mt-4">
                     Municipal Social Welfare and Development Office<br>
+                    San Enrique, Negros Occidental
+                </p>
+            </div>
+
+            <div class="relative z-10 md:hidden">
+                <h1 class="font-display font-semibold leading-tight text-2xl sm:text-3xl">
+                    MSWDO San Enrique
+                    <span class="block text-gold-400">Information System</span>
+                </h1>
+
+                <p class="text-xs sm:text-sm text-forest-100/85 mt-2 sm:mt-4 max-w-xs">
+                    Municipal Social Welfare and Development Office
                     San Enrique, Negros Occidental
                 </p>
             </div>
 
         </div>
 
-        <!-- RIGHT SIDE -->
-        <div class="w-1/2 flex items-center justify-center bg-gray-100">
+        <!-- FORM / RIGHT SIDE -->
+        <div class="flex-1 flex items-center justify-center px-6 py-10 sm:px-10 md:px-12">
 
-            <div class="w-full max-w-md">
+            <div class="w-full max-w-sm">
 
-                <h2 class="text-2xl font-semibold text-gray-800 mb-2">
+                <h2 class="font-display text-2xl sm:text-3xl font-semibold text-forest-900 mb-2">
                     Welcome back
                 </h2>
 
-                <p class="text-sm text-gray-500 mb-6">
+                <p class="text-sm text-forest-700/70 mb-8">
                     Sign in to access the MSWDO portal
                 </p>
 
-                <div id="loginError" class="hidden mb-4 px-4 py-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
+                <div id="loginError" class="hidden mb-5 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
                 </div>
 
                 <!-- Form -->
-                <form action="login.php" method="POST" class="space-y-4">
+                <form action="login.php" method="POST" class="space-y-5">
 
                     <div>
-                        <label class="text-xs text-navy-400">USERNAME</label>
-                        <input type="text" name="username" placeholder="Enter your username" 
-                            class="w-full mt-1 px-4 py-3 rounded-md bg-white border border-navy-100 text-navy-700 placeholder-navy-300 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400">
+                        <label class="text-xs font-medium tracking-wide text-forest-700/70">USERNAME</label>
+                        <div class="relative mt-1.5">
+                            <i class="fas fa-user absolute left-3.5 top-1/2 -translate-y-1/2 text-forest-500/50 text-sm"></i>
+                            <input type="text" name="username" placeholder="Enter your username"
+                                class="w-full pl-10 pr-4 py-3 rounded-lg bg-white border border-forest-100 text-forest-900 placeholder-forest-300 focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:border-forest-500 transition">
+                        </div>
                     </div>
 
                     <div>
-                        <label class="text-xs text-navy-400">PASSWORD</label>
-                        <div class="relative mt-1">
-                            <input type="password" name="password" id="passwordInput" placeholder="Enter your password" 
-                                class="w-full px-4 py-3 pr-10 rounded-md bg-white border border-navy-100 text-navy-700 placeholder-navy-300 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-gold-400">
+                        <label class="text-xs font-medium tracking-wide text-forest-700/70">PASSWORD</label>
+                        <div class="relative mt-1.5">
+                            <i class="fas fa-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-forest-500/50 text-sm"></i>
+                            <input type="password" name="password" id="passwordInput" placeholder="Enter your password"
+                                class="w-full pl-10 pr-10 py-3 rounded-lg bg-white border border-forest-100 text-forest-900 placeholder-forest-300 focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:border-forest-500 transition">
                             <button type="button" id="togglePassword"
-                                class="absolute inset-y-0 right-0 flex items-center px-3 text-navy-400 hover:text-navy-600">
-                                <i class="far fa-eye opacity-50" id="eyeIcon"></i>
+                                class="absolute inset-y-0 right-0 flex items-center px-3.5 text-forest-400 hover:text-forest-600">
+                                <i class="far fa-eye" id="eyeIcon"></i>
                             </button>
                         </div>
                     </div>
 
                     <button type="submit"
-                        class="w-full mt-1 px-4 py-3 rounded-md bg-gray-800 text-white placeholder-gray-400 focus:outline-none">
+                        class="w-full mt-2 px-4 py-3 rounded-lg bg-forest-700 hover:bg-forest-800 active:bg-forest-900 text-white font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-forest-500/40 focus:ring-offset-2">
                         Sign in
                     </button>
 
                 </form>
 
                 <!-- Footer -->
-                <div class="flex justify-end mt-4 text-xs">
-                    <a href="#" class="text-blue-500 hover:underline">
+                <div class="flex justify-between items-center mt-6 text-xs">
+                    <span class="text-forest-700/50"></span>
+                    <a href="#" class="text-forest-600 hover:text-forest-800 font-medium hover:underline">
                         Forgot password?
                     </a>
                 </div>
@@ -116,6 +157,7 @@
         </div>
 
     </div>
+
     <script>
         const togglePassword = document.getElementById('togglePassword');
         const passwordInput = document.getElementById('passwordInput');
