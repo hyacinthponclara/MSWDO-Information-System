@@ -18,11 +18,11 @@ $stmt = $pdo->prepare("
         b.barangay_name,
         p.program_name,
         u.user_firstname AS creator_firstname, u.user_lastname AS creator_lastname
-    FROM AVAILMENT a
-    JOIN CLIENT c ON c.client_id = a.client_id
-    LEFT JOIN BARANGAY b ON b.barangay_id = c.brgy_id
-    JOIN PROGRAM p ON p.program_id = a.program_id
-    LEFT JOIN MSWDO_USER u ON u.user_id = a.user_id
+    FROM availment a
+    JOIN client c ON c.client_id = a.client_id
+    LEFT JOIN barangay b ON b.barangay_id = c.brgy_id
+    JOIN program p ON p.program_id = a.program_id
+    LEFT JOIN mswdo_user u ON u.user_id = a.user_id
     WHERE a.availment_id = ?
 ");
 $stmt->execute([$availment_id]);
@@ -35,11 +35,11 @@ if (!$row) {
 
 // ── Figure out which AICS subtype this availment belongs to ──
 $subtypeMap = [
-    'Medical'     => ['table' => 'AICS_MEDICAL',     'badge' => 'badge-medical'],
-    'Financial'   => ['table' => 'AICS_FINANCIAL',   'badge' => 'badge-financial'],
-    'Educational' => ['table' => 'AICS_EDUCATIONAL', 'badge' => 'badge-educational'],
-    'Livelihood'  => ['table' => 'AICS_LIVELIHOOD',  'badge' => 'badge-livelihood'],
-    'Burial'      => ['table' => 'AICS_BURIAL',      'badge' => 'badge-burial'],
+    'Medical'     => ['table' => 'aics_medical',     'badge' => 'badge-medical'],
+    'Financial'   => ['table' => 'aics_financial',   'badge' => 'badge-financial'],
+    'Educational' => ['table' => 'aics_educational', 'badge' => 'badge-educational'],
+    'Livelihood'  => ['table' => 'aics_livelihood',  'badge' => 'badge-livelihood'],
+    'Burial'      => ['table' => 'aics_burial',      'badge' => 'badge-burial'],
 ];
 
 $type = null;
