@@ -10,7 +10,7 @@ if ($client_id <= 0) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT cl_firstname, cl_lastname FROM CLIENT WHERE client_id = ?");
+$stmt = $pdo->prepare("SELECT cl_firstname, cl_lastname FROM client WHERE client_id = ?");
 $stmt->execute([$client_id]);
 $client = $stmt->fetch();
 if (!$client) {

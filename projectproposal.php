@@ -26,7 +26,7 @@ $errors = [];
 // after a validation error.
 $program_id = (int) ($_POST['program_id'] ?? $_GET['program_id'] ?? 0);
 
-$progStmt = $pdo->prepare("SELECT program_id, program_name, prog_annual_budget FROM PROGRAM WHERE program_id = ?");
+$progStmt = $pdo->prepare("SELECT program_id, program_name, prog_annual_budget FROM program WHERE program_id = ?");
 $progStmt->execute([$program_id]);
 $program = $progStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -45,13 +45,13 @@ if (!$program) {
 function getRemainingBudget($pdo, $program_id, $annual_budget, $forUpdate = false)
 {
     if ($forUpdate) {
-        $lock = $pdo->prepare("SELECT program_id FROM PROGRAM WHERE program_id = ? FOR UPDATE");
+        $lock = $pdo->prepare("SELECT program_id FROM program WHERE program_id = ? FOR UPDATE");
         $lock->execute([$program_id]);
     }
 
     $availStmt = $pdo->prepare("
         SELECT COALESCE(SUM(av_amount), 0)
-        FROM AVAILMENT
+        FROM availment
         WHERE program_id = ? AND av_status IN ('Approved', 'Released')
     ");
     $availStmt->execute([$program_id]);
@@ -59,7 +59,7 @@ function getRemainingBudget($pdo, $program_id, $annual_budget, $forUpdate = fals
 
     $propStmt = $pdo->prepare("
         SELECT COALESCE(SUM(pp_budget), 0)
-        FROM PROJECT_PROPOSAL
+        FROM project_proposal
         WHERE program_id = ?
     ");
     $propStmt->execute([$program_id]);
@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pp_document = saveFile('pp_document', 'uploads/project_proposals/');
 
                 $stmt = $pdo->prepare("
-                    INSERT INTO PROJECT_PROPOSAL (
+                    INSERT INTO project_proposal (
                         user_id, program_id, pp_title, pp_date_from, pp_date_to, pp_venue,
                         pp_num_participants, pp_participant_desc, pp_budget,
                         pp_fund_source, pp_document

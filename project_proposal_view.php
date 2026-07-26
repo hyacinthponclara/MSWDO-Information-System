@@ -15,9 +15,9 @@ $stmt = $pdo->prepare("
         p.program_name,
         u.user_firstname,
         u.user_lastname
-    FROM PROJECT_PROPOSAL pp
-    JOIN PROGRAM p ON p.program_id = pp.program_id
-    LEFT JOIN MSWDO_USER u ON u.user_id = pp.user_id
+    FROM project_proposal pp
+    JOIN program p ON p.program_id = pp.program_id
+    LEFT JOIN mswdo_user u ON u.user_id = pp.user_id
     WHERE pp.proposal_id = ?
     LIMIT 1
 ");

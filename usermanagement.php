@@ -10,7 +10,7 @@ $flashType = $_GET['type'] ?? 'success';
 $stmt = $pdo->query("
     SELECT user_id, username, user_firstname, user_middlename, user_lastname,
            user_role, user_email, user_contactnum, user_isactive, user_last_login
-    FROM MSWDO_USER
+    FROM mswdo_user
     ORDER BY user_lastname ASC, user_firstname ASC
 ");
 

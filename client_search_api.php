@@ -18,8 +18,8 @@ $like = '%' . $q . '%';
 $stmt = $pdo->prepare("
     SELECT c.client_id, c.cl_firstname, c.cl_lastname, c.cl_age, c.cl_sex,
            b.barangay_name
-    FROM CLIENT c
-    LEFT JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+    FROM client c
+    LEFT JOIN barangay b ON b.barangay_id = c.brgy_id
     WHERE c.cl_firstname LIKE ?
        OR c.cl_lastname LIKE ?
        OR c.client_id = ?

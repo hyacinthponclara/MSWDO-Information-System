@@ -13,8 +13,8 @@ $stmt = $pdo->prepare("
     SELECT
         c.*,
         b.barangay_name
-    FROM CLIENT c
-    LEFT JOIN BARANGAY b ON c.brgy_id = b.barangay_id
+    FROM client c
+    LEFT JOIN barangay b ON c.brgy_id = b.barangay_id
     WHERE c.client_id = :id
     LIMIT 1
 ");
@@ -50,13 +50,13 @@ $avStmt = $pdo->prepare("
             WHEN p.program_name = 'AICS Educational' THEN 'AICS - Educational'
             ELSE p.program_name
         END AS program_label
-    FROM AVAILMENT a
-    LEFT JOIN PROGRAM p  ON a.program_id = p.program_id
-    LEFT JOIN MSWDO_USER u ON a.user_id  = u.user_id
-    LEFT JOIN AICS_MEDICAL    med ON med.availment_id = a.availment_id
-    LEFT JOIN AICS_FINANCIAL  fin ON fin.availment_id = a.availment_id
-    LEFT JOIN AICS_BURIAL     bur ON bur.availment_id = a.availment_id
-    LEFT JOIN AICS_LIVELIHOOD liv ON liv.availment_id = a.availment_id
+    FROM availment a
+    LEFT JOIN program p  ON a.program_id = p.program_id
+    LEFT JOIN mswdo_user u ON a.user_id  = u.user_id
+    LEFT JOIN aics_medical    med ON med.availment_id = a.availment_id
+    LEFT JOIN aics_financial  fin ON fin.availment_id = a.availment_id
+    LEFT JOIN aics_burial     bur ON bur.availment_id = a.availment_id
+    LEFT JOIN aics_livelihood liv ON liv.availment_id = a.availment_id
     WHERE a.client_id = :id
     ORDER BY a.av_date_applied DESC
 ");
@@ -65,7 +65,7 @@ $availments = $avStmt->fetchAll();
 
 $famStmt = $pdo->prepare("
     SELECT family_composition_json
-    FROM CASE_STUDY
+    FROM case_study
     WHERE client_id = :id
       AND problem_presented = 'Initial registration'
     ORDER BY created_at ASC
@@ -232,6 +232,7 @@ $progColors = [
     }
 
     .btn-act:hover {
+      +
       transform: translateY(-1px);
     }
 

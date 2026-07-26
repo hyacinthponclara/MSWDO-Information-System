@@ -15,9 +15,9 @@ $stmt = $pdo->prepare("
            b.barangay_name,
            u.user_firstname, u.user_lastname
     FROM woman_and_children wc
-    LEFT JOIN CLIENT c ON c.client_id = wc.client_id
-    LEFT JOIN BARANGAY b ON b.barangay_id = c.brgy_id
-    LEFT JOIN MSWDO_USER u ON u.user_id = wc.user_id
+    LEFT JOIN client c ON c.client_id = wc.client_id
+    LEFT JOIN barangay b ON b.barangay_id = c.brgy_id
+    LEFT JOIN mswdo_user u ON u.user_id = wc.user_id
     WHERE wc.wc_case_number = ?
     LIMIT 1
 ");

@@ -17,18 +17,18 @@ function getAllProgramBudgets(PDO $pdo): array
                 - COALESCE(av.spent_availment, 0)
                 - COALESCE(pp.spent_proposals, 0) AS remaining
 
-        FROM PROGRAM p
+        FROM program p
 
         LEFT JOIN (
             SELECT program_id, SUM(av_amount) AS spent_availment
-            FROM AVAILMENT
+            FROM availment
             WHERE av_status IN ('Approved','Released')
             GROUP BY program_id
         ) av ON av.program_id = p.program_id
 
         LEFT JOIN (
             SELECT program_id, SUM(pp_budget) AS spent_proposals
-            FROM PROJECT_PROPOSAL
+            FROM project_proposal
             GROUP BY program_id
         ) pp ON pp.program_id = p.program_id
 
@@ -60,12 +60,12 @@ function getProgramBudget(PDO $pdo, array $programNames): array
             COALESCE(SUM(p.prog_annual_budget), 0) AS total,
             COALESCE(av.spent_availment, 0) AS spent_availment,
             COALESCE(pp.spent_proposals, 0) AS spent_proposals
-        FROM PROGRAM p
+        FROM program p
 
         LEFT JOIN (
             SELECT a.program_id, SUM(a.av_amount) AS spent_availment
-            FROM AVAILMENT a
-            JOIN PROGRAM p2 ON p2.program_id = a.program_id
+            FROM availment a
+            JOIN program p2 ON p2.program_id = a.program_id
             WHERE a.av_status IN ('Approved','Released')
               AND p2.program_name IN ($placeholders)
             GROUP BY a.program_id
@@ -73,8 +73,8 @@ function getProgramBudget(PDO $pdo, array $programNames): array
 
         LEFT JOIN (
             SELECT pp.program_id, SUM(pp.pp_budget) AS spent_proposals
-            FROM PROJECT_PROPOSAL pp
-            JOIN PROGRAM p3 ON p3.program_id = pp.program_id
+            FROM project_proposal pp
+            JOIN program p3 ON p3.program_id = pp.program_id
             WHERE p3.program_name IN ($placeholders)
             GROUP BY pp.program_id
         ) pp ON pp.program_id = p.program_id
@@ -115,7 +115,7 @@ function getProgramBudget(PDO $pdo, array $programNames): array
  */
 function getProgramId(PDO $pdo, string $programName): ?int
 {
-    $stmt = $pdo->prepare("SELECT program_id FROM PROGRAM WHERE program_name = ? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT program_id FROM program WHERE program_name = ? LIMIT 1");
     $stmt->execute([$programName]);
     $id = $stmt->fetchColumn();
     return $id !== false ? (int) $id : null;
@@ -141,8 +141,8 @@ function getFundRequests(PDO $pdo, string $programName): array
             pp.pp_budget,
             pp.pp_fund_source,
             pp.pp_date_submitted
-        FROM PROJECT_PROPOSAL pp
-        JOIN PROGRAM p ON p.program_id = pp.program_id
+        FROM project_proposal pp
+        JOIN program p ON p.program_id = pp.program_id
         WHERE p.program_name = ?
         ORDER BY pp.pp_date_submitted DESC
     ");

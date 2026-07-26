@@ -14,11 +14,11 @@ $aicsEduBudget  = getProgramBudget($pdo, ['AICS Educational']);
 // them all together, tagging each with its type and budget source, so the
 // table shows every real availment instead of hardcoded rows.
 $aicsSubtypes = [
-    ['table' => 'AICS_FINANCIAL',   'type' => 'Financial',   'source' => 'FBML'],
-    ['table' => 'AICS_BURIAL',      'type' => 'Burial',      'source' => 'FBML'],
-    ['table' => 'AICS_MEDICAL',     'type' => 'Medical',     'source' => 'FBML'],
-    ['table' => 'AICS_LIVELIHOOD',  'type' => 'Livelihood',  'source' => 'FBML'],
-    ['table' => 'AICS_EDUCATIONAL', 'type' => 'Educational', 'source' => 'Educational'],
+    ['table' => 'aics_financial',   'type' => 'Financial',   'source' => 'FBML'],
+    ['table' => 'aics_burial',      'type' => 'Burial',      'source' => 'FBML'],
+    ['table' => 'aics_medical',     'type' => 'Medical',     'source' => 'FBML'],
+    ['table' => 'aics_livelihood',  'type' => 'Livelihood',  'source' => 'FBML'],
+    ['table' => 'aics_educational', 'type' => 'Educational', 'source' => 'Educational'],
 ];
 
 $aicsTransactions = [];
@@ -33,8 +33,8 @@ foreach ($aicsSubtypes as $sub) {
             c.cl_firstname,
             c.cl_lastname
         FROM {$sub['table']} t
-        JOIN AVAILMENT a ON a.availment_id = t.availment_id
-        JOIN CLIENT c ON c.client_id = a.client_id
+        JOIN availment a ON a.availment_id = t.availment_id
+        JOIN client c ON c.client_id = a.client_id
         ORDER BY a.av_date_applied DESC
     ");
     $stmt->execute();

@@ -42,7 +42,7 @@
 
             // Lock the target row so two admins can't augment the same program
             // at the same time and corrupt the running total.
-            $stmt = $pdo->prepare("SELECT program_name FROM PROGRAM WHERE program_id = ? FOR UPDATE");
+            $stmt = $pdo->prepare("SELECT program_name FROM program WHERE program_id = ? FOR UPDATE");
             $stmt->execute([$targetId]);
             $target = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$target) {
@@ -67,8 +67,8 @@
                         p.program_name,
                         p.prog_annual_budget,
                         COALESCE(SUM(a.av_amount),0) AS spent
-                    FROM PROGRAM p
-                    LEFT JOIN AVAILMENT a
+                    FROM program p
+                    LEFT JOIN availment a
                         ON a.program_id = p.program_id
                     AND a.av_status IN ('Approved','Released')
                     WHERE p.program_id = ?
@@ -101,13 +101,13 @@
                 // Real transfer: the amount leaves the donor's budget entirely
                 // (not logged as "spent" — spent is reserved for actual client availments).
                 $pdo->prepare("
-                    UPDATE PROGRAM
+                    UPDATE program
                     SET prog_annual_budget = prog_annual_budget - ?
                     WHERE program_id = ?
                 ")->execute([$amount, $donorId]);
 
                 $pdo->prepare("
-                    INSERT INTO BUDGET_LOG (program_id, user_id, action_type, amount, source, reason)
+                    INSERT INTO budget_log (program_id, user_id, action_type, amount, source, reason)
                     VALUES (?, ?, 'Transfer Out', ?, ?, ?)
                 ")->execute([$donorId, $user_id, $amount, 'To ' . $target['program_name'], $reason]);
 
@@ -124,14 +124,14 @@
 
             // Add the amount to the target program's budget
             $pdo->prepare("
-                UPDATE PROGRAM
+                UPDATE program
                 SET prog_annual_budget = prog_annual_budget + ?
                 WHERE program_id = ?
             ")->execute([$amount, $targetId]);
 
 
             $pdo->prepare("
-                INSERT INTO BUDGET_LOG (program_id, user_id, action_type, amount, source, reason)
+                INSERT INTO budget_log (program_id, user_id, action_type, amount, source, reason)
                 VALUES (?, ?, ?, ?, ?, ?)
             ")->execute([$targetId, $user_id, $logAction, $amount, $sourceLabel, $reason]);
 
@@ -166,8 +166,8 @@
                     p.program_name,
                     p.prog_annual_budget,
                     COALESCE(SUM(a.av_amount),0) AS spent
-                FROM PROGRAM p
-                LEFT JOIN AVAILMENT a
+                FROM program p
+                LEFT JOIN availment a
                     ON a.program_id = p.program_id
                 AND a.av_status IN ('Approved','Released')
                 WHERE p.program_id = ?
@@ -212,13 +212,13 @@
             // The annual budget shrinks down to exactly what's been spent so far;
             // the unused remainder is what gets "returned to the LGU."
             $pdo->prepare("
-                UPDATE PROGRAM
+                UPDATE program
                 SET prog_annual_budget = prog_annual_budget - ?
                 WHERE program_id = ?
             ")->execute([$remaining, $programId]);
 
             $pdo->prepare("
-                INSERT INTO BUDGET_LOG (program_id, user_id, action_type, amount, source, reason)
+                INSERT INTO budget_log (program_id, user_id, action_type, amount, source, reason)
                 VALUES (?, ?, 'End Period Early', ?, 'Returned to LGU', NULL)
             ")->execute([$programId, $user_id, $remaining]);
 

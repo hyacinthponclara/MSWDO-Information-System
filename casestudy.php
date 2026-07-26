@@ -10,7 +10,7 @@ if ($client_id <= 0) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT * FROM CLIENT WHERE client_id = ? LIMIT 1");
+$stmt = $pdo->prepare("SELECT * FROM client WHERE client_id = ? LIMIT 1");
 $stmt->execute([$client_id]);
 $client = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $savings = (float) ($_POST['savings'] ?? 0);
 
     $famStmt2 = $pdo->prepare("
-        SELECT family_composition_json FROM CASE_STUDY
+        SELECT family_composition_json FROM case_study
         WHERE client_id = ? AND problem_presented = 'Initial registration'
         ORDER BY created_at ASC LIMIT 1
     ");
@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $family_composition_json = json_encode(array_merge([$clientRow], $regFamily2));
 
     $stmt = $pdo->prepare("
-        INSERT INTO CASE_STUDY (
+        INSERT INTO case_study (
             client_id, user_id, interview_date, type_of_case_study,
             patient_name, patient_relationship, family_composition_json,
             combined_income, monthly_expenses, emergency_fund_available,
@@ -116,7 +116,7 @@ $client_income = (float) ($client['cl_monthly_income'] ?? 0);
 
 $famStmt = $pdo->prepare("
     SELECT family_composition_json
-    FROM CASE_STUDY
+    FROM case_study
     WHERE client_id = ?
     AND problem_presented = 'Initial registration'
     ORDER BY created_at ASC
@@ -131,12 +131,12 @@ if ($famRow && !empty($famRow['family_composition_json'])) {
 
 //  Auto-detect previous DSWD/MSWDO assistance from availment history 
 $prevStmt = $pdo->prepare("
-    SELECT AVAILMENT.availment_id, PROGRAM.program_name, AVAILMENT.av_amount, AVAILMENT.av_date_applied
-    FROM AVAILMENT
-    JOIN PROGRAM ON AVAILMENT.program_id = PROGRAM.program_id
-    WHERE AVAILMENT.client_id = ?
-      AND AVAILMENT.av_status IN ('Approved', 'Released')
-    ORDER BY AVAILMENT.av_date_applied DESC
+    SELECT availment.availment_id, program.program_name, availment.av_amount, availment.av_date_applied
+    FROM availment
+    JOIN program ON availment.program_id = program.program_id
+    WHERE availment.client_id = ?
+      AND availment.av_status IN ('Approved', 'Released')
+    ORDER BY availment.av_date_applied DESC
 ");
 $prevStmt->execute([$client_id]);
 $prevAvailments = $prevStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -147,10 +147,10 @@ $has_prev_dswd_assistance = count($prevAvailments) > 0;
 function resolveAicsFbmlSubtype(PDO $pdo, int $availment_id): ?string
 {
     $subtypeTables = [
-        'AICS_MEDICAL' => 'AICS Medical',
-        'AICS_FINANCIAL' => 'AICS Financial',
-        'AICS_BURIAL' => 'AICS Burial',
-        'AICS_LIVELIHOOD' => 'AICS Livelihood',
+        'aics_medical' => 'AICS Medical',
+        'aics_financial' => 'AICS Financial',
+        'aics_burial' => 'AICS Burial',
+        'aics_livelihood' => 'AICS Livelihood',
     ];
     foreach ($subtypeTables as $table => $label) {
         $stmt = $pdo->prepare("SELECT 1 FROM {$table} WHERE availment_id = ? LIMIT 1");

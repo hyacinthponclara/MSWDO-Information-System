@@ -113,8 +113,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ),
             0
         ) AS spent
-    FROM PROGRAM p
-    LEFT JOIN AVAILMENT a
+    FROM program p
+    LEFT JOIN availment a
         ON p.program_id = a.program_id
         AND YEAR(a.av_date_applied) = YEAR(CURDATE())
     WHERE p.program_id = ?
@@ -141,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $stmt = $pdo->prepare("
-            INSERT INTO AVAILMENT (
+            INSERT INTO availment (
                 client_id,
                 program_id,
                 user_id,
@@ -175,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $amed_mayors_approval = saveFile('doc_mayors', $folder);
 
             $stmt = $pdo->prepare("
-                INSERT INTO AICS_MEDICAL (
+                INSERT INTO aics_medical (
                     availment_id, amed_med_cert, amed_valid_id,
                     amed_cert_indigency, amed_lab_result, amed_hospital_bill,
                     amed_discharge_summary, amed_med_quotation, amed_mayors_approval
@@ -200,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $afin_supporting_docs_2 = saveFile('fin_doc_support', $folder);
 
             $stmt = $pdo->prepare("
-                INSERT INTO AICS_FINANCIAL (
+                INSERT INTO aics_financial (
                     availment_id, afin_approval,
                     afin_supporting_docs, afin_supporting_docs_2
                 ) VALUES (?, ?, ?, ?)
@@ -232,7 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $aed_claimant_id = saveFile('edu_doc_claimantid', $folder);
 
             $stmt = $pdo->prepare("
-                INSERT INTO AICS_EDUCATIONAL (
+                INSERT INTO aics_educational (
                     availment_id, aed_grades, aed_cert_enrollment,
                     aed_cert_indigency, aed_cert_residency,
                     aed_student_id, aed_claimant_id,
@@ -265,7 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $aliv_cert_residency = saveFile('liv_doc_residency', $folder);
 
             $stmt = $pdo->prepare("
-                INSERT INTO AICS_LIVELIHOOD (
+                INSERT INTO aics_livelihood (
                     availment_id, aliv_letter_intent, aliv_livelihood_proposal,
                     aliv_valid_id, aliv_cert_indigency, aliv_cert_residency,
                     aliv_business_name, aliv_business_type, aliv_start_up_cost
@@ -292,7 +292,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ab_mayors_approval = saveFile('bur_doc_mayors', $folder);
 
             $stmt = $pdo->prepare("
-                INSERT INTO AICS_BURIAL (
+                INSERT INTO aics_burial (
                     availment_id, ab_death_cert, ab_funeral_contract,
                     ab_valid_id, ab_brgy_indigency, ab_mayors_approval
                 ) VALUES (?, ?, ?, ?, ?, ?)
@@ -319,8 +319,8 @@ $stmt = $pdo->prepare("
     SELECT
         p.prog_annual_budget,
         COALESCE(SUM(CASE WHEN a.av_status = 'Released' THEN a.av_amount ELSE 0 END), 0) AS spent
-    FROM PROGRAM p
-    LEFT JOIN AVAILMENT a
+    FROM program p
+    LEFT JOIN availment a
         ON a.program_id = p.program_id
         AND YEAR(a.av_date_applied) = YEAR(CURDATE())
     WHERE p.program_name = 'AICS FBML'
@@ -358,8 +358,8 @@ $stmt = $pdo->prepare("
     SELECT
         p.prog_annual_budget,
         COALESCE(SUM(CASE WHEN a.av_status = 'Released' THEN a.av_amount ELSE 0 END), 0) AS spent
-    FROM PROGRAM p
-    LEFT JOIN AVAILMENT a
+    FROM program p
+    LEFT JOIN availment a
         ON a.program_id = p.program_id
         AND YEAR(a.av_date_applied) = YEAR(CURDATE())
     WHERE p.program_name = 'AICS Educational'
@@ -396,7 +396,7 @@ function getSubtypeDates(PDO $pdo, int $client_id, int $program_id, string $join
 {
     $stmt = $pdo->prepare("
         SELECT a.av_date_applied
-        FROM AVAILMENT a
+        FROM availment a
         JOIN {$join_table} s ON s.availment_id = a.availment_id
         WHERE a.client_id  = ?
           AND a.program_id = ?
@@ -443,28 +443,28 @@ function getRollingWindowCount(array $dates): array
     ];
 }
 
-$fbml_pid_stmt = $pdo->prepare("SELECT program_id FROM PROGRAM WHERE program_name = 'AICS FBML' LIMIT 1");
+$fbml_pid_stmt = $pdo->prepare("SELECT program_id FROM program WHERE program_name = 'AICS FBML' LIMIT 1");
 $fbml_pid_stmt->execute();
 $fbml_program_id = (int) ($fbml_pid_stmt->fetchColumn() ?? 0);
 
-$med_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_MEDICAL'));
-$fin_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_FINANCIAL'));
-$bur_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_BURIAL'));
-$liv_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_LIVELIHOOD'));
+$med_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'aics_medical'));
+$fin_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'aics_financial'));
+$bur_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'aics_burial'));
+$liv_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'aics_livelihood'));
 
 //  Per-subtype year counts 
-$med_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_MEDICAL'), fn($d) => date('Y', strtotime($d)) == date('Y')));
-$fin_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_FINANCIAL'), fn($d) => date('Y', strtotime($d)) == date('Y')));
-$bur_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_BURIAL'), fn($d) => date('Y', strtotime($d)) == date('Y')));
-$liv_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'AICS_LIVELIHOOD'), fn($d) => date('Y', strtotime($d)) == date('Y')));
+$med_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'aics_medical'), fn($d) => date('Y', strtotime($d)) == date('Y')));
+$fin_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'aics_financial'), fn($d) => date('Y', strtotime($d)) == date('Y')));
+$bur_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'aics_burial'), fn($d) => date('Y', strtotime($d)) == date('Y')));
+$liv_y_count = count(array_filter(getSubtypeDates($pdo, $client_id, $fbml_program_id, 'aics_livelihood'), fn($d) => date('Y', strtotime($d)) == date('Y')));
 
 //  AICS Educational: separate 2×/year limit 
-$edu_pid_stmt = $pdo->prepare("SELECT program_id FROM PROGRAM WHERE program_name = 'AICS Educational' LIMIT 1");
+$edu_pid_stmt = $pdo->prepare("SELECT program_id FROM program WHERE program_name = 'AICS Educational' LIMIT 1");
 $edu_pid_stmt->execute();
 $edu_program_id = (int) ($edu_pid_stmt->fetchColumn() ?? 0);
 
 $stmt = $pdo->prepare("
-    SELECT COUNT(*) FROM AVAILMENT
+    SELECT COUNT(*) FROM availment
     WHERE client_id  = ?
       AND program_id = ?
       AND av_status != 'Denied'
@@ -474,7 +474,7 @@ $stmt->execute([$client_id, $edu_program_id]);
 $edu_y_count = (int) $stmt->fetchColumn();
 
 //  AICS Educational: rolling quarter-window count (same pattern as FBML subtypes) 
-$edu_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $edu_program_id, 'AICS_EDUCATIONAL'));
+$edu_q = getRollingWindowCount(getSubtypeDates($pdo, $client_id, $edu_program_id, 'aics_educational'));
 
 // $quarter_ok = true means AT LEAST ONE subtype is still within its quarter limit.
 // The Proceed button is only fully hard-blocked when every FBML subtype is blocked.

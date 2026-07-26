@@ -48,10 +48,10 @@ if ($action === 'add' || $action === 'edit') {
 
     // ── Username uniqueness (excluding self on edit) ──
     if ($action === 'add') {
-        $check = $pdo->prepare("SELECT COUNT(*) FROM MSWDO_USER WHERE username = ?");
+        $check = $pdo->prepare("SELECT COUNT(*) FROM mswdo_user WHERE username = ?");
         $check->execute([$username]);
     } else {
-        $check = $pdo->prepare("SELECT COUNT(*) FROM MSWDO_USER WHERE username = ? AND user_id != ?");
+        $check = $pdo->prepare("SELECT COUNT(*) FROM mswdo_user WHERE username = ? AND user_id != ?");
         $check->execute([$username, $id]);
     }
     if ((int) $check->fetchColumn() > 0) {
@@ -61,7 +61,7 @@ if ($action === 'add' || $action === 'edit') {
     if ($action === 'add') {
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $stmt = $pdo->prepare("
-            INSERT INTO MSWDO_USER
+            INSERT INTO mswdo_user
                 (username, user_password, user_firstname, user_middlename, user_lastname,
                  user_role, user_contactnum, user_email, user_isactive)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -77,7 +77,7 @@ if ($action === 'add' || $action === 'edit') {
     if ($password !== '') {
         $hash = password_hash($password, PASSWORD_DEFAULT);
         $stmt = $pdo->prepare("
-            UPDATE MSWDO_USER SET
+            UPDATE mswdo_user SET
                 username = ?, user_password = ?, user_firstname = ?, user_middlename = ?,
                 user_lastname = ?, user_role = ?, user_contactnum = ?, user_email = ?, user_isactive = ?
             WHERE user_id = ?
@@ -88,7 +88,7 @@ if ($action === 'add' || $action === 'edit') {
         ]);
     } else {
         $stmt = $pdo->prepare("
-            UPDATE MSWDO_USER SET
+            UPDATE mswdo_user SET
                 username = ?, user_firstname = ?, user_middlename = ?,
                 user_lastname = ?, user_role = ?, user_contactnum = ?, user_email = ?, user_isactive = ?
             WHERE user_id = ?
@@ -112,7 +112,7 @@ if ($action === 'add' || $action === 'edit') {
         backTo('You cannot disable your own account.', 'error');
     }
 
-    $stmt = $pdo->prepare("SELECT user_isactive, user_firstname, user_lastname FROM MSWDO_USER WHERE user_id = ?");
+    $stmt = $pdo->prepare("SELECT user_isactive, user_firstname, user_lastname FROM mswdo_user WHERE user_id = ?");
     $stmt->execute([$id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
@@ -120,7 +120,7 @@ if ($action === 'add' || $action === 'edit') {
     }
 
     $newStatus = $row['user_isactive'] ? 0 : 1;
-    $upd = $pdo->prepare("UPDATE MSWDO_USER SET user_isactive = ? WHERE user_id = ?");
+    $upd = $pdo->prepare("UPDATE mswdo_user SET user_isactive = ? WHERE user_id = ?");
     $upd->execute([$newStatus, $id]);
 
     $name = $row['user_firstname'] . ' ' . $row['user_lastname'];

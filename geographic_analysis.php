@@ -15,9 +15,9 @@ function countByBarangay(PDO $pdo, string $table, string $availmentFk = 'availme
     $sql = "
         SELECT b.barangay_name AS barangay, COUNT(*) AS cnt
         FROM $table t
-        JOIN AVAILMENT a ON a.availment_id = t.$availmentFk
-        JOIN CLIENT c ON c.client_id = a.client_id
-        JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+        JOIN availment a ON a.availment_id = t.$availmentFk
+        JOIN client c ON c.client_id = a.client_id
+        JOIN barangay b ON b.barangay_id = c.brgy_id
         GROUP BY b.barangay_name
     ";
     $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -58,9 +58,9 @@ foreach ($aicsSubtypes as $key => $meta) {
             c.cl_firstname, c.cl_lastname, c.cl_age,
             a.av_amount, a.av_status
         FROM {$meta['table']} t
-        JOIN AVAILMENT a ON a.availment_id = t.availment_id
-        JOIN CLIENT c ON c.client_id = a.client_id
-        JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+        JOIN availment a ON a.availment_id = t.availment_id
+        JOIN client c ON c.client_id = a.client_id
+        JOIN barangay b ON b.barangay_id = c.brgy_id
     ");
     $stmt->execute();
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -89,10 +89,10 @@ $wcStmt = $pdo->query("
         b.barangay_name AS barangay,
         c.cl_firstname, c.cl_lastname, c.cl_age,
         a.av_amount, wc.wc_status
-    FROM WOMAN_AND_CHILDREN wc
-    JOIN AVAILMENT a ON a.availment_id = wc.availment_id
-    JOIN CLIENT c ON c.client_id = a.client_id
-    JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+    FROM women_and_children wc
+    JOIN availment a ON a.availment_id = wc.availment_id
+    JOIN client c ON c.client_id = a.client_id
+    JOIN barangay b ON b.barangay_id = c.brgy_id
 ");
 foreach ($wcStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $b = $row['barangay'];

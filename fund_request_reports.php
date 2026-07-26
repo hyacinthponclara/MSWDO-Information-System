@@ -44,11 +44,11 @@ foreach ($programNameMap as $label => $dbProgramName) {
 // funds_aics.php already relies on. Union all 5 subtypes together here too,
 // rather than inventing a different query shape for this report.
 $aicsSubtypes = [
-    ['table' => 'AICS_FINANCIAL',   'type' => 'Financial'],
-    ['table' => 'AICS_BURIAL',      'type' => 'Burial'],
-    ['table' => 'AICS_MEDICAL',     'type' => 'Medical'],
-    ['table' => 'AICS_LIVELIHOOD',  'type' => 'Livelihood'],
-    ['table' => 'AICS_EDUCATIONAL', 'type' => 'Educational'],
+    ['table' => 'aics_financial',   'type' => 'Financial'],
+    ['table' => 'aics_burial',      'type' => 'Burial'],
+    ['table' => 'aics_medical',     'type' => 'Medical'],
+    ['table' => 'aics_livelihood',  'type' => 'Livelihood'],
+    ['table' => 'aics_educational', 'type' => 'Educational'],
 ];
 
 foreach ($aicsSubtypes as $sub) {
@@ -59,8 +59,8 @@ foreach ($aicsSubtypes as $sub) {
             c.cl_firstname,
             c.cl_lastname
         FROM {$sub['table']} t
-        JOIN AVAILMENT a ON a.availment_id = t.availment_id
-        JOIN CLIENT c ON c.client_id = a.client_id
+        JOIN availment a ON a.availment_id = t.availment_id
+        JOIN client c ON c.client_id = a.client_id
     ");
     $stmt->execute();
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {

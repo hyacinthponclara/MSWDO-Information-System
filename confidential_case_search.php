@@ -11,8 +11,8 @@ $stmt = $pdo->query("
            c.cl_is_soloparent, c.cl_is_indigent,
            b.barangay_name
     FROM woman_and_children wc
-    LEFT JOIN CLIENT c ON c.client_id = wc.client_id
-    LEFT JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+    LEFT JOIN client c ON c.client_id = wc.client_id
+    LEFT JOIN barangay b ON b.barangay_id = c.brgy_id
     ORDER BY wc.protection_id DESC
 ");
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -55,7 +55,7 @@ if ($otherActions !== '') {
 }
 
 // ── Confirm the client actually exists ──────────────────────────────────
-$stmt = $pdo->prepare("SELECT client_id FROM CLIENT WHERE client_id = ?");
+$stmt = $pdo->prepare("SELECT client_id FROM client WHERE client_id = ?");
 $stmt->execute([$clientId]);
 if (!$stmt->fetch()) {
     redirectBack('Selected client was not found.', 'error');

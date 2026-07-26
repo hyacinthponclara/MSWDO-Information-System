@@ -22,9 +22,9 @@ $clients = $pdo->query("
         b.barangay_name,
         COUNT(a.availment_id) AS total_availments,
         MAX(a.av_date_applied) AS last_availment
-    FROM CLIENT c
-    LEFT JOIN BARANGAY b ON c.brgy_id = b.barangay_id
-    LEFT JOIN AVAILMENT a ON c.client_id = a.client_id
+    FROM client c
+    LEFT JOIN barangay b ON c.brgy_id = b.barangay_id
+    LEFT JOIN availment a ON c.client_id = a.client_id
     GROUP BY c.client_id
     ORDER BY c.cl_date_registered DESC
 ")->fetchAll();
@@ -42,7 +42,7 @@ foreach ($clients as $c) {
 }
 
 // --- fetch barangays for the filter dropdown ---
-$barangays = $pdo->query("SELECT barangay_name FROM BARANGAY ORDER BY barangay_name")->fetchAll();
+$barangays = $pdo->query("SELECT barangay_name FROM barangay ORDER BY barangay_name")->fetchAll();
 
 // --- build the JS-safe client array from DB rows ---
 // we build it in PHP then json_encode it so JS can use it exactly like before

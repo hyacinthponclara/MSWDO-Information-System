@@ -26,18 +26,18 @@ SELECT
     COALESCE(av.spent_availment, 0) -
     COALESCE(pp.spent_proposals, 0) AS remaining
 
-FROM PROGRAM p
+FROM program p
 
 LEFT JOIN (
     SELECT program_id, SUM(av_amount) AS spent_availment
-    FROM AVAILMENT
+    FROM availment
     WHERE av_status IN ('Approved','Released')
     GROUP BY program_id
 ) av ON av.program_id = p.program_id
 
 LEFT JOIN (
     SELECT program_id, SUM(pp_budget) AS spent_proposals
-    FROM PROJECT_PROPOSAL
+    FROM project_proposal
     GROUP BY program_id
 ) pp ON pp.program_id = p.program_id");
 

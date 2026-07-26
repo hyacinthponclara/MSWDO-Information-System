@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         try {
             $pdo->beginTransaction();
-            $sql = "INSERT INTO CLIENT (
+            $sql = "INSERT INTO client (
                         brgy_id, user_id,
                         cl_lastname, cl_firstname, cl_middlename, cl_suffix,
                         cl_birthdate, cl_sex, cl_civilstatus,
@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // only insert a case study record if there are family members to save
             // this avoids an empty record cluttering the CASE_STUDY table
             if (!empty($familyData)) {
-                $csSql = "INSERT INTO CASE_STUDY (
+                $csSql = "INSERT INTO case_study (
                                 client_id, user_id, interview_date,
                                 family_composition_json, problem_presented
                             ) VALUES (
@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // fetch barangays from the BARANGAY table for the dropdown
 try {
-    $barangays = $pdo->query("SELECT barangay_id, barangay_name FROM BARANGAY ORDER BY barangay_name")->fetchAll();
+    $barangays = $pdo->query("SELECT barangay_id, barangay_name FROM barangay ORDER BY barangay_name")->fetchAll();
 } catch (PDOException $e) {
     $barangays = [];
     error_log('Could not load barangays: ' . $e->getMessage());

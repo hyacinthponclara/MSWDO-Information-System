@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['ava
     try {
         $pdo->beginTransaction();
 
-        $stmt = $pdo->prepare("SELECT av_status, av_amount, program_id FROM AVAILMENT WHERE availment_id = ? FOR UPDATE");
+        $stmt = $pdo->prepare("SELECT av_status, av_amount, program_id FROM availment WHERE availment_id = ? FOR UPDATE");
         $stmt->execute([$availment_id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -32,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['ava
             SELECT
                 p.prog_annual_budget,
                 COALESCE(SUM(CASE WHEN a.av_status = 'Released' THEN a.av_amount ELSE 0 END), 0) AS released
-            FROM PROGRAM p
-            LEFT JOIN AVAILMENT a
+            FROM program p
+            LEFT JOIN availment a
                 ON a.program_id = p.program_id
                 AND YEAR(a.av_date_applied) = YEAR(CURDATE())
             WHERE p.program_id = ?
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['ava
             throw new Exception('Insufficient budget remaining to release this amount.');
         }
 
-        $upd = $pdo->prepare("UPDATE AVAILMENT SET av_status = 'Released', av_date_released = CURDATE() WHERE availment_id = ?");
+        $upd = $pdo->prepare("UPDATE availment SET av_status = 'Released', av_date_released = CURDATE() WHERE availment_id = ?");
         $upd->execute([$availment_id]);
         $message = 'Funds released and deducted from the budget.';
 
@@ -67,8 +67,8 @@ function getBudgetSummary(PDO $pdo, string $programName): array
             p.prog_annual_budget,
             COALESCE(SUM(CASE WHEN a.av_status = 'Approved' THEN a.av_amount ELSE 0 END), 0) AS approved,
             COALESCE(SUM(CASE WHEN a.av_status = 'Released' THEN a.av_amount ELSE 0 END), 0) AS released
-        FROM PROGRAM p
-        LEFT JOIN AVAILMENT a
+        FROM program p
+        LEFT JOIN availment a
             ON a.program_id = p.program_id
             AND YEAR(a.av_date_applied) = YEAR(CURDATE())
         WHERE p.program_name = ?
@@ -110,9 +110,9 @@ $pendingStmt = $pdo->prepare("
             WHEN p.program_name = 'AICS Educational' THEN 'Educational'
             ELSE p.program_name
         END AS assistance_type
-    FROM AVAILMENT a
-    JOIN CLIENT c  ON a.client_id = c.client_id
-    JOIN PROGRAM p ON a.program_id = p.program_id
+    FROM availment a
+    JOIN client c  ON a.client_id = c.client_id
+    JOIN program p ON a.program_id = p.program_id
     LEFT JOIN AICS_MEDICAL    med ON med.availment_id = a.availment_id
     LEFT JOIN AICS_FINANCIAL  fin ON fin.availment_id = a.availment_id
     LEFT JOIN AICS_BURIAL     bur ON bur.availment_id = a.availment_id
