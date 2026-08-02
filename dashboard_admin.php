@@ -220,7 +220,7 @@ $recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
             </div>
 
             <!-- ── QUICK ACTIONS ── -->
-<div class="animate-fade-up grid grid-cols-2 sm:grid-cols-4 gap-4">
+<div class="animate-fade-up grid grid-cols-2 sm:grid-cols-5g gap-4">
     <a href="clientregistrationform.php">
         <button class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group w-full">
             <div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center text-base group-hover:bg-green-100 transition-colors flex-shrink-0">
@@ -247,6 +247,16 @@ $recent_activity = $activityDB->fetchAll(PDO::FETCH_ASSOC);
             <span class="text-[12px] font-medium text-slate-700 group-hover:text-green-600">Generate Report</span>
         </button>
     </a>
+
+    <a href="pending_approvals.php">
+        <button class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group w-full">
+            <div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center text-base group-hover:bg-red-100 transition-colors flex-shrink-0">
+                <i class="fas fa-coins text-green-600"></i>
+            </div>
+            <span class="text-[12px] font-medium text-slate-700 group-hover:text-green-600">Pending Approvals</span>
+        </button>
+    </a>
+
 
     <a href="budgetmanagement.php">
         <button class="btn-action bg-white border border-slate-200 hover:border-green-400 hover:bg-green-50 rounded-xl px-4 py-3 flex items-center gap-3 text-left group w-full">
