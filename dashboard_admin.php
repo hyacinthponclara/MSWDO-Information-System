@@ -308,7 +308,7 @@
           <div class="flex items-center justify-between mb-2">
             <div>
               <h2 class="text-[13px] font-semibold text-forest-600">Budget Summary</h2>
-              <p class="text-[11px] text-slate-400">FY 2026 · all 10 programs</p>
+              <p class="text-[11px] text-slate-400">FY 2026 · all 9 programs</p>
             </div>
             <a href="budgetmanagement.php" class="text-[11px] text-forest-500 font-medium">Manage Budget →</a>
           </div>
