@@ -166,10 +166,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-user-gear text-sm"></i> User Management
         </a>
-        <!-- <a href="#"
+        <a href="accountdetails.php"
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+            <i class="fas fa-file-alt text-sm"></i> Account Details
+        </a>
+        <a href="#"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
             <i class="fas fa-file-alt text-sm"></i> Activity Logs
-        </a> -->
+        </a>
         </nav>
 
         <!-- User footer -->
@@ -209,7 +213,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <details class="group" open>
             <summary
                 class="flex items-center justify-between px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">
-                <span>Programs</span>
+                <span>Program</span>
                 <i class="fas fa-chevron-down text-[8px] transition-transform duration-200 group-open:rotate-180"></i>
             </summary>
             <a href="funds_aics.php"
@@ -248,9 +252,10 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="fund_request_reports.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                 class="fas fa-file-alt text-sm"></i> Reports</a>
-        <a href="budget_monitor.php"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                class="fas fa-money-bill text-sm"></i> Budget Monitor</a>
+        <a href="accountdetails.php"
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+            <i class="fas fa-file-alt text-sm"></i> Account Details
+        </a>
         </nav>
 
         <!-- User footer -->
