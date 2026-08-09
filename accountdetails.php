@@ -478,7 +478,7 @@
         </div>
 
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
 
           <div class="p-5 border-b sm:border-r border-slate-100">
 
@@ -492,6 +492,22 @@
 
             <p class="text-[13px] font-semibold text-forest-600 mt-1">
               Social Welfare Assistant
+            </p>
+
+          </div>
+
+          <div class="p-5 border-b sm:border-r border-slate-100">
+
+            <div class="flex items-center justify-between gap-2">
+
+              <p class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                Employment Status
+              </p>
+
+            </div>
+
+            <p class="text-[13px] font-semibold text-forest-600 mt-1">
+              Permanent
             </p>
 
           </div>
