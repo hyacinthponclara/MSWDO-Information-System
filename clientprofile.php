@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-requireRole(['Admin','Staff']);
+requireRole(['Admin', 'Staff']);
 require 'db_connect.php';
 
 $client_id = intval($_GET['id'] ?? 0);
@@ -81,9 +81,25 @@ if ($caseRow && !empty($caseRow['family_composition_json'])) {
 
 $totalAvailments = count($availments);
 
-$totalAssistance = 0;
+$totalApproved = 0;
+$totalReleased = 0;
+
+$approvedCount = 0;
+$releasedCount = 0;
+
 foreach ($availments as $av) {
-  $totalAssistance += floatval($av['av_amount']);
+
+  $amount = floatval($av['av_amount']);
+
+  if ($av['av_status'] === 'Approved') {
+    $approvedCount++;
+    $totalApproved += $amount;
+  }
+
+  if ($av['av_status'] === 'Released') {
+    $releasedCount++;
+    $totalReleased += $amount;
+  }
 }
 
 // count how many availments this year
@@ -232,7 +248,6 @@ $progColors = [
     }
 
     .btn-act:hover {
-      +
       transform: translateY(-1px);
     }
 
@@ -360,302 +375,342 @@ $progColors = [
 
         <!-- Summary -->
         <div class="px-6 pb-5 flex flex-wrap gap-3">
+          <!-- Total Availments -->
           <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2 text-center">
-            <p class="text-[18px] font-bold text-blue-600"><?= $totalAvailments ?></p>
-            <p class="text-[10px] text-slate-500 mt-0.5">Total Availments</p>
-          </div>
-          <div class="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2 text-center">
-            <p class="text-[18px] font-bold text-emerald-600">₱<?= number_format($totalAssistance, 2) ?></p>
-            <p class="text-[10px] text-slate-500 mt-0.5">Total Assistance</p>
-          </div>
-          <div class="bg-amber-50 border border-amber-100 rounded-xl px-4 py-2 text-center">
-            <p class="text-[18px] font-bold text-amber-500"><?= $thisYearCount ?></p>
-            <p class="text-[10px] text-slate-500 mt-0.5">This Year</p>
-          </div>
-          <div class="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-center">
-            <p class="text-[18px] font-bold text-slate-600"><?= $thisQuarterCount ?></p>
-            <p class="text-[10px] text-slate-500 mt-0.5">This Quarter</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div class="animate-fade-up-1">
-        <div class="flex gap-0 border-b-2 border-slate-200 mb-5">
-          <button onclick="showTab('personal',this)"
-            class="tab-btn active px-5 py-3 text-[13px] font-semibold border-b-2 -mb-0.5 border-navy-600 text-navy-600">
-            Personal Info
-          </button>
-          <button onclick="showTab('family',this)"
-            class="tab-btn px-5 py-3 text-[13px] font-medium border-b-2 -mb-0.5 border-transparent text-slate-500 hover:text-slate-700">
-            Family Composition
-          </button>
-          <button onclick="showTab('history',this)"
-            class="tab-btn px-5 py-3 text-[13px] font-medium border-b-2 -mb-0.5 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2">
-            Availment History
-            <!-- real count badge -->
-            <span class="bg-navy-100 text-navy-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+            <p class="text-[18px] font-bold text-blue-600">
               <?= $totalAvailments ?>
-            </span>
-          </button>
-        </div>
+            </p>
+            <p class="text-[10px] text-slate-500 mt-0.5">
+              Total Availments
+            </p>
+          </div>
 
-        <!-- PERSONAL INFO TAB -->
-        <div class="tab-panel active" id="tab-personal">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Approved -->
+          <div class="bg-amber-50 border border-amber-100 rounded-xl px-4 py-2 text-center">
+            <p class="text-[18px] font-bold text-amber-600">
+              <?= $approvedCount ?>
+            </p>
+            <p class="text-[10px] text-slate-500 mt-0.5">
+              Approved
+            </p>
+          </div>
 
-            <!-- Personal Details card -->
-            <div class="bg-white rounded-2xl border border-slate-200 p-5">
-              <h3 class="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-4">Personal Details</h3>
-              <div class="space-y-3">
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Full Name</span>
-                  <span class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($fullName) ?></span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Birthdate</span>
-                  <span class="text-[13px] font-medium text-navy-600">
-                    <?= $client['cl_birthdate'] ? date('F j, Y', strtotime($client['cl_birthdate'])) : '—' ?>
-                  </span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Age</span>
-                  <span class="text-[13px] font-medium text-navy-600"><?= $client['cl_age'] ?? '—' ?> years old</span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Sex</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_sex'] ?? '—') ?></span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Civil Status</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_civilstatus'] ?? '—') ?></span>
-                </div>
-                <div class="flex justify-between items-center py-2">
-                  <span class="text-[12px] text-slate-400">Contact Number</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_contact_num'] ?? '—') ?></span>
-                </div>
-              </div>
-            </div>
+          <!-- Released -->
+          <div class="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2 text-center">
+            <p class="text-[18px] font-bold text-emerald-600">
+              <?= $releasedCount ?>
+            </p>
+            <p class="text-[10px] text-slate-500 mt-0.5">
+              Released
+            </p>
+          </div>
 
-            <!-- Address & Economic Status card -->
-            <div class="bg-white rounded-2xl border border-slate-200 p-5">
-              <h3 class="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-4">Address &amp; Economic
-                Status</h3>
-              <div class="space-y-3">
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Barangay</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['barangay_name'] ?? '—') ?></span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Street / House No.</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_street'] ?? '—') ?></span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Municipality</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_city_municipality'] ?? 'San Enrique') ?></span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Occupation</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_occupation'] ?? '—') ?></span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Monthly Income</span>
-                  <span class="text-[13px] font-medium text-navy-600">
-                    ₱<?= number_format(floatval($client['cl_monthly_income'] ?? 0), 2) ?>
-                  </span>
-                </div>
-                <div class="flex justify-between items-center py-2 border-b border-slate-100">
-                  <span class="text-[12px] text-slate-400">Education</span>
-                  <span
-                    class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_educ_attain'] ?? '—') ?></span>
-                </div>
-                <div class="flex justify-between items-center py-2">
-                  <span class="text-[12px] text-slate-400">Indigency Status</span>
-                  <?php if ($client['cl_is_indigent']): ?>
-                    <span class="bg-red-100 text-red-700 text-[11px] font-bold px-2.5 py-0.5 rounded-full">Indigent</span>
-                  <?php else: ?>
-                    <span class="bg-slate-100 text-slate-500 text-[11px] font-bold px-2.5 py-0.5 rounded-full">Not
-                      Indigent</span>
-                  <?php endif; ?>
-                </div>
-              </div>
-            </div>
-
+          <!-- Total Released -->
+          <div class="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-center">
+            <p class="text-[18px] font-bold text-slate-600">
+              ₱<?= number_format($totalReleased, 2) ?>
+            </p>
+            <p class="text-[10px] text-slate-500 mt-0.5">
+              Total Released
+            </p>
           </div>
         </div>
 
-        <!-- FAMILY COMPOSITION TAB -->
-        <div class="tab-panel" id="tab-family">
-          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <h3 class="text-[13px] font-semibold text-navy-600">Household Members</h3>
-              <span class="text-[11px] text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
-                <!-- +1 to include the client themselves -->
-                <?= count($familyMembers) + 1 ?> members
+        <!-- Tabs -->
+        <div class="animate-fade-up-1">
+          <div class="flex gap-0 border-b-2 border-slate-200 mb-5">
+            <button onclick="showTab('personal',this)"
+              class="tab-btn active px-5 py-3 text-[13px] font-semibold border-b-2 -mb-0.5 border-navy-600 text-navy-600">
+              Personal Info
+            </button>
+            <button onclick="showTab('family',this)"
+              class="tab-btn px-5 py-3 text-[13px] font-medium border-b-2 -mb-0.5 border-transparent text-slate-500 hover:text-slate-700">
+              Family Composition
+            </button>
+            <button onclick="showTab('history',this)"
+              class="tab-btn px-5 py-3 text-[13px] font-medium border-b-2 -mb-0.5 border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2">
+              Availment History
+              <!-- real count badge -->
+              <span class="bg-navy-100 text-navy-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                <?= $totalAvailments ?>
               </span>
-            </div>
-
-            <?php if (empty($familyMembers)): ?>
-              <!-- if no family data was saved yet -->
-              <div class="px-5 py-10 text-center text-slate-400 text-[13px]">
-                <p>No family composition recorded yet.</p>
-                <p class="text-[11px] mt-1">Add family members when creating a case study.</p>
-              </div>
-            <?php else: ?>
-              <table class="w-full text-[12px]">
-                <thead>
-                  <tr class="bg-slate-50 border-b border-slate-100">
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">#
-                    </th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Name
-                    </th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Relationship</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Age
-                    </th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Occupation</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Income/mo</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <!-- first row is always the client themselves -->
-                  <tr class="table-row">
-                    <td class="px-5 py-3 text-slate-400">1</td>
-                    <td class="px-5 py-3 font-semibold text-navy-600"><?= htmlspecialchars($fullName) ?></td>
-                    <td class="px-5 py-3 text-slate-600">Self</td>
-                    <td class="px-5 py-3"><?= $client['cl_age'] ?? '—' ?></td>
-                    <td class="px-5 py-3"><?= htmlspecialchars($client['cl_occupation'] ?? '—') ?></td>
-                    <td class="px-5 py-3 font-medium">
-                      ₱<?= number_format(floatval($client['cl_monthly_income'] ?? 0), 2) ?></td>
-                  </tr>
-
-                  <?php foreach ($familyMembers as $i => $member): ?>
-                    <tr class="table-row">
-                      <td class="px-5 py-3 text-slate-400"><?= $i + 2 ?></td>
-                      <td class="px-5 py-3 font-medium text-slate-700"><?= htmlspecialchars($member['name'] ?? '—') ?></td>
-                      <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($member['relation'] ?? '—') ?></td>
-                      <td class="px-5 py-3"><?= intval($member['age'] ?? 0) ?></td>
-                      <td class="px-5 py-3"><?= htmlspecialchars($member['occupation'] ?? '—') ?></td>
-                      <td class="px-5 py-3 font-medium">
-                        <?php if (!empty($member['income']) && $member['income'] > 0): ?>
-                          ₱<?= number_format(floatval($member['income']), 2) ?>
-                        <?php else: ?>
-                          <span class="text-slate-400">—</span>
-                        <?php endif; ?>
-                      </td>
-                    </tr>
-                  <?php endforeach; ?>
-                </tbody>
-                <tfoot>
-                  <tr class="bg-slate-50 border-t border-slate-200">
-                    <td colspan="5" class="px-5 py-3 text-[11px] font-semibold text-slate-500 text-right">Combined Monthly
-                      Income</td>
-                    <td class="px-5 py-3 text-[13px] font-bold text-navy-600">₱<?= number_format($combinedIncome, 2) ?>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            <?php endif; ?>
-
+            </button>
           </div>
-        </div>
 
-        <!-- AVAILMENT HISTORY TAB -->
-        <div class="tab-panel" id="tab-history">
-          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div class="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center gap-3">
-              <span class="text-[12px] font-semibold text-slate-500">All records for this client</span>
-              <button
-                class="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-3 py-1.5 hover:bg-navy-100 transition-all">
-                ⬇ Export
-              </button>
+          <!-- PERSONAL INFO TAB -->
+          <div class="tab-panel active" id="tab-personal">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              <!-- Personal Details card -->
+              <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                <h3 class="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-4">Personal Details</h3>
+                <div class="space-y-3">
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Full Name</span>
+                    <span class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($fullName) ?></span>
+                  </div>
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Birthdate</span>
+                    <span class="text-[13px] font-medium text-navy-600">
+                      <?= $client['cl_birthdate'] ? date('F j, Y', strtotime($client['cl_birthdate'])) : '—' ?>
+                    </span>
+                  </div>
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Age</span>
+                    <span class="text-[13px] font-medium text-navy-600"><?= $client['cl_age'] ?? '—' ?> years old</span>
+                  </div>
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Sex</span>
+                    <span
+                      class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_sex'] ?? '—') ?></span>
+                  </div>
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Civil Status</span>
+                    <span
+                      class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_civilstatus'] ?? '—') ?></span>
+                  </div>
+                  <div class="flex justify-between items-center py-2">
+                    <span class="text-[12px] text-slate-400">Contact Number</span>
+                    <span
+                      class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_contact_num'] ?? '—') ?></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Address & Economic Status card -->
+              <div class="bg-white rounded-2xl border border-slate-200 p-5">
+                <h3 class="text-[12px] font-semibold text-slate-400 uppercase tracking-wider mb-4">Address &amp;
+                  Economic
+                  Status</h3>
+                <div class="space-y-3">
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Barangay</span>
+                    <span
+                      class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['barangay_name'] ?? '—') ?></span>
+                  </div>
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Street / House No.</span>
+                    <span
+                      class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_street'] ?? '—') ?></span>
+                  </div>
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Municipality</span>
+                    <span
+                      class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_city_municipality'] ?? 'San Enrique') ?></span>
+                  </div>
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Occupation</span>
+                    <span
+                      class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_occupation'] ?? '—') ?></span>
+                  </div>
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Monthly Income</span>
+                    <span class="text-[13px] font-medium text-navy-600">
+                      ₱<?= number_format(floatval($client['cl_monthly_income'] ?? 0), 2) ?>
+                    </span>
+                  </div>
+                  <div class="flex justify-between items-center py-2 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-400">Education</span>
+                    <span
+                      class="text-[13px] font-medium text-navy-600"><?= htmlspecialchars($client['cl_educ_attain'] ?? '—') ?></span>
+                  </div>
+                  <div class="flex justify-between items-center py-2">
+                    <span class="text-[12px] text-slate-400">Indigency Status</span>
+                    <?php if ($client['cl_is_indigent']): ?>
+                      <span
+                        class="bg-red-100 text-red-700 text-[11px] font-bold px-2.5 py-0.5 rounded-full">Indigent</span>
+                    <?php else: ?>
+                      <span class="bg-slate-100 text-slate-500 text-[11px] font-bold px-2.5 py-0.5 rounded-full">Not
+                        Indigent</span>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </div>
+
             </div>
+          </div>
 
-            <div class="overflow-x-auto">
-              <table class="w-full text-[12px]">
-                <thead>
-                  <tr class="bg-slate-50 border-b border-slate-100">
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Date Applied</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Program</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Category</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Amount</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Status</th>
-                    <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                      Encoded By</th>
-                    <th class="px-5 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <?php if (empty($availments)): ?>
-                    <tr>
-                      <td colspan="7" class="px-5 py-10 text-center text-slate-400 text-[13px]">
-                        No availment records yet.
-                      </td>
+          <!-- FAMILY COMPOSITION TAB -->
+          <div class="tab-panel" id="tab-family">
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h3 class="text-[13px] font-semibold text-navy-600">Household Members</h3>
+                <span class="text-[11px] text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+                  <!-- +1 to include the client themselves -->
+                  <?= count($familyMembers) + 1 ?> members
+                </span>
+              </div>
+
+              <?php if (empty($familyMembers)): ?>
+                <!-- if no family data was saved yet -->
+                <div class="px-5 py-10 text-center text-slate-400 text-[13px]">
+                  <p>No family composition recorded yet.</p>
+                  <p class="text-[11px] mt-1">Add family members when creating a case study.</p>
+                </div>
+              <?php else: ?>
+                <table class="w-full text-[12px]">
+                  <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100">
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">#
+                      </th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Name
+                      </th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Relationship</th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Age
+                      </th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Occupation</th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Income/mo</th>
                     </tr>
-                  <?php else: ?>
-                    <?php foreach ($availments as $av): ?>
-                      <?php
-                      $sc = $statusColors[$av['av_status']] ?? 'bg-slate-50 text-slate-500';
-                      $tag = $progColors[$av['program_label']] ?? 'bg-slate-100 text-slate-600';
-                      ?>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <!-- first row is always the client themselves -->
+                    <tr class="table-row">
+                      <td class="px-5 py-3 text-slate-400">1</td>
+                      <td class="px-5 py-3 font-semibold text-navy-600"><?= htmlspecialchars($fullName) ?></td>
+                      <td class="px-5 py-3 text-slate-600">Self</td>
+                      <td class="px-5 py-3"><?= $client['cl_age'] ?? '—' ?></td>
+                      <td class="px-5 py-3"><?= htmlspecialchars($client['cl_occupation'] ?? '—') ?></td>
+                      <td class="px-5 py-3 font-medium">
+                        ₱<?= number_format(floatval($client['cl_monthly_income'] ?? 0), 2) ?></td>
+                    </tr>
+
+                    <?php foreach ($familyMembers as $i => $member): ?>
                       <tr class="table-row">
-                        <td class="px-5 py-3 text-slate-500">
-                          <?= $av['av_date_applied'] ? date('M j, Y', strtotime($av['av_date_applied'])) : '—' ?>
+                        <td class="px-5 py-3 text-slate-400"><?= $i + 2 ?></td>
+                        <td class="px-5 py-3 font-medium text-slate-700"><?= htmlspecialchars($member['name'] ?? '—') ?>
                         </td>
-                        <td class="px-5 py-3">
-                          <span class="<?= $tag ?> px-2.5 py-0.5 rounded text-[10px] font-semibold">
-                            <?= htmlspecialchars($av['program_label'] ?? '—') ?>
-                          </span>
-                        </td>
-                        <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($av['prog_category'] ?? '—') ?></td>
-                        <td class="px-5 py-3 font-semibold text-slate-700">
-                          <?= $av['av_amount'] > 0 ? '₱' . number_format(floatval($av['av_amount']), 2) : '—' ?>
-                        </td>
-                        <td class="px-5 py-3">
-                          <span class="<?= $sc ?> px-2.5 py-0.5 rounded-full text-[10px] font-semibold">
-                            <?= htmlspecialchars($av['av_status']) ?>
-                          </span>
-                        </td>
-                        <td class="px-5 py-3 text-slate-400"><?= htmlspecialchars($av['encoded_by'] ?? '—') ?></td>
-                        <td class="px-5 py-3 text-right">
-                          <a href="availmentdetail.php?id=<?= $av['availment_id'] ?>"
-                            class="text-[11px] text-navy-500 hover:underline font-medium">View</a>
+                        <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($member['relation'] ?? '—') ?></td>
+                        <td class="px-5 py-3"><?= intval($member['age'] ?? 0) ?></td>
+                        <td class="px-5 py-3"><?= htmlspecialchars($member['occupation'] ?? '—') ?></td>
+                        <td class="px-5 py-3 font-medium">
+                          <?php if (!empty($member['income']) && $member['income'] > 0): ?>
+                            ₱<?= number_format(floatval($member['income']), 2) ?>
+                          <?php else: ?>
+                            <span class="text-slate-400">—</span>
+                          <?php endif; ?>
                         </td>
                       </tr>
                     <?php endforeach; ?>
-                  <?php endif; ?>
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                  <tfoot>
+                    <tr class="bg-slate-50 border-t border-slate-200">
+                      <td colspan="5" class="px-5 py-3 text-[11px] font-semibold text-slate-500 text-right">Combined
+                        Monthly
+                        Income</td>
+                      <td class="px-5 py-3 text-[13px] font-bold text-navy-600">₱<?= number_format($combinedIncome, 2) ?>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              <?php endif; ?>
 
-            <!-- footer summary -->
-            <div
-              class="px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400">
-              <span><?= $totalAvailments ?> record<?= $totalAvailments !== 1 ? 's' : '' ?> found</span>
-              <div class="flex items-center gap-4">
-                <span class="text-emerald-600 font-semibold">
-                  Total amount: ₱<?= number_format($totalAssistance, 2) ?>
-                </span>
+            </div>
+          </div>
+
+          <!-- AVAILMENT HISTORY TAB -->
+          <div class="tab-panel" id="tab-history">
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div class="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center gap-3">
+                <span class="text-[12px] font-semibold text-slate-500">All records for this client</span>
+                <button
+                  class="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-3 py-1.5 hover:bg-navy-100 transition-all">
+                  ⬇ Export
+                </button>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-[12px]">
+                  <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100">
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Date Applied</th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Program</th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Category</th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Amount</th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Status</th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Date Released
+                      </th>
+                      <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        Encoded By</th>
+                      <th class="px-5 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    <?php if (empty($availments)): ?>
+                      <tr>
+                        <td colspan="8" class="px-5 py-10 text-center text-slate-400 text-[13px]">
+                          No availment records yet.
+                        </td>
+                      </tr>
+                    <?php else: ?>
+                      <?php foreach ($availments as $av): ?>
+                        <?php
+                        $sc = $statusColors[$av['av_status']] ?? 'bg-slate-50 text-slate-500';
+                        $tag = $progColors[$av['program_label']] ?? 'bg-slate-100 text-slate-600';
+                        ?>
+                        <tr class="table-row">
+                          <td class="px-5 py-3 text-slate-500">
+                            <?= $av['av_date_applied'] ? date('M j, Y', strtotime($av['av_date_applied'])) : '—' ?>
+                          </td>
+                          <td class="px-5 py-3">
+                            <span class="<?= $tag ?> px-2.5 py-0.5 rounded text-[10px] font-semibold">
+                              <?= htmlspecialchars($av['program_label'] ?? '—') ?>
+                            </span>
+                          </td>
+                          <td class="px-5 py-3 text-slate-600"><?= htmlspecialchars($av['prog_category'] ?? '—') ?></td>
+                          <td class="px-5 py-3 font-semibold text-slate-700">
+                            <?= $av['av_amount'] > 0 ? '₱' . number_format(floatval($av['av_amount']), 2) : '—' ?>
+                          </td>
+                          <td class="px-5 py-3">
+                            <span class="<?= $sc ?> px-2.5 py-0.5 rounded-full text-[10px] font-semibold">
+                              <?= htmlspecialchars($av['av_status']) ?>
+                            </span>
+                          </td>
+                          <td class="px-5 py-3 text-slate-500">
+                            <?php if (!empty($av['av_date_released'])): ?>
+                              <?= date('M j, Y', strtotime($av['av_date_released'])) ?>
+                            <?php else: ?>
+                              <span class="text-slate-400">—</span>
+                            <?php endif; ?>
+                          </td>
+                          <td class="px-5 py-3 text-slate-400"><?= htmlspecialchars($av['encoded_by'] ?? '—') ?></td>
+                          <td class="px-5 py-3 text-right">
+                            <a href="availmentdetail.php?id=<?= $av['availment_id'] ?>"
+                              class="text-[11px] text-navy-500 hover:underline font-medium">View</a>
+                          </td>
+                        </tr>
+                      <?php endforeach; ?>
+                    <?php endif; ?>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- footer summary -->
+              <div
+                class="px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400">
+                <span><?= $totalAvailments ?> record<?= $totalAvailments !== 1 ? 's' : '' ?> found</span>
+                <div class="flex items-center gap-4">
+                  <!-- <span class="text-blue-600 font-semibold">
+                    Total approved: ₱<?= number_format($totalApproved, 2) ?> <br> -->
+                  <span class="text-emerald-600 font-semibold">
+                    Total released: ₱<?= number_format($totalReleased, 2) ?>
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-      </div>
+        </div>
     </main>
 
     <footer

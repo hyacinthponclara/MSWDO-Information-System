@@ -22,8 +22,6 @@ function saveFile($field, $folder)
 $errors = [];
 
 // Determine which program this proposal is for: GET on first load
-// (from the card the user clicked on requestfund.php), POST on resubmit
-// after a validation error.
 $program_id = (int) ($_POST['program_id'] ?? $_GET['program_id'] ?? 0);
 
 $progStmt = $pdo->prepare("SELECT program_id, program_name, prog_annual_budget FROM program WHERE program_id = ?");
@@ -37,11 +35,6 @@ if (!$program) {
     exit;
 }
 
-// Remaining budget = annual budget - approved/released client availments
-// - amounts already reserved by project proposals (proposals reserve funds
-// immediately on submission, not just once approved).
-// $forUpdate locks the PROGRAM row so two people submitting at the same
-// moment can't both slip in under a budget that only has room for one.
 function getRemainingBudget($pdo, $program_id, $annual_budget, $forUpdate = false)
 {
     if ($forUpdate) {
@@ -52,7 +45,7 @@ function getRemainingBudget($pdo, $program_id, $annual_budget, $forUpdate = fals
     $availStmt = $pdo->prepare("
         SELECT COALESCE(SUM(av_amount), 0)
         FROM availment
-        WHERE program_id = ? AND av_status IN ('Approved', 'Released')
+        WHERE program_id = ? AND av_status = 'Released'
     ");
     $availStmt->execute([$program_id]);
     $spentAvailment = (float) $availStmt->fetchColumn();
@@ -61,6 +54,7 @@ function getRemainingBudget($pdo, $program_id, $annual_budget, $forUpdate = fals
         SELECT COALESCE(SUM(pp_budget), 0)
         FROM project_proposal
         WHERE program_id = ?
+        AND pp_status = 'Released'
     ");
     $propStmt->execute([$program_id]);
     $spentProposals = (float) $propStmt->fetchColumn();
@@ -132,11 +126,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $stmt = $pdo->prepare("
                     INSERT INTO project_proposal (
-                        user_id, program_id, pp_title, pp_date_from, pp_date_to, pp_venue,
-                        pp_num_participants, pp_participant_desc, pp_budget,
-                        pp_fund_source, pp_document
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ");
+                    user_id,
+                    program_id,
+                    pp_title,
+                    pp_date_from,
+                    pp_date_to,
+                    pp_venue,
+                    pp_num_participants,
+                    pp_participant_desc,
+                    pp_budget,
+                    pp_fund_source,
+                    pp_document,
+                    pp_status,
+                    pp_date_approved
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Approved', NOW())
+            ");
                 $stmt->execute([
                     $user_id,
                     $program_id,
@@ -371,7 +376,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="animate-fade-up">
                     <h1 class="text-xl font-serif text-green-600">Submit Project Proposal</h1>
                     <p class="text-[13px] text-slate-500 mt-1">
-                        For program: <span class="font-semibold text-green-700"><?= htmlspecialchars($program['program_name']) ?></span>
+                        For program: <span
+                            class="font-semibold text-green-700"><?= htmlspecialchars($program['program_name']) ?></span>
                     </p>
                 </div>
 
@@ -432,7 +438,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div>
                                     <label class="field-label req">D. No. of Participants</label>
                                     <input type="number" min="0" id="numParticipants" name="pp_num_participants"
-                                        class="field" value="<?= htmlspecialchars($_POST['pp_num_participants'] ?? '') ?>">
+                                        class="field"
+                                        value="<?= htmlspecialchars($_POST['pp_num_participants'] ?? '') ?>">
                                 </div>
                                 <div>
                                     <label class="field-label req">Description of Participants</label>
@@ -446,14 +453,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="relative">
                                     <span
                                         class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₱</span>
-                                    <input type="number" min="0" max="<?= $remaining_budget > 0 ? htmlspecialchars($remaining_budget) : 0 ?>" step="0.01" id="budgetReq" name="pp_budget"
-                                        class="field pl-8" value="<?= htmlspecialchars($_POST['pp_budget'] ?? '') ?>">
+                                    <input type="number" min="0"
+                                        max="<?= $remaining_budget > 0 ? htmlspecialchars($remaining_budget) : 0 ?>"
+                                        step="0.01" id="budgetReq" name="pp_budget" class="field pl-8"
+                                        value="<?= htmlspecialchars($_POST['pp_budget'] ?? '') ?>">
                                 </div>
                                 <input type="hidden" id="remainingBudget" value="<?= (float) $remaining_budget ?>">
                                 <p class="text-[11px] mt-1.5">
                                     <i class="fas fa-wallet mr-1"></i>
                                     Remaining budget for <?= htmlspecialchars($program['program_name']) ?>:
-                                    <span class="font-semibold <?= $remaining_budget > 0 ? 'text-green-600' : 'text-red-600' ?>">
+                                    <span
+                                        class="font-semibold <?= $remaining_budget > 0 ? 'text-green-600' : 'text-red-600' ?>">
                                         ₱<?= number_format($remaining_budget, 2) ?>
                                     </span>
                                 </p>
@@ -483,11 +493,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div id="uploadContent">
                                     <i class="fas fa-cloud-upload-alt text-3xl text-green-400 mb-2 block"></i>
                                     <p class="text-[13px] text-slate-600">Click to upload or drag and drop</p>
-                                    <p class="text-[11px] text-slate-400 mt-1">Accepted: .pdf, .doc, .docx (max 10MB)
+                                    <p class="text-[11px] text-slate-400 mt-1">Accepted:.png,.jpg,.jpeg,.img,.pdf,.doc,.docx (max 10MB)
                                     </p>
                                 </div>
                                 <input type="file" id="fileInput" name="pp_document" class="hidden"
-                                    accept=".pdf,.doc,.docx" onchange="fileSelected(this)">
+                                    accept=".png,.jpg,.jpeg,.img,.pdf,.doc,.docx" onchange="fileSelected(this)">
                             </div>
                             <p class="text-[11px] text-slate-400 mt-3"><i class="fas fa-info-circle mr-1"></i> Upload
                                 the
@@ -594,10 +604,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const title = document.getElementById('projTitle').value.trim();
             const duration = document.getElementById('durationText').value.trim();
             const participants = document.getElementById('numParticipants').value;
-            const participantDesc = document.getElementById('participantDesc').value.trim();  
+            const participantDesc = document.getElementById('participantDesc').value.trim();
             const budget = document.getElementById('budgetReq').value;
             const fundSource = document.getElementById('fundSource').value.trim();
-            const venue = document.getElementById('venue').value.trim();           
+            const venue = document.getElementById('venue').value.trim();
             const file = document.getElementById('fileInput').files[0];
 
             // Validation checks
@@ -606,19 +616,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 showToast('Please select valid From and To dates.', 'error');
                 return;
             }
-            if (!venue) { showToast('Please enter the Venue.', 'error'); return; }         
+            if (!venue) { showToast('Please enter the Venue.', 'error'); return; }
             if (!participants || parseInt(participants) <= 0) {
                 showToast('Enter a valid number of participants.', 'error');
                 return;
             }
-            if (!participantDesc) { showToast('Please enter a description of participants.', 'error'); return; }  
+            if (!participantDesc) { showToast('Please enter a description of participants.', 'error'); return; }
             if (!budget || parseFloat(budget) <= 0) {
                 showToast('Enter a valid budget amount.', 'error');
                 return;
             }
             const remainingBudget = parseFloat(document.getElementById('remainingBudget').value);
             if (parseFloat(budget) > remainingBudget) {
-                showToast(`Requested amount exceeds the remaining budget (₱${remainingBudget.toLocaleString(undefined, {minimumFractionDigits: 2})} left).`, 'error');
+                showToast(`Requested amount exceeds the remaining budget (₱${remainingBudget.toLocaleString(undefined, { minimumFractionDigits: 2 })} left).`, 'error');
                 return;
             }
             if (!fundSource) { showToast('Please enter the Source of Fund.', 'error'); return; }

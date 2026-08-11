@@ -8,7 +8,7 @@ require 'budget_helpers.php';
 $fundBudget = getProgramBudget($pdo, ['4Ps']);
 
 // -- FUND REQUESTS TABLE (live from PROJECT_PROPOSAL) --
-$fundRequestsPhp = getFundRequests($pdo, '4Ps');
+//$fundRequestsPhp = getFundRequests($pdo, '4Ps');
 ?>
 
 <!DOCTYPE html>

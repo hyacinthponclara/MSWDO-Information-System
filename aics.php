@@ -146,11 +146,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 program_id,
                 user_id,
                 av_date_applied,
+                av_date_approved,
                 av_amount,
                 av_status,
                 av_date_released,
                 av_remarks
-            ) VALUES (?, ?, ?, ?, ?, 'Released', CURDATE(), ?)
+            ) VALUES (?, ?, ?, ?, CURDATE(), ?, 'Approved', Null, ?)
         ");
         $stmt->execute([
             $client_id,

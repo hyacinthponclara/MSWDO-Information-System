@@ -31,7 +31,7 @@ FROM program p
 LEFT JOIN (
     SELECT program_id, SUM(av_amount) AS spent_availment
     FROM availment
-    WHERE av_status IN ('Approved','Released')
+    WHERE av_status = 'Released'
     GROUP BY program_id
 ) av ON av.program_id = p.program_id
 

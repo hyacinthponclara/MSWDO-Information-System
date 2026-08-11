@@ -1,3 +1,190 @@
+<?php
+require 'auth.php';
+requireRole(['Admin']);
+require 'db_connect.php';
+require 'budget_helpers.php';
+
+$totalClients = $pdo->query("SELECT COUNT(*) FROM client")->fetchColumn();
+
+$availmentPerMonth = $pdo->query("SELECT COUNT(*) FROM availment 
+  WHERE MONTH(av_date_applied) = MONTH(CURDATE()) AND YEAR(av_date_applied) = YEAR(CURDATE())")->fetchColumn();
+
+$allProgramBudget = getAllProgramBudgets($pdo);
+
+$totalBudget = 0;
+$totalSpent = 0;
+foreach ($allProgramBudget as $program) {
+  $totalBudget += $program['total'];
+  $totalSpent += $program['spent'];
+}
+
+$budgetAlert = 0;
+foreach ($allProgramBudget as $program) {
+  $total = (float) $program['total'];
+  $remaining = (float) $program['remaining'];
+  if ($total > 0 && $remaining < ($total * 0.10)) {
+    $budgetAlert++;
+  }
+}
+
+// Icons used by the dashboard
+$programIcons = [
+  'AICS FBML' => 'fa-hand-holding-heart',
+  'AICS Educational' => 'fa-graduation-cap',
+  '4Ps' => 'fa-home',
+  'SLP' => 'fa-seedling',
+  'SFP' => 'fa-utensils',
+  'Day Care' => 'fa-child',
+  'Senior Citizen' => 'fa-user-friends',
+  'PWD' => 'fa-wheelchair',
+  'Solo Parents' => 'fa-user-shield',
+  'Women and Children' => 'fa-people-roof',
+];
+
+
+// Prepare data specifically for the dashboard 
+$dashboardPrograms = [];
+
+foreach ($allProgramBudget as $program) {
+
+  $beneficiaryStmt = $pdo->prepare("
+        SELECT COUNT(DISTINCT client_id)
+        FROM AVAILMENT
+        WHERE program_id = ?
+          AND av_status IN ('Approved', 'Released')
+    ");
+
+  $beneficiaryStmt->execute([
+    $program['program_id']
+  ]);
+
+  $beneficiaries = (int) $beneficiaryStmt->fetchColumn();
+
+  $dashboardPrograms[] = [
+    'name' => $program['program_name'],
+    'cycle' => $program['prog_period'],
+    'icon' => $programIcons[$program['program_name']] ?? 'fa-folder',
+    'pct' => (float) $program['pct_used'],
+    'spent' => (float) $program['spent'],
+    'remaining' => (float) $program['remaining'],
+    'beneficiaries' => $beneficiaries
+  ];
+}
+
+// Approved applications waiting for release 
+$approved = $pdo->query("
+    SELECT
+        a.availment_id,
+        a.av_amount,
+        a.av_date_applied,
+        a.av_date_approved,
+
+        c.cl_firstname,
+        c.cl_lastname,
+
+        p.program_name
+
+    FROM AVAILMENT a
+
+    INNER JOIN CLIENT c
+        ON c.client_id = a.client_id
+
+    INNER JOIN PROGRAM p
+        ON p.program_id = a.program_id
+
+    WHERE a.av_status = 'Approved'
+
+    ORDER BY
+        COALESCE(a.av_date_approved, a.av_date_applied) DESC
+
+    LIMIT 5
+");
+
+$approvedApplications = $approved->fetchAll(PDO::FETCH_ASSOC);
+
+// Monthly Spending - shows the current 4 month period (Jan-Apr...)
+$currentMonth = (int) date('n');
+
+// to know which 4-month period we're in
+if ($currentMonth <= 4) {
+  $startMonth = 1;
+  $endMonth = 4;
+} elseif ($currentMonth <= 8) {
+  $startMonth = 5;
+  $endMonth = 8;
+} else {
+  $startMonth = 9;
+  $endMonth = 12;
+}
+
+// to get the names of the months
+$startDate = new DateTime(date('Y') . '-' . str_pad($startMonth, 2, '0', STR_PAD_LEFT) . '-01');
+$endDate = new DateTime(date('Y') . '-' . str_pad($endMonth, 2, '0', STR_PAD_LEFT) . '-01');
+
+$startDateFormat = $startDate->format('M');
+$endDateFormat = $endDate->format('M');
+
+// get the current year and 4 month period released spendings
+$monthlySpendingStmt = $pdo->prepare("
+    SELECT
+        MONTH(av_date_released) AS month_number,
+        COALESCE(SUM(av_amount), 0) AS total_spent
+
+    FROM AVAILMENT
+
+    WHERE av_status = 'Released'
+      AND av_date_released IS NOT NULL
+      AND YEAR(av_date_released) = YEAR(CURDATE())
+      AND MONTH(av_date_released) BETWEEN ? AND ?
+
+    GROUP BY MONTH(av_date_released)
+
+    ORDER BY MONTH(av_date_released)
+");
+
+$monthlySpendingStmt->execute([
+  $startMonth,
+  $endMonth
+]);
+
+$monthlySpendingRows = $monthlySpendingStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$monthlySpending = []; //so they get 0 as default
+for (
+  $month = $startMonth;
+  $month <= $endMonth;
+  $month++
+) {
+  $monthlySpending[$month] = 0;
+}
+
+foreach ($monthlySpendingRows as $row) {
+
+  $month = (int) $row['month_number'];
+
+  $monthlySpending[$month] =
+    (float) $row['total_spent'];
+}
+
+// the highest spending month will be 100%
+$highestMonthlySpending = max($monthlySpending);
+
+// This will be used in the frontend to set the height of each bar in the monthly spending chart.
+$monthlySpendingBars = [];
+foreach ($monthlySpending as $month => $amount) {
+  if ($highestMonthlySpending > 0) {
+    $percentage =
+      ($amount / $highestMonthlySpending) * 100;
+  } else {
+    $percentage = 0;
+  }
+  $monthlySpendingBars[$month] = [
+    'amount' => $amount,
+    'percentage' => round($percentage)
+  ];
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -204,14 +391,13 @@
 </head>
 
 <body class="bg-slate2 min-h-screen flex flex-col md:flex-row">
-  <!-- Sidebar (desktop) -->
   <?php require 'sidebar.php'; ?>
   <!-- Mobile header -->
   <div class="md:hidden bg-forest-600 text-white p-3 flex items-center justify-between">
     <span class="font-serif text-xl">MSWDO</span>
     <button class="text-white"><i class="fas fa-bars text-xl"></i></button>
   </div>
-  <!-- ═══════════ MAIN ═══════════ -->
+  <!--  MAIN  -->
   <div class="md:ml-64 flex-1 flex flex-col min-h-screen w-full">
     <!-- Top Bar -->
     <header
@@ -231,7 +417,7 @@
           class="stat-card animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-3 md:p-4 relative overflow-hidden">
           <div class="absolute top-0 left-0 right-0 h-0.5 bg-forest-400 rounded-t-2xl"></div>
           <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Total Clients</p>
-          <p class="text-2xl md:text-3xl font-semibold text-forest-600 leading-none">1,284</p>
+          <p class="text-2xl md:text-3xl font-semibold text-forest-600 leading-none"><?php echo $totalClients; ?></p>
           <div class="absolute right-2 top-2 text-xl md:text-2xl opacity-20 text-forest-500"><i
               class="fas fa-users"></i></div>
         </div>
@@ -239,7 +425,8 @@
           class="stat-card animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-3 md:p-4 relative overflow-hidden">
           <div class="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500 rounded-t-2xl"></div>
           <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Avail/Month</p>
-          <p class="text-2xl md:text-3xl font-semibold text-forest-600 leading-none">347</p>
+          <p class="text-2xl md:text-3xl font-semibold text-forest-600 leading-none"><?php echo $availmentPerMonth; ?>
+          </p>
           <div class="absolute right-2 top-2 text-xl md:text-2xl opacity-20 text-forest-500"><i
               class="fas fa-clipboard-list"></i></div>
         </div>
@@ -247,13 +434,14 @@
           class="stat-card animate-fade-up-4 bg-white rounded-2xl border border-slate-200 p-3 md:p-4 relative overflow-hidden">
           <div class="absolute top-0 left-0 right-0 h-0.5 bg-forest-600 rounded-t-2xl"></div>
           <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Budget Left</p>
-          <p class="text-2xl md:text-3xl font-semibold text-forest-600 leading-none">₱2.4M</p>
+          <p class="text-2xl md:text-3xl font-semibold text-forest-600 leading-none">
+            ₱<?php echo number_format($totalBudget - $totalSpent, 2); ?></p>
         </div>
         <div
           class="stat-card animate-fade-up-5 bg-white rounded-2xl border border-red-100 p-3 md:p-4 relative overflow-hidden cursor-pointer">
           <div class="absolute top-0 left-0 right-0 h-0.5 bg-red-500 rounded-t-2xl"></div>
           <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Budget Alerts</p>
-          <p class="text-2xl md:text-3xl font-semibold text-red-500 leading-none">2</p>
+          <p class="text-2xl md:text-3xl font-semibold text-red-500 leading-none"><?php echo $budgetAlert; ?></p>
         </div>
       </div>
       <!-- ── QUICK ACTIONS ── -->
@@ -308,7 +496,8 @@
           <div class="flex items-center justify-between mb-2">
             <div>
               <h2 class="text-[13px] font-semibold text-forest-600">Budget Summary</h2>
-              <p class="text-[11px] text-slate-400">FY 2026 · all 9 programs</p>
+              <p class="text-[11px] text-slate-400">FY <?= date('Y') ?> · all <?= count($dashboardPrograms) ?> MSWDO programs
+              </p>
             </div>
             <a href="budgetmanagement.php" class="text-[11px] text-forest-500 font-medium">Manage Budget →</a>
           </div>
@@ -323,62 +512,104 @@
         <div class="flex flex-col gap-4 md:gap-5">
           <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-4 md:p-5 flex-1">
             <div class="flex items-center justify-between mb-3">
-              <h2 class="text-[13px] font-semibold text-forest-600">Pending Approvals</h2>
+              <h2 class="text-[13px] font-semibold text-forest-600">Approved / For Release</h2>
               <a href="pending_approvals.php" class="text-[11px] text-forest-500 font-medium">View all →</a>
             </div>
+            <p class="text-[11px] text-slate-400">
+              Applications approved and waiting for release
+            </p>
             <div class="space-y-2.5">
-              <div class="flex gap-2 p-2.5 bg-red-50 border border-red-100 rounded-xl">
-                <i class="fas fa-circle text-red-500 text-[7px] mt-1.5"></i>
-                <div>
-                  <p class="text-[12px] font-semibold text-red-700">AICS FBML Critical</p>
-                  <p class="text-[10px] text-red-500">₱28,400 left</p>
+              <?php if (empty($approvedApplications)): ?>
+
+                <div class="py-8 text-center text-slate-400">
+                  <i class="fa-solid fa-circle-check text-2xl mb-2"></i>
+
+                  <p class="text-sm">
+                    No applications are waiting for release.
+                  </p>
                 </div>
-              </div>
-              <div class="flex gap-2 p-2.5 bg-red-50 border border-red-100 rounded-xl">
-                <i class="fas fa-circle text-red-500 text-[7px] mt-1.5"></i>
-                <div>
-                  <p class="text-[12px] font-semibold text-red-700">SLP Critical</p>
-                  <p class="text-[10px] text-red-500">₱12,000 left</p>
+
+              <?php else: ?>
+
+                <div class="divide-y divide-slate-100">
+
+                  <?php foreach ($approvedApplications as $application): ?>
+
+                    <div class="flex items-center justify-between py-3">
+
+                      <div class="flex items-center gap-3">
+
+                        <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
+                          <i class="fa-solid fa-clock text-amber-500"></i>
+                        </div>
+
+                        <div>
+
+                          <p class="text-sm font-medium text-slate-700">
+                            <?= htmlspecialchars($application['program_name']) ?>
+                          </p>
+
+                          <p class="text-[11px] text-slate-400">
+                            <?= htmlspecialchars(
+                              $application['cl_firstname'] . ' ' .
+                              $application['cl_lastname']
+                            ) ?>
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                      <div class="text-right">
+
+                        <p class="text-sm font-semibold text-slate-700">
+                          ₱
+                          <?= number_format(
+                            (float) $application['av_amount'],
+                            2
+                          ) ?>
+                        </p>
+
+                        <p class="text-[10px] text-amber-500 font-medium">
+                          Approved
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                  <?php endforeach; ?>
+
                 </div>
-              </div>
-              <div class="flex gap-2 p-2.5 bg-amber-50 border border-amber-100 rounded-xl">
-                <i class="fas fa-circle text-amber-500 text-[7px] mt-1.5"></i>
-                <div>
-                  <p class="text-[12px] font-semibold text-amber-700">5 Pending Approvals</p>
-                  <p class="text-[10px] text-amber-600">Awaiting Mayor</p>
-                </div>
-              </div>
-              <div class="flex gap-2 p-2.5 bg-forest-50 border border-forest-100 rounded-xl">
-                <i class="fas fa-circle text-forest-500 text-[7px] mt-1.5"></i>
-                <div>
-                  <p class="text-[12px] font-semibold text-forest-700">Q1 Report Due</p>
-                  <p class="text-[10px] text-forest-500">Apr 30</p>
-                </div>
-              </div>
+
+              <?php endif; ?>
             </div>
           </div>
           <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 p-4 md:p-5">
             <h2 class="text-[13px] font-semibold text-forest-600 mb-1">Monthly Spending</h2>
-            <p class="text-[11px] text-slate-400 mb-3">Jan – Apr 2026</p>
-            <div class="flex items-end gap-1 h-20">
-              <div class="flex flex-col items-center gap-1 flex-1">
-                <div class="w-full rounded-t bg-forest-200" style="height:52%"></div><span
-                  class="text-[9px] text-slate-400">Jan</span>
-              </div>
-              <div class="flex flex-col items-center gap-1 flex-1">
-                <div class="w-full rounded-t bg-forest-300" style="height:38%"></div><span
-                  class="text-[9px] text-slate-400">Feb</span>
-              </div>
-              <div class="flex flex-col items-center gap-1 flex-1">
-                <div class="w-full rounded-t bg-forest-400" style="height:65%"></div><span
-                  class="text-[9px] text-slate-400">Mar</span>
-              </div>
-              <div class="flex flex-col items-center gap-1 flex-1">
-                <div class="w-full rounded-t bg-forest-600" style="height:78%"></div><span
-                  class="text-[9px] text-slate-400 font-semibold">Apr</span>
-              </div>
+            <p class="text-[11px] text-slate-400">
+              <?= $startDateFormat ?> - <?= $endDateFormat ?> <?= date('Y') ?>
+            </p>
+            <div class="flex items-end justify-between gap-3 h-32">
+              <?php foreach ($monthlySpendingBars as $month => $data): ?>
+                <?php
+                $monthDate = new DateTime(
+                  date('Y') . '-' .
+                  str_pad($month, 2, '0', STR_PAD_LEFT) . '-01'
+                );
+                $monthLabel = $monthDate->format('M');
+                ?>
+                <div class="flex-1 flex flex-col items-center gap-2">
+                  <div class="w-full h-24 flex items-end">
+                    <div class="w-full rounded-t bg-green-500" style="height: <?= $data['percentage'] ?>%;"
+                      title="<?= $monthLabel ?>: ₱<?= number_format($data['amount'], 2) ?>"></div>
+                  </div>
+                  <span class="text-[10px] text-slate-400">
+                    <?= $monthLabel ?>
+                  </span>
+                </div>
+              <?php endforeach; ?>
             </div>
-            <p class="text-[10px] text-slate-400 mt-2">Projected: <strong class="text-forest-600">₱2.1M</strong></p>
           </div>
         </div>
       </div>
@@ -391,7 +622,7 @@
           <div class="flex items-center justify-between mb-2">
             <div>
               <h2 class="text-[13px] font-semibold text-forest-600">Program Utilization</h2>
-              <p class="text-[11px] text-slate-400">All 10 programs · highest first</p>
+              <p class="text-[11px] text-slate-400">All <?= count($dashboardPrograms) ?> programs · highest first</p>
             </div>
             <span class="text-[11px] font-semibold text-red-500 bg-red-50 px-2.5 py-1 rounded-full"
               id="highUtilCount"></span>
@@ -507,54 +738,18 @@
   </script>
   <script>
     // ── All 10 MSWDO programs ──
-    const programs = [
-      {
-        name: 'AICS FBML', cycle: 'Quarterly', icon: 'fa-hand-holding-heart', pct: 88, spent: 211600,
-        remaining: 28400, beneficiaries: 128
-      },
-      {
-        name: 'AICS Educational', cycle: 'Quarterly', icon: 'fa-graduation-cap', pct: 65, spent: 130000,
-        remaining: 70000, beneficiaries: 96
-      },
-      {
-        name: '4Ps', cycle: 'Annually', icon: 'fa-home', pct: 42, spent: 252000, remaining: 348000,
-        beneficiaries: 47
-      },
-      {
-        name: 'SLP', cycle: 'Annually', icon: 'fa-seedling', pct: 92, spent: 138000, remaining: 12000,
-        beneficiaries: 22
-      },
-      {
-        name: 'SFP', cycle: 'Quarterly', icon: 'fa-utensils', pct: 35, spent: 70000, remaining: 130000,
-        beneficiaries: 65
-      },
-      {
-        name: 'Day Care', cycle: 'Annually', icon: 'fa-child', pct: 55, spent: 110000, remaining: 90000,
-        beneficiaries: 40
-      },
-      {
-        name: 'Senior Citizen', cycle: 'Annually', icon: 'fa-user-friends', pct: 71, spent: 213000,
-        remaining: 87000, beneficiaries: 74
-      },
-      {
-        name: 'PWD', cycle: 'Half-year', icon: 'fa-wheelchair', pct: 28, spent: 56000,
-        remaining: 144000, beneficiaries: 58
-      },
-      {
-        name: 'Solo Parents', cycle: 'Quarterly', icon: 'fa-user-shield', pct: 68, spent: 102000,
-        remaining: 48000, beneficiaries: 34
-      },
-      {
-        name: 'Women and Children', cycle: 'Annually', icon: 'fa-people-roof', pct: 47, spent: 94000,
-        remaining: 106000, beneficiaries: 51
-      },
-    ];
+    const programs = <?= json_encode(
+      $dashboardPrograms,
+      JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    ) ?>;
     const peso = n => '₱' + n.toLocaleString('en-PH');
     const barColor = p => p >= 80 ? 'bg-red-500' : p >= 60 ? 'bg-amber-400' : 'bg-emerald-500';
     const pctColor = p => p >= 80 ? 'text-red-500' : p >= 60 ? 'text-amber-500' : 'text-emerald-600';
     const cycleStyle = c => c === 'Quarterly' ? 'text-blue-600 bg-blue-50' : c === 'Half-year' ?
       'text-teal-600 bg-teal-50' :
       'text-purple-600 bg-purple-50';
+
+
 
     // ── Budget Utilization ──
     const barsContainer = document.getElementById('budgetBars');
@@ -594,7 +789,7 @@
         insight = 'Watch cost';
         insightClass = 'text-amber-600 bg-amber-50';
       } else if (p.beneficiaries >= 60) {
-        insight = 'Low util, broad reach';
+        insight = 'Low utilization, broad reach';
         insightClass = 'text-forest-600 bg-forest-50';
       } else {
         insight = 'Tracking';

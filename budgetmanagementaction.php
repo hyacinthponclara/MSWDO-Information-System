@@ -70,7 +70,7 @@
                     FROM program p
                     LEFT JOIN availment a
                         ON a.program_id = p.program_id
-                    AND a.av_status IN ('Approved','Released')
+                    AND a.av_status = 'Released'
                     WHERE p.program_id = ?
                     GROUP BY
                         p.program_id,
@@ -169,7 +169,7 @@
                 FROM program p
                 LEFT JOIN availment a
                     ON a.program_id = p.program_id
-                AND a.av_status IN ('Approved','Released')
+                AND a.av_status = 'Released'
                 WHERE p.program_id = ?
                 GROUP BY
                     p.program_id,

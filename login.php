@@ -22,11 +22,11 @@ $user = $stmt->fetch();
 
 if ($user && password_verify($password, $user['user_password'])) {
 
-    $_SESSION['user_id']        = $user['user_id'];
-    $_SESSION['user_role']      = $user['user_role'];
-    $_SESSION['username']       = $user['username'];
+    $_SESSION['user_id'] = $user['user_id'];
+    $_SESSION['user_role'] = $user['user_role'];
+    $_SESSION['username'] = $user['username'];
     $_SESSION['user_firstname'] = $user['user_firstname'];
-    $_SESSION['user_lastname']  = $user['user_lastname'];
+    $_SESSION['user_lastname'] = $user['user_lastname'];
 
     if ($user['user_role'] === 'Admin') {
         header('Location: dashboard_admin.php');
