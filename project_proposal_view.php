@@ -38,18 +38,18 @@ if (!$row) {
 // AICS isn't included: AICS assistance is recorded in AVAILMENT, not
 // PROJECT_PROPOSAL, so an AICS row should never reach this page.
 $badgeMap = [
-    '4Ps'                          => 'badge-4ps',
-    'Solo Parent Program'          => 'badge-solo',
-    'Senior Citizen Program'       => 'badge-senior',
-    'PWD Program'                  => 'badge-pwd',
-    'Day Care Center Program'      => 'badge-daycare',
-    'SLP'                          => 'badge-slp',
-    'SFP'                          => 'badge-sfp',
-    'Women and Child Protection'   => 'badge-women',
+    '4Ps' => 'badge-4ps',
+    'Solo Parent Program' => 'badge-solo',
+    'Senior Citizen Program' => 'badge-senior',
+    'PWD Program' => 'badge-pwd',
+    'Day Care Center Program' => 'badge-daycare',
+    'SLP' => 'badge-slp',
+    'SFP' => 'badge-sfp',
+    'Women and Child Protection' => 'badge-women',
 ];
 
 $from = new DateTime($row['pp_date_from']);
-$to   = new DateTime($row['pp_date_to']);
+$to = new DateTime($row['pp_date_to']);
 $days = $from->diff($to)->days + 1; // inclusive of both start and end day
 
 // Resolve the attached document's real size off disk, same pattern as
@@ -62,30 +62,42 @@ if ($documentName) {
     $documentSize = file_exists($fullPath) ? round(filesize($fullPath) / 1024) . ' KB' : 'File not found on server';
 }
 
+$statusClass = match ($row['pp_status'] ?? 'Approved') {
+    'Released' => 'text-emerald-600',
+    'Approved' => 'text-amber-600',
+    default    => 'text-slate-500',
+};
+
 $request = [
-    'id'               => (int) $row['proposal_id'],
-    'title'            => htmlspecialchars($row['pp_title']),
-    'duration'         => $days . ' ' . ($days === 1 ? 'day' : 'days'),
-    'date_from'        => $from->format('M j, Y'),
-    'date_to'          => $to->format('M j, Y'),
-    'venue'            => htmlspecialchars($row['pp_venue']),
+    'id' => (int) $row['proposal_id'],
+    'title' => htmlspecialchars($row['pp_title']),
+    'duration' => $days . ' ' . ($days === 1 ? 'day' : 'days'),
+    'date_from' => $from->format('M j, Y'),
+    'date_to' => $to->format('M j, Y'),
+    'venue' => htmlspecialchars($row['pp_venue']),
     'num_participants' => (int) $row['pp_num_participants'],
     'participant_desc' => htmlspecialchars($row['pp_participant_desc']),
-    'budget'           => (float) $row['pp_budget'],
-    'fund_source'      => htmlspecialchars($row['pp_fund_source']),
-    'program'          => htmlspecialchars($row['program_name']),
-    'program_badge'    => $badgeMap[$row['program_name']] ?? 'badge-4ps',
+    'budget' => (float) $row['pp_budget'],
+    'fund_source' => htmlspecialchars($row['pp_fund_source']),
+    'program' => htmlspecialchars($row['program_name']),
+    'program_badge' => $badgeMap[$row['program_name']] ?? 'badge-4ps',
     // PROJECT_PROPOSAL has no status column yet — every row here has already
     // been counted as "spent" against its program's budget (see
     // budget_helpers.php), so the closest honest label is "Submitted" rather
     // than implying an approval workflow that doesn't exist in the schema.
-    'status'           => 'Submitted',
-    'submitted_by'     => trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: '—',
-    'date_submitted'   => $row['pp_date_submitted'] ? (new DateTime($row['pp_date_submitted']))->format('F j, Y g:i A') : '—',
-    'document_name'    => $documentName ?? 'No document attached',
-    'document_path'    => $documentPath,
-    'has_document'     => (bool) $documentName,
-    'document_size'    => $documentSize,
+    'status' => $row['pp_status'] ?? 'Approved',
+    
+    'date_released' => !empty($row['pp_date_released'])
+        ? (new DateTime($row['pp_date_released']))->format('F j, Y g:i A')
+        : null,
+    'submitted_by' => trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: '—',
+    'date_submitted' => $row['pp_date_submitted']
+        ? (new DateTime($row['pp_date_submitted']))->format('F j, Y g:i A')
+        : '—',
+    'document_name' => $documentName ?? 'No document attached',
+    'document_path' => $documentPath,
+    'has_document' => (bool) $documentName,
+    'document_size' => $documentSize,
 ];
 ?>
 <!DOCTYPE html>
@@ -155,10 +167,12 @@ $request = [
         .sidebar-item {
             transition: all .15s;
         }
+
         .sidebar-item:hover {
             background: rgba(26, 92, 58, .08);
             color: #1A5C3A;
         }
+
         .sidebar-item.active {
             background: rgba(26, 92, 58, .12);
             border-left-color: #C49A2A;
@@ -172,6 +186,7 @@ $request = [
             overflow: hidden;
             margin-bottom: 1.25rem;
         }
+
         .section-head {
             display: flex;
             align-items: center;
@@ -180,6 +195,7 @@ $request = [
             border-bottom: 1px solid #D4E8DC;
             background: #EEF6F0;
         }
+
         .section-num {
             width: 28px;
             height: 28px;
@@ -193,6 +209,7 @@ $request = [
             font-weight: 700;
             flex-shrink: 0;
         }
+
         .section-body {
             padding: 1.5rem;
         }
@@ -221,6 +238,7 @@ $request = [
         .attachment-item {
             transition: all .15s;
         }
+
         .attachment-item:hover {
             background: #EEF6F0;
             border-color: #1A5C3A;
@@ -237,14 +255,46 @@ $request = [
             font-size: 11px;
             font-weight: 600;
         }
-        .badge-4ps { background: #EDE9FE; color: #5B21B6; }
-        .badge-solo { background: #CCFBF1; color: #0F766E; }
-        .badge-senior { background: #FEF3C7; color: #92400E; }
-        .badge-pwd { background: #DBEAFE; color: #1E40AF; }
-        .badge-daycare { background: #FFEDD5; color: #C2410C; }
-        .badge-slp { background: #FEF3C7; color: #D97706; }
-        .badge-sfp { background: #D1FAE5; color: #15803D; }
-        .badge-women { background: #F3E8FF; color: #6D28D9; }
+
+        .badge-4ps {
+            background: #EDE9FE;
+            color: #5B21B6;
+        }
+
+        .badge-solo {
+            background: #CCFBF1;
+            color: #0F766E;
+        }
+
+        .badge-senior {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .badge-pwd {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .badge-daycare {
+            background: #FFEDD5;
+            color: #C2410C;
+        }
+
+        .badge-slp {
+            background: #FEF3C7;
+            color: #D97706;
+        }
+
+        .badge-sfp {
+            background: #D1FAE5;
+            color: #15803D;
+        }
+
+        .badge-women {
+            background: #F3E8FF;
+            color: #6D28D9;
+        }
 
         .btn-view {
             background: #EEF6F0;
@@ -252,6 +302,7 @@ $request = [
             border: 1px solid #D4E8DC;
             transition: all .15s;
         }
+
         .btn-view:hover {
             background: #1A5C3A;
             color: #fff;
@@ -264,6 +315,7 @@ $request = [
             border: 1px solid #D4E8DC;
             transition: all .15s;
         }
+
         .btn-download:hover {
             background: #1A5C3A;
             color: #fff;
@@ -271,16 +323,33 @@ $request = [
         }
 
         @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { background: #fff !important; }
-            .section-card { border: 1px solid #ccc !important; box-shadow: none !important; }
-            .field-value { background: #fff !important; border-color: #ccc !important; }
+            .no-print {
+                display: none !important;
+            }
+
+            .print-only {
+                display: block !important;
+            }
+
+            body {
+                background: #fff !important;
+            }
+
+            .section-card {
+                border: 1px solid #ccc !important;
+                box-shadow: none !important;
+            }
+
+            .field-value {
+                background: #fff !important;
+                border-color: #ccc !important;
+            }
         }
 
         ::-webkit-scrollbar {
             width: 4px;
         }
+
         ::-webkit-scrollbar-thumb {
             background: rgba(26, 92, 58, .2);
             border-radius: 2px;
@@ -296,7 +365,8 @@ $request = [
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <!-- Top Bar -->
-        <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 no-print">
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20 no-print">
             <div class="flex items-center gap-2 text-[13px]">
                 <a href="fund_requests.php" class="text-slate-400 hover:text-green-600">
                     <i class="fas fa-arrow-left mr-1"></i> Fund Requests
@@ -305,10 +375,12 @@ $request = [
                 <span class="text-green-600 font-semibold">Request Details</span>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="window.print()" class="text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-green-400 hover:text-green-600 transition-all">
+                <button onclick="window.print()"
+                    class="text-[12px] font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:border-green-400 hover:text-green-600 transition-all">
                     <i class="fas fa-print mr-1"></i> Print
                 </button>
-                <a href="fund_request_update.php?id=<?= $request['id'] ?>" class="text-[12px] font-semibold text-white bg-green-600 rounded-lg px-4 py-1.5 hover:bg-green-500 transition-all flex items-center gap-1.5">
+                <a href="fund_request_update.php?id=<?= $request['id'] ?>"
+                    class="text-[12px] font-semibold text-white bg-green-600 rounded-lg px-4 py-1.5 hover:bg-green-500 transition-all flex items-center gap-1.5">
                     <i class="fas fa-edit"></i> Update Request
                 </a>
             </div>
@@ -321,14 +393,30 @@ $request = [
                 <div class="animate-fade-up flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h1 class="text-xl font-serif text-green-600">Fund Request Details</h1>
-                        <p class="text-[13px] text-slate-500 mt-0.5">Complete fund request record – copy of your submitted information.</p>
+                        <p class="text-[13px] text-slate-500 mt-0.5">Complete fund request record – copy of your
+                            submitted information.</p>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap justify-end">
                         <span class="program-badge <?= $request['program_badge'] ?>">
                             <?= $request['program'] ?>
                         </span>
+
+                        <?php
+                        $headerStatus = $request['status'];
+                        $headerStatusClass = $headerStatus === 'Released'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-emerald-100 text-emerald-700';
+
+                        $headerDate = $request['date_released'] ?? $request['date_submitted'];
+                        ?>
+
+                        <span class="px-3 py-1 rounded-full text-[11px] font-semibold <?= $headerStatusClass ?>">
+                            <?= htmlspecialchars($headerStatus) ?>
+                        </span>
+
                         <span class="text-[11px] text-slate-400">
-                            <i class="far fa-clock mr-1"></i> <?= $request['date_submitted'] ?>
+                            <i class="far fa-clock mr-1"></i>
+                            <?= htmlspecialchars($headerDate) ?>
                         </span>
                     </div>
                 </div>
@@ -342,8 +430,19 @@ $request = [
                             <div class="section-num">I</div>
                             <h2 class="text-[14px] font-semibold text-green-600">Project Information</h2>
                             <div class="ml-auto text-[11px] text-slate-400">
-                                <i class="fas fa-check-circle text-emerald-500 mr-1"></i>
-                                Status: <span class="font-medium text-emerald-600"><?= $request['status'] ?></span>
+                                <?php if ($request['status'] === 'Released'): ?>
+                                    <i class="fas fa-check-circle text-blue-500 mr-1"></i>
+                                    Status:
+                                    <span class="font-medium text-blue-600">
+                                        <?= htmlspecialchars($request['status']) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <i class="fas fa-clock text-amber-500 mr-1"></i>
+                                    Status:
+                                    <span class="font-medium text-amber-600">
+                                        <?= htmlspecialchars($request['status']) ?>
+                                    </span>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <div class="section-body space-y-4">
@@ -386,7 +485,8 @@ $request = [
 
                             <div>
                                 <label class="field-label">E. Budgetary Requirement (₱)</label>
-                                <div class="field-value font-bold text-green-600">₱<?= number_format($request['budget'], 2) ?></div>
+                                <div class="field-value font-bold text-green-600">
+                                    ₱<?= number_format($request['budget'], 2) ?></div>
                             </div>
 
                             <div>
@@ -405,28 +505,36 @@ $request = [
                         </div>
                         <div class="section-body">
                             <?php if ($request['has_document']): ?>
-                                <div class="attachment-item flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                                    <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0">
+                                <div
+                                    class="attachment-item flex items-center gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                    <div
+                                        class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0">
                                         <i class="fas fa-file-pdf text-2xl"></i>
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-[13px] font-semibold text-slate-800 truncate"><?= htmlspecialchars($request['document_name']) ?></p>
-                                        <p class="text-[11px] text-slate-400"><?= $request['document_size'] ?> • Uploaded: <?= $request['date_submitted'] ?></p>
+                                        <p class="text-[13px] font-semibold text-slate-800 truncate">
+                                            <?= htmlspecialchars($request['document_name']) ?></p>
+                                        <p class="text-[11px] text-slate-400"><?= $request['document_size'] ?> • Uploaded:
+                                            <?= $request['date_submitted'] ?></p>
                                     </div>
                                     <div class="flex items-center gap-2 flex-shrink-0">
-                                        <a href="<?= htmlspecialchars($request['document_path']) ?>" target="_blank" class="btn-view px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
+                                        <a href="<?= htmlspecialchars($request['document_path']) ?>" target="_blank"
+                                            class="btn-view px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
                                             <i class="fas fa-eye"></i> View
                                         </a>
-                                        <a href="<?= htmlspecialchars($request['document_path']) ?>" download class="btn-download px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
+                                        <a href="<?= htmlspecialchars($request['document_path']) ?>" download
+                                            class="btn-download px-4 py-2 rounded-lg text-[12px] font-medium flex items-center gap-2">
                                             <i class="fas fa-download"></i> Download
                                         </a>
                                     </div>
                                 </div>
                                 <p class="text-[11px] text-slate-400 mt-3">
-                                    <i class="fas fa-info-circle mr-1"></i> The complete project proposal document is attached above.
+                                    <i class="fas fa-info-circle mr-1"></i> The complete project proposal document is
+                                    attached above.
                                 </p>
                             <?php else: ?>
-                                <div class="flex items-center gap-4 p-4 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-400">
+                                <div
+                                    class="flex items-center gap-4 p-4 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-slate-400">
                                     <i class="fas fa-file-slash text-2xl"></i>
                                     <p class="text-[13px]">No document was attached to this request.</p>
                                 </div>
@@ -444,7 +552,8 @@ $request = [
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="field-label">Request ID</label>
-                                    <div class="field-value font-mono font-semibold text-green-700"><?= $request['id'] ?></div>
+                                    <div class="field-value font-mono font-semibold text-green-700">
+                                        <?= $request['id'] ?></div>
                                 </div>
                                 <div>
                                     <label class="field-label">Program</label>
@@ -461,6 +570,13 @@ $request = [
                                 <div>
                                     <label class="field-label">Date Submitted</label>
                                     <div class="field-value text-slate-500"><?= $request['date_submitted'] ?></div>
+                                </div>
+
+                                <div>
+                                    <label class="field-label">Date Released</label>
+                                    <div class="field-value text-slate-500">
+                                        <?= $request['date_released'] ?? '—' ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -484,7 +600,8 @@ $request = [
     </div>
 
     <!-- Toast -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-green-700 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
+    <div id="toast"
+        class="fixed bottom-6 right-6 bg-green-700 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
         <i class="fas fa-check-circle text-green-300"></i>
         <span id="toastMsg">Printed successfully!</span>
     </div>

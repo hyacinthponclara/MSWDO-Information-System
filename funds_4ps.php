@@ -8,7 +8,7 @@ require 'budget_helpers.php';
 $fundBudget = getProgramBudget($pdo, ['4Ps']);
 
 // -- FUND REQUESTS TABLE (live from PROJECT_PROPOSAL) --
-//$fundRequestsPhp = getFundRequests($pdo, '4Ps');
+$fundRequestsPhp = getFundRequests($pdo, '4Ps');
 ?>
 
 <!DOCTYPE html>
@@ -261,6 +261,10 @@ $fundBudget = getProgramBudget($pdo, ['4Ps']);
                                     data-sort="date" onclick="sortTable('date')">
                                     Date Submitted <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
+                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Status</th>
+                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Date Released</th>
                                 <th
                                     class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
                                     Action</th>
@@ -301,11 +305,31 @@ $fundBudget = getProgramBudget($pdo, ['4Ps']);
     </div>
 
     <script>
-        // ── Sample Data (4Ps fund requests) ──
+        // ── Database Data (4Ps fund requests) ──
         const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...fundRequests];
+
+        function statusClass(status) {
+            if (status === 'Released') {
+                return 'bg-emerald-100 text-emerald-700';
+            }
+
+            if (status === 'Approved') {
+                return 'bg-amber-100 text-amber-700';
+            }
+
+            if (status === 'Denied') {
+                return 'bg-red-100 text-red-700';
+            }
+
+            return 'bg-slate-100 text-slate-600';
+        }
+
+        function statusLabel(status) {
+            return status || 'Approved';
+        }
 
         function renderTable(data) {
             const tbody = document.getElementById('tableBody');
@@ -321,6 +345,14 @@ $fundBudget = getProgramBudget($pdo, ['4Ps']);
                     <td class="px-5 py-3 font-semibold text-slate-700">₱${row.budget.toLocaleString()}</td>
                     <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">${row.fundSource}</span></td>
                     <td class="px-5 py-3 text-slate-400">${row.date}</td>
+                    <td class="px-5 py-3">
+                        <span class="px-2 py-1 rounded-full text-[10px] font-semibold ${statusClass(row.status)}">
+                            ${statusLabel(row.status)}
+                        </span>
+                    </td>
+                    <td class="px-5 py-3 text-slate-400">
+                        ${row.dateReleased ? row.dateReleased : '—'}
+                    </td>
                     <td class="px-5 py-3">
         <a href="project_proposal_view.php?id=${row.id}" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
              View
@@ -407,9 +439,9 @@ $fundBudget = getProgramBudget($pdo, ['4Ps']);
             if (!fromDate && !toDate) csv += 'Date Range: All\n';
             csv += '\n';
 
-            csv += 'Fund Request Title,Duration,Venue,Participants,Budget,Source of Fund,Date Submitted\n';
+            csv += 'Fund Request Title,Duration,Venue,Participants,Budget,Source of Fund,Date Submitted,Status,Date Released\n';
             data.forEach(row => {
-                csv += `"${row.title}",${row.duration},"${row.venue}",${row.participants},${row.budget},${row.fundSource},${row.date}\n`;
+                csv += `"${row.title}",${row.duration},"${row.venue}",${row.participants},${row.budget},${row.fundSource},${row.date},${row.status || 'Approved'},${row.dateReleased || ''}\n`;
             });
 
             csv += '\nGenerated on: ' + new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) + '\n';

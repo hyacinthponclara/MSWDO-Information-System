@@ -1,3 +1,297 @@
+<?php
+require 'auth.php';
+require 'db_connect.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$userId = (int) ($_SESSION['user_id'] ?? 0);
+
+if ($userId <= 0) {
+    header('Location: index.html?error=unauthorized');
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Account Details actions
+|--------------------------------------------------------------------------
+| Users can update their own:
+| - first name
+| - middle name
+| - last name
+| - email
+| - contact number
+| - password
+|
+| Role, position, employment status, office, municipality, and province
+| are read-only here and are managed by Admin through User Management.
+|--------------------------------------------------------------------------
+*/
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    header('Content-Type: application/json; charset=utf-8');
+
+    $action = $_POST['action'] ?? '';
+
+    try {
+
+        if ($action === 'update_personal') {
+
+            $firstName  = trim($_POST['firstName'] ?? '');
+            $middleName = trim($_POST['middleName'] ?? '') ?: null;
+            $lastName   = trim($_POST['lastName'] ?? '');
+
+            if ($firstName === '' || $lastName === '') {
+                throw new Exception('First name and last name are required.');
+            }
+
+            $stmt = $pdo->prepare("
+                UPDATE MSWDO_USER
+                SET
+                    user_firstname = ?,
+                    user_middlename = ?,
+                    user_lastname = ?
+                WHERE user_id = ?
+            ");
+
+            $stmt->execute([
+                $firstName,
+                $middleName,
+                $lastName,
+                $userId
+            ]);
+
+            // Keep the current session name synchronized.
+            $_SESSION['user_firstname'] = $firstName;
+            $_SESSION['user_lastname']  = $lastName;
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Personal information updated successfully.'
+            ]);
+            exit;
+        }
+
+
+        if ($action === 'update_contact') {
+
+            $email   = trim($_POST['email'] ?? '');
+            $contact = trim($_POST['contact'] ?? '');
+
+            if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw new Exception('Please enter a valid email address.');
+            }
+
+            $normalizedContact = preg_replace('/[\s-]/', '', $contact);
+
+            if (!preg_match('/^(09\d{9}|\+639\d{9})$/', $normalizedContact)) {
+                throw new Exception('Please enter a valid Philippine mobile number.');
+            }
+
+            $stmt = $pdo->prepare("
+                SELECT user_id
+                FROM MSWDO_USER
+                WHERE user_email = ?
+                  AND user_id <> ?
+                LIMIT 1
+            ");
+
+            $stmt->execute([
+                $email,
+                $userId
+            ]);
+
+            if ($stmt->fetchColumn()) {
+                throw new Exception('That email address is already being used by another account.');
+            }
+
+            $stmt = $pdo->prepare("
+                UPDATE MSWDO_USER
+                SET
+                    user_email = ?,
+                    user_contactnum = ?
+                WHERE user_id = ?
+            ");
+
+            $stmt->execute([
+                $email,
+                $contact,
+                $userId
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Contact information updated successfully.'
+            ]);
+            exit;
+        }
+
+
+        if ($action === 'change_password') {
+
+            $currentPassword = $_POST['currentPassword'] ?? '';
+            $newPassword     = $_POST['newPassword'] ?? '';
+            $confirmPassword = $_POST['confirmPassword'] ?? '';
+
+            if ($currentPassword === '') {
+                throw new Exception('Please enter your current password.');
+            }
+
+            if (strlen($newPassword) < 8) {
+                throw new Exception('Your new password must contain at least 8 characters.');
+            }
+
+            if ($newPassword !== $confirmPassword) {
+                throw new Exception('The new passwords do not match.');
+            }
+
+            $stmt = $pdo->prepare("
+                SELECT user_password
+                FROM MSWDO_USER
+                WHERE user_id = ?
+                LIMIT 1
+            ");
+
+            $stmt->execute([$userId]);
+
+            $currentHash = $stmt->fetchColumn();
+
+            if (!$currentHash || !password_verify($currentPassword, $currentHash)) {
+                throw new Exception('Your current password is incorrect.');
+            }
+
+            if (password_verify($newPassword, $currentHash)) {
+                throw new Exception('Your new password must be different from your current password.');
+            }
+
+            $newHash = password_hash(
+                $newPassword,
+                PASSWORD_DEFAULT
+            );
+
+            $stmt = $pdo->prepare("
+                UPDATE MSWDO_USER
+                SET user_password = ?
+                WHERE user_id = ?
+            ");
+
+            $stmt->execute([
+                $newHash,
+                $userId
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Password updated successfully.'
+            ]);
+            exit;
+        }
+
+
+        throw new Exception('Unknown account action.');
+
+    } catch (PDOException $e) {
+
+        // Do not expose database details to the user.
+        echo json_encode([
+            'success' => false,
+            'message' => 'The update could not be saved. Please check the information and try again.'
+        ]);
+        exit;
+
+    } catch (Exception $e) {
+
+        echo json_encode([
+            'success' => false,
+            'message' => $e->getMessage()
+        ]);
+        exit;
+    }
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Load the currently logged-in user's information
+|--------------------------------------------------------------------------
+*/
+
+$stmt = $pdo->prepare("
+    SELECT
+        user_id,
+        username,
+        user_firstname,
+        user_middlename,
+        user_lastname,
+        user_role,
+        user_position,
+        user_employment_status,
+        user_office,
+        user_municipality,
+        user_province,
+        user_contactnum,
+        user_email,
+        user_isactive,
+        user_date_joined,
+        user_last_login
+    FROM MSWDO_USER
+    WHERE user_id = ?
+    LIMIT 1
+");
+
+$stmt->execute([$userId]);
+
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$user) {
+    session_destroy();
+    header('Location: index.html?error=unauthorized');
+    exit;
+}
+
+$fullName = trim(
+    $user['user_firstname'] . ' ' .
+    ($user['user_middlename'] ?? '') . ' ' .
+    $user['user_lastname']
+);
+
+$accountId =
+    'MSWDO-USER-' .
+    str_pad(
+        (string) $user['user_id'],
+        3,
+        '0',
+        STR_PAD_LEFT
+    );
+
+$dateJoined = !empty($user['user_date_joined'])
+    ? date('F j, Y', strtotime($user['user_date_joined']))
+    : '—';
+
+$lastLogin = !empty($user['user_last_login'])
+    ? date('F j, Y · g:i A', strtotime($user['user_last_login']))
+    : 'Never';
+
+$officeDisplay = $user['user_office'] ?: '—';
+$municipalityDisplay = $user['user_municipality'] ?: '—';
+$provinceDisplay = $user['user_province'] ?: '—';
+
+$locationDisplay = trim(
+    $municipalityDisplay .
+    ($provinceDisplay !== '—' ? ', ' . $provinceDisplay : '')
+);
+
+$active = (int) $user['user_isactive'] === 1;
+$role = $user['user_role'] ?: '—';
+$position = $user['user_position'] ?: '—';
+$employmentStatus = $user['user_employment_status'] ?: '—';
+$email = $user['user_email'] ?: '—';
+$contact = $user['user_contactnum'] ?: '—';
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -222,11 +516,11 @@
               <div class="flex flex-wrap items-center gap-2">
 
                 <h2 id="profileFullName" class="text-lg md:text-xl font-semibold text-forest-600">
-                  Juan Dela Cruz
+                  <?= htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8') ?>
                 </h2>
 
-                <span class="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                  Active
+                <span class="text-[10px] font-semibold px-2.5 py-1 rounded-full <?= $active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500' ?>">
+                  <?= $active ? 'Active' : 'Inactive' ?>
                 </span>
 
               </div>
@@ -236,7 +530,7 @@
               </p>
 
               <p class="text-[11px] text-slate-400 mt-1">
-                San Enrique, Negros Occidental
+                <?= htmlspecialchars($locationDisplay, ENT_QUOTES, 'UTF-8') ?>
               </p>
 
             </div>
@@ -248,7 +542,7 @@
               </p>
 
               <p class="text-[13px] font-semibold text-forest-600 mt-1">
-                Staff
+                <?= htmlspecialchars($role, ENT_QUOTES, 'UTF-8') ?>
               </p>
 
             </div>
@@ -301,7 +595,7 @@
               </div>
 
               <p id="displayFullName" class="field-value text-[12px] font-medium text-slate-700 text-right">
-                Juan Dela Cruz
+                <?= htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8') ?>
               </p>
 
             </div>
@@ -315,7 +609,7 @@
               </div>
 
               <p id="displayFirstName" class="field-value text-[12px] text-slate-700 text-right">
-                Juan
+                <?= htmlspecialchars($user['user_firstname'], ENT_QUOTES, 'UTF-8') ?>
               </p>
 
             </div>
@@ -329,7 +623,7 @@
               </div>
 
               <p id="displayMiddleName" class="field-value text-[12px] text-slate-700 text-right">
-                Santos
+                <?= htmlspecialchars($user['user_middlename'] ?: '—', ENT_QUOTES, 'UTF-8') ?>
               </p>
 
             </div>
@@ -344,7 +638,7 @@
               </div>
 
               <p id="displayLastName" class="field-value text-[12px] text-slate-700 text-right">
-                Dela Cruz
+                <?= htmlspecialchars($user['user_lastname'], ENT_QUOTES, 'UTF-8') ?>
               </p>
 
             </div>
@@ -394,7 +688,7 @@
               </div>
 
               <p id="displayEmail" class="field-value text-[12px] text-slate-700 text-right break-all">
-                staff@gmail.com
+                <?= htmlspecialchars($email, ENT_QUOTES, 'UTF-8') ?>
               </p>
 
             </div>
@@ -407,7 +701,7 @@
               </div>
 
               <p id="displayContact" class="field-value text-[12px] text-slate-700 text-right">
-                0912 345 6789
+                <?= htmlspecialchars($contact, ENT_QUOTES, 'UTF-8') ?>
               </p>
 
             </div>
@@ -423,7 +717,7 @@
               <div class="flex items-center gap-2">
 
                 <p class="field-value text-[12px] text-slate-700 text-right">
-                  MSWDO San Enrique
+                  <?= htmlspecialchars($officeDisplay, ENT_QUOTES, 'UTF-8') ?>
                 </p>
 
               </div>
@@ -442,7 +736,7 @@
               <div class="flex items-center gap-2">
 
                 <p class="field-value text-[12px] text-slate-700 text-right">
-                  San Enrique, Negros Occidental
+                  <?= htmlspecialchars($locationDisplay, ENT_QUOTES, 'UTF-8') ?>
                 </p>
 
 
@@ -491,7 +785,7 @@
             </div>
 
             <p class="text-[13px] font-semibold text-forest-600 mt-1">
-              Social Welfare Assistant
+              <?= htmlspecialchars($position, ENT_QUOTES, 'UTF-8') ?>
             </p>
 
           </div>
@@ -507,7 +801,7 @@
             </div>
 
             <p class="text-[13px] font-semibold text-forest-600 mt-1">
-              Permanent
+              <?= htmlspecialchars($employmentStatus, ENT_QUOTES, 'UTF-8') ?>
             </p>
 
           </div>
@@ -524,7 +818,7 @@
             </div>
 
             <p class="text-[13px] font-medium text-slate-700 mt-1">
-              MSWDO
+              <?= htmlspecialchars($officeDisplay, ENT_QUOTES, 'UTF-8') ?>
             </p>
 
           </div>
@@ -541,7 +835,7 @@
             </div>
 
             <p class="text-[13px] font-medium text-slate-700 mt-1">
-              San Enrique
+              <?= htmlspecialchars($municipalityDisplay, ENT_QUOTES, 'UTF-8') ?>
             </p>
 
           </div>
@@ -558,7 +852,7 @@
             </div>
 
             <p class="text-[13px] font-medium text-slate-700 mt-1">
-              Negros Occidental
+              <?= htmlspecialchars($provinceDisplay, ENT_QUOTES, 'UTF-8') ?>
             </p>
 
           </div>
@@ -599,7 +893,7 @@
               </span>
 
               <span class="text-[12px] font-medium text-slate-700">
-                MSWDO-STAFF-001
+                <?= htmlspecialchars($accountId, ENT_QUOTES, 'UTF-8') ?>
               </span>
 
             </div>
@@ -612,7 +906,7 @@
               </span>
 
               <span class="text-[12px] font-medium text-slate-700">
-                staff
+                <?= htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8') ?>
               </span>
 
             </div>
@@ -631,7 +925,7 @@
               </div>
 
               <span class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                Staff
+                <?= htmlspecialchars($role, ENT_QUOTES, 'UTF-8') ?>
               </span>
 
             </div>
@@ -643,11 +937,11 @@
                 Account Status
               </span>
 
-              <span class="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600">
+              <span class="flex items-center gap-1.5 text-[11px] font-semibold <?= $active ? 'text-emerald-600' : 'text-slate-500' ?>">
 
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span class="w-1.5 h-1.5 rounded-full <?= $active ? 'bg-emerald-500' : 'bg-slate-400' ?>"></span>
 
-                Active
+                <?= $active ? 'Active' : 'Inactive' ?>
 
               </span>
 
@@ -689,7 +983,7 @@
               </span>
 
               <span class="text-[12px] text-slate-700 text-right">
-                January 15, 2026
+                <?= htmlspecialchars($dateJoined, ENT_QUOTES, 'UTF-8') ?>
               </span>
 
             </div>
@@ -702,7 +996,7 @@
               </span>
 
               <span class="text-[12px] text-slate-700 text-right">
-                August 9, 2026 · 8:42 AM
+                <?= htmlspecialchars($lastLogin, ENT_QUOTES, 'UTF-8') ?>
               </span>
 
             </div>
@@ -718,7 +1012,7 @@
                 </span>
 
                 <p id="passwordStatus" class="text-[11px] text-slate-500 mt-0.5">
-                  Last changed 30 days ago
+                  Password is securely stored.
                 </p>
 
               </div>
@@ -767,8 +1061,8 @@
           <p class="text-[11px] text-forest-600/70 mt-0.5 leading-relaxed">
             You can update your personal and contact information
             and change your password from this page. Your account
-            role, position, and office assignment are managed by
-            the system.
+            role, position, employment status, and office assignment
+            are managed by an Administrator.
           </p>
 
         </div>
@@ -826,7 +1120,7 @@
                   First Name
                 </label>
 
-                <input type="text" id="editFirstName" value="Juan"
+                <input type="text" id="editFirstName" value="<?= htmlspecialchars($user["user_firstname"], ENT_QUOTES, "UTF-8") ?>"
                   class="input-field w-full border border-slate-200 rounded-lg px-3 py-2.5 text-[12px] text-slate-700"
                   required>
 
@@ -840,7 +1134,7 @@
                   Middle Name
                 </label>
 
-                <input type="text" id="editMiddleName" value="Santos"
+                <input type="text" id="editMiddleName" value="<?= htmlspecialchars($user["user_middlename"] ?? "", ENT_QUOTES, "UTF-8") ?>"
                   class="input-field w-full border border-slate-200 rounded-lg px-3 py-2.5 text-[12px] text-slate-700">
 
               </div>
@@ -853,7 +1147,7 @@
                   Last Name
                 </label>
 
-                <input type="text" id="editLastName" value="Dela Cruz"
+                <input type="text" id="editLastName" value="<?= htmlspecialchars($user["user_lastname"], ENT_QUOTES, "UTF-8") ?>"
                   class="input-field w-full border border-slate-200 rounded-lg px-3 py-2.5 text-[12px] text-slate-700"
                   required>
 
@@ -871,7 +1165,7 @@
               </button>
 
               <button type="submit"
-                class="px-4 py-2 rounded-lg bg-forest-600 text-white text-[11px] font-semibold hover:bg-forest-700 transition">
+                class="px-4 py-2 rounded-lg bg-[#2f6f4e] text-white text-[11px] font-semibold hover:bg-[#255a3f] transition cursor-pointer">
                 <i class="fas fa-check mr-1"></i>
                 Save Changes
               </button>
@@ -928,7 +1222,7 @@
                   Email Address
                 </label>
 
-                <input type="email" id="editEmail" value="staff@gmail.com"
+                <input type="email" id="editEmail" value="<?= htmlspecialchars($user["user_email"] ?? "", ENT_QUOTES, "UTF-8") ?>"
                   class="input-field w-full border border-slate-200 rounded-lg px-3 py-2.5 text-[12px] text-slate-700"
                   required>
 
@@ -942,7 +1236,7 @@
                   Contact Number
                 </label>
 
-                <input type="tel" id="editContact" value="0912 345 6789"
+                <input type="tel" id="editContact" value="<?= htmlspecialchars($user["user_contactnum"] ?? "", ENT_QUOTES, "UTF-8") ?>"
                   class="input-field w-full border border-slate-200 rounded-lg px-3 py-2.5 text-[12px] text-slate-700"
                   required>
 
@@ -980,7 +1274,7 @@
               </button>
 
               <button type="submit"
-                class="px-4 py-2 rounded-lg bg-forest-600 text-white text-[11px] font-semibold hover:bg-forest-700 transition">
+                class="px-4 py-2 rounded-lg bg-[#2f6f4e] text-white text-[11px] font-semibold hover:bg-[#255a3f] transition cursor-pointer">
                 <i class="fas fa-check mr-1"></i>
                 Save Changes
               </button>
@@ -1124,7 +1418,7 @@
               </button>
 
               <button type="submit"
-                class="px-4 py-2 rounded-lg bg-forest-600 text-white text-[11px] font-semibold hover:bg-forest-700 transition">
+                class="px-4 py-2 rounded-lg bg-[#2f6f4e] text-white text-[11px] font-semibold hover:bg-[#255a3f] transition cursor-pointer">
                 <i class="fas fa-key mr-1"></i>
                 Update Password
               </button>
@@ -1200,80 +1494,74 @@
       }
 
 
-      function savePersonalInformation(event) {
+      async function savePersonalInformation(event) {
 
         event.preventDefault();
 
         const firstName =
-          document.getElementById('editFirstName')
-            .value
-            .trim();
+          document.getElementById('editFirstName').value.trim();
 
         const middleName =
-          document.getElementById('editMiddleName')
-            .value
-            .trim();
+          document.getElementById('editMiddleName').value.trim();
 
         const lastName =
-          document.getElementById('editLastName')
-            .value
-            .trim();
-
+          document.getElementById('editLastName').value.trim();
 
         if (!firstName || !lastName) {
-
-          alert(
-            'Please enter your first name and last name.'
-          );
-
+          alert('Please enter your first name and last name.');
           return;
-
         }
 
+        const formData = new FormData();
+        formData.append('action', 'update_personal');
+        formData.append('firstName', firstName);
+        formData.append('middleName', middleName);
+        formData.append('lastName', lastName);
 
+        try {
 
-        document.getElementById(
-          'displayFirstName'
-        ).textContent = firstName;
+          const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+          });
 
+          const result = await response.json();
 
-        document.getElementById(
-          'displayMiddleName'
-        ).textContent = middleName || '—';
+          if (!result.success) {
+            alert(result.message);
+            return;
+          }
 
+          document.getElementById('displayFirstName').textContent =
+            firstName;
 
-        document.getElementById(
-          'displayLastName'
-        ).textContent = lastName;
+          document.getElementById('displayMiddleName').textContent =
+            middleName || '—';
 
+          document.getElementById('displayLastName').textContent =
+            lastName;
 
+          const fullName =
+            [firstName, middleName, lastName]
+              .filter(Boolean)
+              .join(' ');
 
-        const fullName = [
-          firstName,
-          middleName,
-          lastName
-        ]
-          .filter(Boolean)
-          .join(' ');
+          document.getElementById('displayFullName').textContent =
+            fullName;
 
+          document.getElementById('profileFullName').textContent =
+            fullName;
 
-        document.getElementById(
-          'displayFullName'
-        ).textContent = fullName;
+          closePersonalEdit();
 
+          showToast(result.message);
 
-        document.getElementById(
-          'profileFullName'
-        ).textContent = fullName;
+        } catch (error) {
 
+          console.error(error);
+          alert('The update could not be saved. Please try again.');
 
-        closePersonalEdit();
-
-
-        showToast(
-          'Personal information updated successfully.'
-        );
-
+        }
       }
 
 
@@ -1305,49 +1593,56 @@
       }
 
 
-      function saveContactInformation(event) {
+      async function saveContactInformation(event) {
 
         event.preventDefault();
 
         const email =
-          document.getElementById('editEmail')
-            .value
-            .trim();
+          document.getElementById('editEmail').value.trim();
 
         const contact =
-          document.getElementById('editContact')
-            .value
-            .trim();
-
+          document.getElementById('editContact').value.trim();
 
         if (!email || !contact) {
-
-          alert(
-            'Please complete your contact information.'
-          );
-
+          alert('Please complete your contact information.');
           return;
-
         }
 
+        const formData = new FormData();
+        formData.append('action', 'update_contact');
+        formData.append('email', email);
+        formData.append('contact', contact);
 
-        document.getElementById(
-          'displayEmail'
-        ).textContent = email;
+        try {
 
+          const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+          });
 
-        document.getElementById(
-          'displayContact'
-        ).textContent = contact;
+          const result = await response.json();
 
+          if (!result.success) {
+            alert(result.message);
+            return;
+          }
 
-        closeContactEdit();
+          document.getElementById('displayEmail').textContent =
+            email;
 
+          document.getElementById('displayContact').textContent =
+            contact;
 
-        showToast(
-          'Contact information updated successfully.'
-        );
+          closeContactEdit();
 
+          showToast(result.message);
+
+        } catch (error) {
+
+          console.error(error);
+          alert('The update could not be saved. Please try again.');
+
+        }
       }
 
 
@@ -1377,87 +1672,67 @@
       }
 
 
-      function changePassword(event) {
+      async function changePassword(event) {
 
         event.preventDefault();
 
         const currentPassword =
-          document.getElementById(
-            'currentPassword'
-          ).value;
+          document.getElementById('currentPassword').value;
 
         const newPassword =
-          document.getElementById(
-            'newPassword'
-          ).value;
+          document.getElementById('newPassword').value;
 
         const confirmPassword =
-          document.getElementById(
-            'confirmPassword'
-          ).value;
-
+          document.getElementById('confirmPassword').value;
 
         if (!currentPassword) {
-
-          alert(
-            'Please enter your current password.'
-          );
-
+          alert('Please enter your current password.');
           return;
-
         }
-
 
         if (newPassword.length < 8) {
-
-          alert(
-            'Your new password must contain at least 8 characters.'
-          );
-
+          alert('Your new password must contain at least 8 characters.');
           return;
-
         }
-
 
         if (newPassword !== confirmPassword) {
-
-          alert(
-            'The new passwords do not match.'
-          );
-
+          alert('The new passwords do not match.');
           return;
-
         }
 
+        const formData = new FormData();
+        formData.append('action', 'change_password');
+        formData.append('currentPassword', currentPassword);
+        formData.append('newPassword', newPassword);
+        formData.append('confirmPassword', confirmPassword);
 
-        /*
-         * IMPORTANT:
-         * This demo only shows the interface.
-         *
-         * In the actual system, this is where you should
-         * send the password securely to your backend.
-         *
-         * The backend should:
-         * 1. Verify the current password.
-         * 2. Hash the new password.
-         * 3. Save the new password hash.
-         * 4. Record the password change date.
-         */
+        try {
 
+          const response = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+          });
 
-        document.getElementById(
-          'passwordStatus'
-        ).textContent =
-          'Password changed just now';
+          const result = await response.json();
 
+          if (!result.success) {
+            alert(result.message);
+            return;
+          }
 
-        closePasswordModal();
+          document.getElementById('passwordStatus').textContent =
+            'Password is securely stored.';
 
+          closePasswordModal();
 
-        showToast(
-          'Password updated successfully.'
-        );
+          showToast(result.message);
 
+        } catch (error) {
+
+          console.error(error);
+          alert('The password could not be changed. Please try again.');
+
+        }
       }
 
 

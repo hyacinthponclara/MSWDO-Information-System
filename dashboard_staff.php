@@ -1,3 +1,10 @@
+<?php
+require 'auth.php';
+requireRole(['Staff']); 
+require 'db_connect.php';
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 
