@@ -71,32 +71,51 @@ foreach ($allProgramBudget as $program) {
   ];
 }
 
-// Approved applications waiting for release 
+// Approved requests waiting for release.
+// This includes both regular availments and project proposals.
 $approved = $pdo->query("
     SELECT
-        a.availment_id,
-        a.av_amount,
-        a.av_date_applied,
-        a.av_date_approved,
+        request_id,
+        request_type,
+        amount,
+        request_date,
+        client_name,
+        program_name,
+        title
+    FROM (
+        SELECT
+            a.availment_id AS request_id,
+            'Availment' AS request_type,
+            a.av_amount AS amount,
+            COALESCE(a.av_date_approved, a.av_date_applied) AS request_date,
+            CONCAT(c.cl_firstname, ' ', c.cl_lastname) AS client_name,
+            p.program_name,
+            NULL AS title
+        FROM AVAILMENT a
+        INNER JOIN CLIENT c
+            ON c.client_id = a.client_id
+        INNER JOIN PROGRAM p
+            ON p.program_id = a.program_id
+        WHERE a.av_status = 'Approved'
 
-        c.cl_firstname,
-        c.cl_lastname,
+        UNION ALL
 
-        p.program_name
-
-    FROM AVAILMENT a
-
-    INNER JOIN CLIENT c
-        ON c.client_id = a.client_id
-
-    INNER JOIN PROGRAM p
-        ON p.program_id = a.program_id
-
-    WHERE a.av_status = 'Approved'
-
-    ORDER BY
-        COALESCE(a.av_date_approved, a.av_date_applied) DESC
-
+        SELECT
+            pp.proposal_id AS request_id,
+            'Project Proposal' AS request_type,
+            pp.pp_budget AS amount,
+            COALESCE(pp.pp_date_approved, pp.pp_date_submitted) AS request_date,
+            CONCAT(u.user_firstname, ' ', u.user_lastname) AS client_name,
+            p.program_name,
+            pp.pp_title AS title
+        FROM PROJECT_PROPOSAL pp
+        INNER JOIN PROGRAM p
+            ON p.program_id = pp.program_id
+        LEFT JOIN MSWDO_USER u
+            ON u.user_id = pp.user_id
+        WHERE pp.pp_status = 'Approved'
+    ) AS approved_requests
+    ORDER BY request_date DESC
     LIMIT 5
 ");
 
@@ -124,25 +143,40 @@ $endDate = new DateTime(date('Y') . '-' . str_pad($endMonth, 2, '0', STR_PAD_LEF
 $startDateFormat = $startDate->format('M');
 $endDateFormat = $endDate->format('M');
 
-// get the current year and 4 month period released spendings
+// Get the current year and 4-month period released spending.
+// Both released availments and released project proposals are included.
 $monthlySpendingStmt = $pdo->prepare("
     SELECT
-        MONTH(av_date_released) AS month_number,
-        COALESCE(SUM(av_amount), 0) AS total_spent
+        month_number,
+        COALESCE(SUM(amount), 0) AS total_spent
+    FROM (
+        SELECT
+            MONTH(av_date_released) AS month_number,
+            av_amount AS amount
+        FROM AVAILMENT
+        WHERE av_status = 'Released'
+          AND av_date_released IS NOT NULL
+          AND YEAR(av_date_released) = YEAR(CURDATE())
+          AND MONTH(av_date_released) BETWEEN ? AND ?
 
-    FROM AVAILMENT
+        UNION ALL
 
-    WHERE av_status = 'Released'
-      AND av_date_released IS NOT NULL
-      AND YEAR(av_date_released) = YEAR(CURDATE())
-      AND MONTH(av_date_released) BETWEEN ? AND ?
-
-    GROUP BY MONTH(av_date_released)
-
-    ORDER BY MONTH(av_date_released)
+        SELECT
+            MONTH(pp_date_released) AS month_number,
+            pp_budget AS amount
+        FROM PROJECT_PROPOSAL
+        WHERE pp_status = 'Released'
+          AND pp_date_released IS NOT NULL
+          AND YEAR(pp_date_released) = YEAR(CURDATE())
+          AND MONTH(pp_date_released) BETWEEN ? AND ?
+    ) AS released_spending
+    GROUP BY month_number
+    ORDER BY month_number
 ");
 
 $monthlySpendingStmt->execute([
+  $startMonth,
+  $endMonth,
   $startMonth,
   $endMonth
 ]);
@@ -537,37 +571,38 @@ foreach ($monthlySpending as $month => $amount) {
 
                     <div class="flex items-center justify-between py-3">
 
-                      <div class="flex items-center gap-3">
+                      <div class="flex items-center gap-3 min-w-0">
 
-                        <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center">
+                        <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
                           <i class="fa-solid fa-clock text-amber-500"></i>
                         </div>
 
-                        <div>
+                        <div class="min-w-0">
 
-                          <p class="text-sm font-medium text-slate-700">
+                          <p class="text-sm font-medium text-slate-700 truncate">
                             <?= htmlspecialchars($application['program_name']) ?>
                           </p>
 
-                          <p class="text-[11px] text-slate-400">
-                            <?= htmlspecialchars(
-                              $application['cl_firstname'] . ' ' .
-                              $application['cl_lastname']
-                            ) ?>
+                          <p class="text-[11px] text-slate-400 truncate">
+                            <?php if ($application['request_type'] === 'Project Proposal'): ?>
+                              <?= htmlspecialchars($application['title'] ?: 'Project Proposal') ?>
+                            <?php else: ?>
+                              <?= htmlspecialchars($application['client_name']) ?>
+                            <?php endif; ?>
+                          </p>
+
+                          <p class="text-[9px] text-slate-400">
+                            <?= htmlspecialchars($application['request_type']) ?>
                           </p>
 
                         </div>
 
                       </div>
 
-                      <div class="text-right">
+                      <div class="text-right flex-shrink-0 ml-2">
 
                         <p class="text-sm font-semibold text-slate-700">
-                          ₱
-                          <?= number_format(
-                            (float) $application['av_amount'],
-                            2
-                          ) ?>
+                          ₱<?= number_format((float) $application['amount'], 2) ?>
                         </p>
 
                         <p class="text-[10px] text-amber-500 font-medium">

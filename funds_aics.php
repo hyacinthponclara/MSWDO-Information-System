@@ -30,6 +30,7 @@ foreach ($aicsSubtypes as $sub) {
             a.av_amount,
             a.av_date_applied,
             a.av_status,
+            a.av_date_released,
             c.cl_firstname,
             c.cl_lastname
         FROM {$sub['table']} t
@@ -48,6 +49,7 @@ foreach ($aicsSubtypes as $sub) {
             'amount'       => (float) $row['av_amount'],
             'status'       => $row['av_status'],
             'date'         => $row['av_date_applied'],
+            'dateReleased' => $row['av_date_released'],
         ];
     }
 }
@@ -318,6 +320,12 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
                                 <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold" data-sort="date" onclick="sortTable('date')">
                                     Date Applied <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
+                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Status
+                                </th>
+                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Date Released
+                                </th>
                                 <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Action</th>
                             </tr>
                         </thead>
@@ -389,6 +397,26 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
             }
         }
 
+        function statusClass(status) {
+            if (status === 'Released') {
+                return 'bg-blue-100 text-blue-700';
+            }
+
+            if (status === 'Approved') {
+                return 'bg-emerald-100 text-emerald-700';
+            }
+
+            if (status === 'Denied') {
+                return 'bg-red-100 text-red-700';
+            }
+
+            return 'bg-slate-100 text-slate-600';
+        }
+
+        function statusLabel(status) {
+            return status || 'Approved';
+        }
+
         function renderTable(data) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
@@ -401,6 +429,14 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
                     <td class="px-5 py-3 text-slate-600">${row.type}</td>
                     <td class="px-5 py-3 font-semibold text-slate-700">₱${row.amount.toLocaleString()}</td>
                     <td class="px-5 py-3 text-slate-400">${row.date}</td>
+                    <td class="px-5 py-3">
+                        <span class="px-2 py-1 rounded-full text-[10px] font-semibold ${statusClass(row.status)}">
+                            ${statusLabel(row.status)}
+                        </span>
+                    </td>
+                    <td class="px-5 py-3 text-slate-400">
+                        ${row.dateReleased ? row.dateReleased : '—'}
+                    </td>
                     <td class="px-5 py-3">
                         <a href="aics_view.php?availment_id=${row.availmentId}" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
                              View
@@ -503,11 +539,11 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
             csv += '\n';
 
             // ── COLUMN HEADERS ──
-            csv += 'Beneficiary,Budget Source,Type,Amount,Date Applied\n';
+            csv += 'Beneficiary,Budget Source,Type,Amount,Date Applied,Status,Date Released\n';
 
             // ── DATA ROWS ──
             data.forEach(row => {
-                csv += `${row.beneficiary},AICS ${row.budgetSource},${row.type},${row.amount},${row.date}\n`;
+                csv += `${row.beneficiary},AICS ${row.budgetSource},${row.type},${row.amount},${row.date},${row.status || 'Approved'},${row.dateReleased || ''}\n`;
             });
 
             // ── FOOTER ──
