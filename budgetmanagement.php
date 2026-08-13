@@ -12,34 +12,89 @@ SELECT
     p.program_id,
     p.program_name,
     p.prog_period,
-    p.prog_funding_source,
     p.prog_annual_budget,
     p.prog_start_date,
     p.prog_end_date,
+    p.prog_period_started_at,
 
-    COALESCE(av.spent_availment, 0) AS spent_availment,
-    COALESCE(pp.spent_proposals, 0) AS spent_proposals,
+    COALESCE(p.prog_current_period, 1) AS current_period,
+    COALESCE(p.prog_early_end_count, 0) AS early_end_count,
 
-    COALESCE(av.spent_availment, 0) + COALESCE(pp.spent_proposals, 0) AS spent,
+    /*
+     * ACTUAL SPENDING
+     *
+     * Count all legitimate RELEASED transactions already stored
+     * in the database.
+     *
+     * We intentionally DO NOT filter by prog_period_started_at here
+     * because these transactions existed before the new Budget
+     * Management period tracking was implemented.
+     */
 
-    p.prog_annual_budget -
-    COALESCE(av.spent_availment, 0) -
-    COALESCE(pp.spent_proposals, 0) AS remaining
+    COALESCE((
+        SELECT SUM(a.av_amount)
+        FROM availment a
+        WHERE a.program_id = p.program_id
+          AND a.av_status = 'Released'
+          AND a.av_date_released IS NOT NULL
+    ), 0) AS spent_availment,
+
+    COALESCE((
+        SELECT SUM(pp.pp_budget)
+        FROM project_proposal pp
+        WHERE pp.program_id = p.program_id
+          AND pp.pp_status = 'Released'
+          AND pp.pp_date_released IS NOT NULL
+    ), 0) AS spent_proposals,
+
+    /*
+     * TOTAL ACTUAL SPENDING
+     */
+    COALESCE((
+        SELECT SUM(a2.av_amount)
+        FROM availment a2
+        WHERE a2.program_id = p.program_id
+          AND a2.av_status = 'Released'
+          AND a2.av_date_released IS NOT NULL
+    ), 0)
+    +
+    COALESCE((
+        SELECT SUM(pp2.pp_budget)
+        FROM project_proposal pp2
+        WHERE pp2.program_id = p.program_id
+          AND pp2.pp_status = 'Released'
+          AND pp2.pp_date_released IS NOT NULL
+    ), 0) AS spent,
+
+    /*
+     * ACTUAL BENEFICIARY VOLUME
+     *
+     * Existing Approved/Released availments:
+     * count each client once per program.
+     *
+     * Existing Approved/Released project proposals:
+     * use the recorded participant count.
+     *
+     * No period-start filter is applied because these are
+     * existing historical transactions that must remain visible.
+     */
+    COALESCE((
+        SELECT COUNT(DISTINCT a3.client_id)
+        FROM availment a3
+        WHERE a3.program_id = p.program_id
+          AND a3.av_status IN ('Approved', 'Released')
+    ), 0)
+    +
+    COALESCE((
+        SELECT SUM(pp3.pp_num_participants)
+        FROM project_proposal pp3
+        WHERE pp3.program_id = p.program_id
+          AND pp3.pp_status IN ('Approved', 'Released')
+    ), 0) AS beneficiaries
 
 FROM program p
-
-LEFT JOIN (
-    SELECT program_id, SUM(av_amount) AS spent_availment
-    FROM availment
-    WHERE av_status = 'Released'
-    GROUP BY program_id
-) av ON av.program_id = p.program_id
-
-LEFT JOIN (
-    SELECT program_id, SUM(pp_budget) AS spent_proposals
-    FROM project_proposal
-    GROUP BY program_id
-) pp ON pp.program_id = p.program_id");
+ORDER BY p.program_id
+");
 
 $programs = $programStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -47,15 +102,12 @@ $budgetDataPhp = array_map(function ($p) {
     return [
         'id' => (int) $p['program_id'],
         'program' => $p['program_name'],
-        'fundingSource' => $p['prog_funding_source'] ?? 'LGU',
         'period' => $p['prog_period'],
-
         'totalBudget' => (float) $p['prog_annual_budget'],
         'spent' => (float) $p['spent'],
-
-        'startDate' => null,
-        'endDate' => null,
-        'notes' => ''
+        'currentPeriod' => (int) $p['current_period'],
+        'earlyEndCount' => (int) $p['early_end_count'],
+        'beneficiaries' => (int) $p['beneficiaries']
     ];
 }, $programs);
 ?>
@@ -346,7 +398,7 @@ $budgetDataPhp = array_map(function ($p) {
             <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
                 <div>
                     <h1 class="text-xl font-serif text-green-600">Budget Management</h1>
-                    <p class="text-[13px] text-slate-500 mt-0.5">Monitor program budgets, augment funds, end periods
+                    <p class="text-[13px] text-slate-500 mt-0.5">Monitor program budgets, augment funds, advance periods
                         early, and forecast next year's budget.</p>
                 </div>
             </div>
@@ -362,7 +414,7 @@ $budgetDataPhp = array_map(function ($p) {
                     <p class="text-2xl font-bold text-amber-600" id="totalSpentAll">₱0</p>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200 p-4">
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total Remaining</p>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wider">Current Period Remaining</p>
                     <p class="text-2xl font-bold text-blue-600" id="totalRemainingAll">₱0</p>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200 p-4">
@@ -391,13 +443,13 @@ $budgetDataPhp = array_map(function ($p) {
                                     Program</th>
                                 <th
                                     class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
-                                    Funding Source</th>
-                                <th
-                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
                                     Period</th>
                                 <th
                                     class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
                                     Total Budget</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Total Period Budget</th>
                                 <th
                                     class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
                                     Spent</th>
@@ -478,7 +530,8 @@ $budgetDataPhp = array_map(function ($p) {
                 </button>
             </div>
             <div class="p-6 space-y-4">
-                <form id="augmentForm" method="POST" action="budgetmanagementaction.php">
+                <form id="augmentForm" method="POST" action="budgetmanagementaction.php"
+                    onsubmit="return validateAugmentationForm();">
                     <input type="hidden" name="action" value="augment">
                     <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
                         <p class="text-[12px] text-slate-600">Augmentation adds funds from savings to a program. You can
@@ -515,7 +568,7 @@ $budgetDataPhp = array_map(function ($p) {
                     <div id="augmentTransferFields" style="display:none;">
                         <div>
                             <label class="field-label req">Transfer From Program</label>
-                            <select name="donor_program_id" id="augmentDonorProgram" class="field" required>
+                            <select name="donor_program_id" id="augmentDonorProgram" class="field" disabled>
                                 <option value="">Select Program</option>
                                 <?php foreach ($programs as $p): ?>
                                     <option value="<?= $p['program_id'] ?>"><?= htmlspecialchars($p['program_name']) ?>
@@ -531,7 +584,7 @@ $budgetDataPhp = array_map(function ($p) {
                     <div id="augmentOtherFields" style="display:none;">
                         <div>
                             <label class="field-label req">Specify Source</label>
-                            <input type="text" name="other_source" id="augmentOtherSource" class="field"
+                            <input type="text" name="other_source" id="augmentOtherSource" class="field" disabled
                                 placeholder="e.g., DSWD Emergency Fund" />
                         </div>
                     </div>
@@ -557,63 +610,197 @@ $budgetDataPhp = array_map(function ($p) {
         </div>
     </div>
 
-    <!-- ══════════════════════════ FORECAST MODAL ══════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════════════════
+     BUDGET FORECAST MODAL
+════════════════════════════════════════════════════════════════ -->
     <div id="forecastModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
+
         <div
-            class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in">
+            class="bg-white rounded-2xl shadow-2xl w-[96vw] max-w-[1450px] mx-4 max-h-[94vh] overflow-y-auto animate-modal-in">
+
+            <!-- Header -->
             <div
-                class="sticky top-0 bg-white z-10 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h2 class="text-[16px] font-semibold text-green-600">Budget Forecast</h2>
-                <button onclick="closeForecastModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <div class="p-6 space-y-4">
-                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                    <p class="text-[12px] text-slate-600">Based on current spending patterns, the system calculates the
-                        recommended budget for each program and the total for next year. A <strong>15% buffer</strong>
-                        is added to account for inflation and unexpected needs.</p>
-                </div>
+                class="sticky top-0 bg-white z-10 px-7 py-5 border-b border-slate-200 flex items-center justify-between">
 
-                <div id="forecastDetails">
-                    <!-- Injected by JS -->
-                </div>
-
-                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <p class="text-[12px] font-semibold text-blue-700"><i class="fas fa-info-circle mr-1.5"></i>Forecast
-                        Methodology</p>
-                    <p class="text-[11px] text-slate-600 mt-1">The recommended budget is calculated using the formula:
-                        <strong>(Current Annual Spending + 15% Buffer)</strong>. This ensures that programs have enough
-                        funds to continue operations without running out. The buffer accounts for inflation, increased
-                        demand, and unforeseen expenses.
+                <div>
+                    <h2 class="text-[18px] font-semibold text-green-600">
+                        Budget Forecast
+                    </h2>
+                    <p class="text-[11px] text-slate-400 mt-0.5">
+                        Projected budget recommendation based on current utilization and demand.
                     </p>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="field-label">Next Year's Period</label>
-                        <select id="forecastPeriod" class="field">
-                            <option value="Quarterly">Quarterly</option>
-                            <option value="Half-Year">Half-Year</option>
-                            <option value="Annually" selected>Annually</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="field-label">Total Recommended Budget</label>
-                        <div class="relative">
-                            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₱</span>
-                            <input type="text" id="forecastRecommended"
-                                class="field pl-8 bg-gray-100 cursor-not-allowed opacity-75" readonly />
-                        </div>
-                    </div>
+                <button onclick="closeForecastModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+
+            </div>
+
+            <!-- Content -->
+            <div class="p-7 space-y-6">
+
+                <!-- Methodology -->
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-5">
+
+                    <p class="text-[13px] font-semibold text-blue-700">
+                        <i class="fas fa-info-circle mr-1.5"></i>
+                        Forecast Methodology
+                    </p>
+
+                    <p class="text-[12px] text-slate-600 mt-2 leading-relaxed">
+                        The system evaluates financial utilization together with beneficiary
+                        volume. Beneficiaries indicate demand volume only; no fixed
+                        peso-per-beneficiary amount is assumed.
+                    </p>
+
+                    <p class="text-[12px] text-slate-600 mt-2 leading-relaxed">
+                        High utilization with meaningful beneficiary volume may justify
+                        an increase. Low utilization does not automatically justify
+                        additional budget.
+                    </p>
+
+                    <p class="text-[12px] text-slate-600 mt-2 leading-relaxed">
+                        The increase percentage is fully customizable. The default is
+                        <strong>0%</strong>, meaning no additional increase is applied
+                        unless the user enters one.
+                    </p>
+
                 </div>
 
-                <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
-                    <button type="button" onclick="exportForecastCSV()"
-                        class="text-[13px] font-semibold text-white bg-blue-600 rounded-xl px-6 py-2 hover:bg-blue-500 transition-all">
-                        <i class="fas fa-file-csv mr-1.5"></i> Export CSV
-                    </button>
+                <!-- Per Program Forecast -->
+                <div>
+
+                    <div class="flex items-center justify-between mb-3">
+
+                        <div>
+                            <h3 class="text-[14px] font-semibold text-green-600">
+                                Per-Program Forecast
+                            </h3>
+
+                            <p class="text-[11px] text-slate-400 mt-1">
+                                Current budget utilization and recommended budget adjustment.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <div id="forecastDetails" class="border border-slate-200 rounded-xl overflow-hidden">
+                        <!-- Injected by JavaScript -->
+                    </div>
+
                 </div>
+
+                <!-- Bottom Controls -->
+                <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
+
+                    <!-- Custom Increase -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-5">
+
+                        <label class="field-label">
+                            Custom Increase (%)
+                        </label>
+
+                        <div class="relative">
+
+                            <input type="number" id="forecastIncreasePct" class="field pr-10 text-lg font-semibold"
+                                min="0" max="100" step="0.1" value="0" oninput="updateForecastRecommendation()" />
+
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">
+                                %
+                            </span>
+
+                        </div>
+
+                        <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+                            Enter the percentage only when an increase is justified.
+                            Default is <strong>0%</strong>.
+                        </p>
+
+                    </div>
+
+                    <!-- Calculation -->
+                    <div id="forecastCalculation" class="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
+
+                        <div class="flex items-center justify-between mb-4">
+
+                            <div>
+                                <h3 class="text-[14px] font-semibold text-emerald-700">
+                                    Forecast Calculation
+                                </h3>
+
+                                <p class="text-[11px] text-slate-500 mt-1">
+                                    The increase is calculated from the program's eligible
+                                    period budget.
+                                </p>
+                            </div>
+
+                            <i class="fas fa-calculator text-emerald-500 text-lg"></i>
+
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                            <div class="bg-white rounded-lg border border-emerald-100 p-4">
+                                <p class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Base Budget
+                                </p>
+
+                                <p id="forecastBaseBudget" class="text-[18px] font-bold text-slate-700 mt-1">
+                                    ₱0.00
+                                </p>
+                            </div>
+
+                            <div class="bg-white rounded-lg border border-emerald-100 p-4">
+                                <p class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Increase Amount
+                                </p>
+
+                                <p id="forecastIncreaseAmount" class="text-[18px] font-bold text-emerald-600 mt-1">
+                                    ₱0.00
+                                </p>
+                            </div>
+
+                            <div class="bg-white rounded-lg border border-emerald-100 p-4">
+                                <p class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Recommended Budget
+                                </p>
+
+                                <p id="forecastRecommended" class="text-[18px] font-bold text-green-700 mt-1">
+                                    ₱0.00
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <div id="forecastFormula"
+                            class="mt-4 pt-4 border-t border-emerald-200 text-[12px] text-slate-600">
+                            Formula:
+                            <strong>Base Budget × Increase % = Increase Amount</strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Footer -->
+                <div
+                    class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-5 border-t border-slate-200">
+
+                    <p class="text-[11px] text-slate-400">
+                        The forecast does not automatically change the actual program budget.
+                    </p>
+
+                    <button type="button" onclick="exportForecastPDF()"
+                        class="text-[13px] font-semibold text-white bg-blue-600 rounded-xl px-7 py-3 hover:bg-blue-500 transition-all flex items-center justify-center gap-2">
+
+                        <i class="fas fa-file-pdf"></i>
+                        Generate Forecast PDF
+
+                    </button>
+
+                </div>
+
             </div>
         </div>
     </div>
@@ -637,62 +824,98 @@ $budgetDataPhp = array_map(function ($p) {
             return { label: 'OK', class: 'status-ok' };
         }
 
+        // ── Currency / period helpers ──
+        function peso(value) {
+            return '₱' + Number(value || 0).toLocaleString('en-PH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function periodCount(period) {
+            if (period === 'Quarterly') return 4;
+            if (period === 'Half-Year') return 2;
+            return 1;
+        }
+
+        function periodLabel(period, currentPeriod) {
+            if (period === 'Quarterly') return `Q${currentPeriod}`;
+            if (period === 'Half-Year') return currentPeriod === 1 ? '1st Half' : '2nd Half';
+            return 'Annual';
+        }
+
+        function periodBudget(budget) {
+            return budget.totalBudget / periodCount(budget.period);
+        }
+
         // ── Render budget table ──
         function renderBudgets() {
             const tbody = document.getElementById('budgetTableBody');
             tbody.innerHTML = '';
-            let totalBudget = 0,
-                totalSpent = 0,
-                totalRemaining = 0;
+
+            let totalBudget = 0, totalSpent = 0, totalRemaining = 0;
 
             budgetData.forEach(budget => {
-                const remaining = budget.totalBudget - budget.spent;
-                const pct = budget.totalBudget > 0 ? (budget.spent / budget.totalBudget) * 100 : 0;
-                const status = getStatus(remaining, budget.totalBudget);
+                const totalPeriodBudget = periodBudget(budget);
+                const spent = Number(budget.spent || 0);
+                const remaining = Math.max(0, totalPeriodBudget - spent);
+                const pct = totalPeriodBudget > 0 ? Math.min((spent / totalPeriodBudget) * 100, 100) : 0;
+                const status = getStatus(remaining, totalPeriodBudget);
+                const periods = periodCount(budget.period);
+                const canEndEarly = budget.period !== 'Annually' && budget.currentPeriod < periods;
+                const earlyUsesLeft = Math.max(0, periods - 1 - Number(budget.earlyEndCount || 0));
+
                 totalBudget += budget.totalBudget;
-                totalSpent += budget.spent;
+                totalSpent += spent;
                 totalRemaining += remaining;
 
                 const tr = document.createElement('tr');
                 tr.className = 'table-row';
+
                 tr.innerHTML = `
-                    <td class="px-5 py-3 font-medium text-green-700">${budget.program}</td>
-                    <td class="px-5 py-3 text-slate-600">${budget.fundingSource}</td>
-                    <td class="px-5 py-3"><span class="badge-period px-2 py-0.5 rounded text-[10px] font-semibold">${budget.period}</span></td>
-                    <td class="px-5 py-3 font-semibold text-slate-700">₱${budget.totalBudget.toLocaleString()}</td>
-                    <td class="px-5 py-3 text-slate-600">₱${budget.spent.toLocaleString()}</td>
-                    <td class="px-5 py-3 font-semibold ${remaining <= (budget.totalBudget * 0.15) ? 'text-red-500' : remaining <= (budget.totalBudget * 0.30) ? 'text-amber-500' : 'text-green-600'}">₱${remaining.toLocaleString()}</td>
+                    <td class="px-5 py-3 font-medium text-green-700">${escapeHtml(budget.program)}</td>
+                    <td class="px-5 py-3"><span class="badge-period px-2 py-0.5 rounded text-[10px] font-semibold">${escapeHtml(budget.period)} · ${periodLabel(budget.period, budget.currentPeriod)}</span></td>
+                    <td class="px-5 py-3 font-semibold text-slate-700">${peso(budget.totalBudget)}</td>
+                    <td class="px-5 py-3 font-semibold text-blue-700">${peso(totalPeriodBudget)}</td>
+                    <td class="px-5 py-3 text-slate-600">${peso(spent)}</td>
+                    <td class="px-5 py-3 font-semibold ${remaining <= totalPeriodBudget * 0.15 ? 'text-red-500' : remaining <= totalPeriodBudget * 0.30 ? 'text-amber-500' : 'text-green-600'}">${peso(remaining)}</td>
                     <td class="px-5 py-3">
                         <div class="flex items-center gap-2">
                             <span class="text-[11px] font-semibold">${Math.round(pct)}%</span>
                             <div class="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden max-w-20">
-                                <div class="budget-bar-fill h-1.5 rounded-full ${pct > 85 ? 'bg-red-500' : pct > 65 ? 'bg-amber-400' : 'bg-emerald-500'}" style="width:0%" data-target="${Math.min(pct, 100)}%"></div>
+                                <div class="budget-bar-fill h-1.5 rounded-full ${pct > 85 ? 'bg-red-500' : pct > 65 ? 'bg-amber-400' : 'bg-emerald-500'}" style="width:0%" data-target="${pct}%"></div>
                             </div>
                         </div>
                     </td>
                     <td class="px-5 py-3"><span class="${status.class} px-2.5 py-0.5 rounded-full text-[10px] font-semibold">${status.label}</span></td>
                     <td class="px-5 py-3">
-                        <div class="flex items-center gap-1.5">
-                            <form method="POST" action="budgetmanagementaction.php" onsubmit='return confirmEndPeriod(${JSON.stringify(budget.program)}, ${remaining});' style="display:inline;">
+                        <div class="flex flex-col gap-1.5">
+                            ${canEndEarly ? `
+                            <form method="POST" action="budgetmanagementaction.php" onsubmit='return confirmEndPeriod(${JSON.stringify(budget.program)}, ${remaining}, ${JSON.stringify(periodLabel(budget.period, budget.currentPeriod))}, ${earlyUsesLeft});' style="display:inline;">
                                 <input type="hidden" name="action" value="end_period">
                                 <input type="hidden" name="program_id" value="${budget.id}">
-                                <button type="submit" class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors" title="End Period Early">
-                                    <i class="fas fa-stop-circle mr-1"></i> End Early
+                                <button type="submit" class="text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg px-2.5 py-1 hover:bg-red-100 transition-colors">
+                                    <i class="fas fa-forward mr-1"></i> End Early / Advance
                                 </button>
-                            </form>
+                            </form>` : `
+                            <span class="text-[10px] text-slate-400">
+                                ${budget.period === 'Annually' ? 'Not applicable' : 'Final period'}
+                            </span>`}
+                            ${budget.period !== 'Annually' && budget.currentPeriod < periods ? `
+                            <span class="text-[10px] text-slate-400">${earlyUsesLeft} early advance${earlyUsesLeft === 1 ? '' : 's'} left</span>
+                            ` : ''}
                         </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            // Update summary stats
-            document.getElementById('totalBudgetAll').textContent = '₱' + totalBudget.toLocaleString();
-            document.getElementById('totalSpentAll').textContent = '₱' + totalSpent.toLocaleString();
-            document.getElementById('totalRemainingAll').textContent = '₱' + totalRemaining.toLocaleString();
-            document.getElementById('avgUtilization').textContent = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) + '%' : '0%';
+            document.getElementById('totalBudgetAll').textContent = peso(totalBudget);
+            document.getElementById('totalSpentAll').textContent = peso(totalSpent);
+            document.getElementById('totalRemainingAll').textContent = peso(totalRemaining);
+            document.getElementById('avgUtilization').textContent =
+                totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) + '%' : '0%';
 
-            // Animate bars
             requestAnimationFrame(() => {
                 setTimeout(() => {
                     document.querySelectorAll('.budget-bar-fill').forEach(el => {
@@ -701,23 +924,54 @@ $budgetDataPhp = array_map(function ($p) {
                 }, 300);
             });
 
-            // Update analysis and forecast
             updateAnalysis();
             updateForecast();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+            }[ch]));
+        }
+
+        // AICS FBML and AICS Educational are separate fund allocations,
+        // but they represent ONE logical program for summary/report counts.
+        function logicalProgramKey(programName) {
+            const name = String(programName || '').trim();
+            if (name === 'AICS FBML' || name === 'AICS Educational') return 'AICS';
+            return name;
+        }
+
+        function logicalProgramCount() {
+            return new Set(budgetData.map(b => logicalProgramKey(b.program))).size;
         }
 
         // ── Update Analysis ──
         function updateAnalysis() {
             const container = document.getElementById('analysisContent');
-            const critical = budgetData.filter(b => b.totalBudget - b.spent <= (b.totalBudget * 0.15));
-            const warning = budgetData.filter(b => b.totalBudget - b.spent > (b.totalBudget * 0.15) && b.totalBudget - b.spent <= (b
-                .totalBudget * 0.30));
-            const ok = budgetData.filter(b => b.totalBudget - b.spent > (b.totalBudget * 0.30));
+            const critical = budgetData.filter(b => {
+                const r = periodBudget(b) - b.spent;
+                return r <= periodBudget(b) * 0.15;
+            });
+            const warning = budgetData.filter(b => {
+                const r = periodBudget(b) - b.spent;
+                return r > periodBudget(b) * 0.15 && r <= periodBudget(b) * 0.30;
+            });
+            const ok = budgetData.filter(b => {
+                const r = periodBudget(b) - b.spent;
+                return r > periodBudget(b) * 0.30;
+            });
 
-            let html = `
+            const totalBeneficiaries = budgetData.reduce((s, b) => s + Number(b.beneficiaries || 0), 0);
+
+            container.innerHTML = `
                 <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span class="text-[12px] text-slate-600">Total Programs</span>
-                    <span class="font-bold text-green-600">${budgetData.length}</span>
+                    <span class="font-bold text-green-600">${logicalProgramCount()}</span>
+                </div>
+                <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
+                    <span class="text-[12px] text-slate-600">Beneficiaries Served</span>
+                    <span class="font-bold text-blue-600">${totalBeneficiaries.toLocaleString()}</span>
                 </div>
                 <div class="flex items-center justify-between py-1.5 border-b border-slate-100">
                     <span class="text-[12px] text-slate-600"><span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500 mr-1.5"></span>Critical</span>
@@ -732,9 +986,7 @@ $budgetDataPhp = array_map(function ($p) {
                     <span class="font-bold text-emerald-600">${ok.length}</span>
                 </div>
             `;
-            container.innerHTML = html;
 
-            // Store for forecast
             window._criticalPrograms = critical;
             window._warningPrograms = warning;
         }
@@ -743,40 +995,53 @@ $budgetDataPhp = array_map(function ($p) {
         function updateForecast() {
             const container = document.getElementById('forecastContent');
             const totalBudget = budgetData.reduce((sum, b) => sum + b.totalBudget, 0);
-            const totalSpent = budgetData.reduce((sum, b) => sum + b.spent, 0);
-            const avgUtilization = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+            const totalSpent = budgetData.reduce((sum, b) => sum + Number(b.spent || 0), 0);
 
-            let forecastRows = '';
-            let totalRecommended = 0;
-            budgetData.forEach(b => {
-                const yearlySpent = b.period === 'Quarterly' ? b.spent * 4 :
-                    b.period === 'Half-Year' ? b.spent * 2 :
-                        b.spent;
-                const recommended = Math.round(yearlySpent * 1.15);
-                totalRecommended += recommended;
-                const status = getStatus(b.totalBudget - b.spent, b.totalBudget);
-                forecastRows += `
-                    <tr>
-                        <td class="font-medium text-green-700">${b.program}</td>
-                        <td>${b.period}</td>
-                        <td>₱${b.totalBudget.toLocaleString()}</td>
-                        <td>₱${b.spent.toLocaleString()}</td>
-                        <td>${Math.round((b.spent / b.totalBudget) * 100)}%</td>
-                        <td class="font-semibold text-blue-600">₱${recommended.toLocaleString()}</td>
-                        <td><span class="${status.class} px-2 py-0.5 rounded text-[10px] font-semibold">${status.label}</span></td>
-                    </tr>
-                `;
+            let totalSuggested = 0;
+            const perProgram = budgetData.map(b => {
+                const period = periodBudget(b);
+                const spent = Number(b.spent || 0);
+                const utilization = period > 0 ? (spent / period) * 100 : 0;
+                const beneficiaries = Number(b.beneficiaries || 0);
+
+                let recommendation = 'Review';
+
+                // Beneficiary count is a demand-volume indicator only.
+                // It is never converted into a fixed peso amount.
+                // Low financial utilization means there is no evidence that
+                // additional budget is needed, even when beneficiary volume is high.
+                if (utilization <= 30) {
+                    recommendation = 'No Increase Needed';
+                } else if (utilization >= 70 && beneficiaries > 0) {
+                    recommendation = 'Consider Increase';
+                }
+
+                // No fixed peso-per-beneficiary amount and no automatic 15% multiplier.
+                const suggested = recommendation === 'Consider Increase' ? period : 0;
+                totalSuggested += suggested;
+
+                return {
+                    program: b.program,
+                    period: b.period,
+                    periodLabel: periodLabel(b.period, b.currentPeriod),
+                    budget: b.totalBudget,
+                    periodBudget: period,
+                    spent,
+                    utilization: Math.round(utilization * 10) / 10,
+                    beneficiaries,
+                    suggested,
+                    recommendation
+                };
             });
 
-            const totalRecommendedFormatted = '₱' + totalRecommended.toLocaleString();
-            const totalSpentFormatted = '₱' + totalSpent.toLocaleString();
+            const totalBeneficiaries = perProgram.reduce((s, p) => s + p.beneficiaries, 0);
 
             container.innerHTML = `
-                <div class="mb-3 text-[12px] text-slate-600">
-                    <p><strong>Current Spending Rate:</strong> ${Math.round(avgUtilization)}%</p>
-                    <p><strong>Total Spent (YTD):</strong> ${totalSpentFormatted}</p>
-                    <p class="text-emerald-700 font-semibold">Recommended Total: ${totalRecommendedFormatted}</p>
-                    <p class="text-[11px] text-slate-400">(Includes 15% buffer for inflation and unexpected needs)</p>
+                <div class="mb-3 text-[12px] text-slate-600 space-y-1">
+                    <p><strong>Total Beneficiaries:</strong> ${totalBeneficiaries.toLocaleString()}</p>
+                    <p><strong>Current Spending:</strong> ${peso(totalSpent)}</p>
+                    <p class="text-emerald-700 font-semibold">Programs for Review/Increase: ${perProgram.filter(p => p.recommendation === 'Consider Increase').length}</p>
+                    <p class="text-[11px] text-slate-400">Beneficiary count indicates demand volume; it is not assigned a fixed peso value.</p>
                 </div>
                 <div class="border border-slate-200 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
                     <table class="forecast-table w-full text-[11px]">
@@ -784,50 +1049,35 @@ $budgetDataPhp = array_map(function ($p) {
                             <tr>
                                 <th>Program</th>
                                 <th>Period</th>
-                                <th>Budget</th>
+                                <th>Beneficiaries</th>
+                                <th>Period Budget</th>
                                 <th>Spent</th>
-                                <th>Used</th>
-                                <th>Recommended</th>
-                                <th>Status</th>
+                                <th>Utilization</th>
+                                <th>Recommendation</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${forecastRows}
-                            <tr class="forecast-total">
-                                <td colspan="5" class="text-right font-bold">TOTAL RECOMMENDED</td>
-                                <td class="font-bold text-blue-600">${totalRecommendedFormatted}</td>
-                                <td></td>
-                            </tr>
+                            ${perProgram.map(p => `
+                                <tr>
+                                    <td class="font-medium text-green-700">${escapeHtml(p.program)}</td>
+                                    <td>${p.periodLabel}</td>
+                                    <td>${p.beneficiaries.toLocaleString()}</td>
+                                    <td>${peso(p.periodBudget)}</td>
+                                    <td>${peso(p.spent)}</td>
+                                    <td>${p.utilization.toFixed(1)}%</td>
+                                    <td class="${p.recommendation === 'Consider Increase' ? 'text-blue-600' : p.recommendation === 'No Increase Needed' ? 'text-emerald-600' : 'text-amber-600'} font-semibold">${p.recommendation}</td>
+                                </tr>
+                            `).join('')}
                         </tbody>
                     </table>
                 </div>
-                <div class="forecast-note">
-                    <i class="fas fa-lightbulb mr-1.5"></i>
-                    <strong>Recommendation:</strong> Based on current spending patterns (${Math.round(avgUtilization)}% utilization), the recommended budget for next year is <strong>${totalRecommendedFormatted}</strong>. This ensures all programs have sufficient funds and a 15% buffer for emergencies.
-                    ${window._criticalPrograms && window._criticalPrograms.length > 0 ? `<br><span class="text-red-600">⚠️ Critical programs: ${window._criticalPrograms.map(b => b.program).join(', ')}</span>` : ''}
-                </div>
             `;
 
-            // Store forecast data
             window._forecastData = {
-                recommendedBudget: totalRecommended,
-                avgUtilization,
+                recommendedBudget: totalSuggested,
                 totalSpent,
-                criticalPrograms: window._criticalPrograms || [],
-                perProgram: budgetData.map(b => {
-                    const yearlySpent = b.period === 'Quarterly' ? b.spent * 4 :
-                        b.period === 'Half-Year' ? b.spent * 2 :
-                            b.spent;
-                    return {
-                        program: b.program,
-                        period: b.period,
-                        budget: b.totalBudget,
-                        spent: b.spent,
-                        utilization: Math.round((b.spent / b.totalBudget) * 100),
-                        recommended: Math.round(yearlySpent * 1.15),
-                        status: getStatus(b.totalBudget - b.spent, b.totalBudget)
-                    };
-                })
+                totalBeneficiaries,
+                perProgram
             };
         }
 
@@ -840,15 +1090,43 @@ $budgetDataPhp = array_map(function ($p) {
         // ── Toggle Augment Source Fields ──
         function toggleAugmentSourceFields() {
             const source = document.getElementById('augmentSource').value;
+
             const transferFields = document.getElementById('augmentTransferFields');
             const otherFields = document.getElementById('augmentOtherFields');
 
-            transferFields.style.display = source === 'From another program' ? 'block' : 'none';
-            otherFields.style.display = source === 'Other' ? 'block' : 'none';
+            const donorProgram = document.getElementById('augmentDonorProgram');
+            const otherSource = document.getElementById('augmentOtherSource');
 
-            // Update donor remaining when donor program changes
-            if (source === 'From another program') {
+            const isTransfer = source === 'From another program';
+            const isOther = source === 'Other';
+
+            // Show only the fields needed by the selected source.
+            transferFields.style.display = isTransfer ? 'block' : 'none';
+            otherFields.style.display = isOther ? 'block' : 'none';
+
+            // IMPORTANT:
+            // Disabled fields are ignored by browser validation and are not
+            // submitted. This prevents hidden conditional fields from
+            // blocking augmentation.
+            donorProgram.disabled = !isTransfer;
+            donorProgram.required = isTransfer;
+
+            otherSource.disabled = !isOther;
+            otherSource.required = isOther;
+
+            if (isTransfer) {
                 updateDonorRemaining();
+            } else {
+                document.getElementById('donorRemainingDisplay').textContent =
+                    'Donor remaining: ₱0';
+            }
+
+            if (!isOther) {
+                otherSource.value = '';
+            }
+
+            if (!isTransfer) {
+                donorProgram.value = '';
             }
         }
 
@@ -866,9 +1144,21 @@ $budgetDataPhp = array_map(function ($p) {
 
         // ── Open Augment Modal ──
         function openAugmentModal() {
-            document.getElementById('augmentForm').reset();
+            const form = document.getElementById('augmentForm');
+            const donorProgram = document.getElementById('augmentDonorProgram');
+            const otherSource = document.getElementById('augmentOtherSource');
+
+            form.reset();
+
+            donorProgram.disabled = true;
+            donorProgram.required = false;
+            otherSource.disabled = true;
+            otherSource.required = false;
+
             document.getElementById('augmentTransferFields').style.display = 'none';
             document.getElementById('augmentOtherFields').style.display = 'none';
+            document.getElementById('donorRemainingDisplay').textContent = 'Donor remaining: ₱0';
+
             document.getElementById('augmentModal').classList.remove('hidden');
             document.getElementById('augmentModal').style.display = 'flex';
         }
@@ -882,203 +1172,278 @@ $budgetDataPhp = array_map(function ($p) {
         }
 
         function closeAugmentModal() {
+            const form = document.getElementById('augmentForm');
+            const donorProgram = document.getElementById('augmentDonorProgram');
+            const otherSource = document.getElementById('augmentOtherSource');
+
             document.getElementById('augmentModal').classList.add('hidden');
             document.getElementById('augmentModal').style.display = 'none';
-            document.getElementById('augmentForm').reset();
+
+            form.reset();
+
+            donorProgram.disabled = true;
+            donorProgram.required = false;
+            otherSource.disabled = true;
+            otherSource.required = false;
+
             document.getElementById('augmentTransferFields').style.display = 'none';
             document.getElementById('augmentOtherFields').style.display = 'none';
+            document.getElementById('donorRemainingDisplay').textContent = 'Donor remaining: ₱0';
         }
 
         // ── Confirm before ending a period early (the actual DB update now
         //    happens server-side in budgetmanagementaction.php after this returns true) ──
-        function confirmEndPeriod(programName, remaining) {
+        function confirmEndPeriod(programName, remaining, currentPeriod, usesLeft) {
             const confirmMsg =
-                `End the current period early for ${programName}?\n\nRemaining budget: ₱${remaining.toLocaleString()}\nThis will be returned to the LGU.`;
+                `End ${currentPeriod} early for ${programName}?\n\n` +
+                `Remaining period budget: ${peso(remaining)}\n` +
+                `The unused amount will be recorded as returned to the Accounting Office.\n` +
+                `The program will advance to the next period.\n\n` +
+                `Early advances remaining after this: ${Math.max(0, usesLeft - 1)}.`;
             return confirm(confirmMsg);
         }
 
         // ── Show Analysis Report ──
         function showAnalysisReport() {
-            let report = '=== BUDGET ANALYSIS REPORT ===\n\n';
-            report += 'Program Budget Analysis\n';
-            report += '='.repeat(50) + '\n\n';
-
-            budgetData.forEach(b => {
-                const remaining = b.totalBudget - b.spent;
-                const pct = b.totalBudget > 0 ? (b.spent / b.totalBudget) * 100 : 0;
-                const status = getStatus(remaining, b.totalBudget);
-                report += `${b.program}\n`;
-                report += `  Total: ₱${b.totalBudget.toLocaleString()}\n`;
-                report += `  Spent: ₱${b.spent.toLocaleString()}\n`;
-                report += `  Remaining: ₱${remaining.toLocaleString()}\n`;
-                report += `  Utilization: ${Math.round(pct)}%\n`;
-                report += `  Status: ${status.label}\n`;
-                report += `  Period: ${b.period}\n\n`;
-            });
-
-            report += '='.repeat(50) + '\n';
-            report += 'RECOMMENDATIONS:\n';
-            const critical = budgetData.filter(b => b.totalBudget - b.spent <= (b.totalBudget * 0.15));
-            if (critical.length > 0) {
-                report += `- Consider augmentation for: ${critical.map(b => b.program).join(', ')}\n`;
-            }
-            report += `- Next year recommended budget: ₱${window._forecastData?.recommendedBudget?.toLocaleString() || 'N/A'}\n`;
-
-            const textarea = document.createElement('textarea');
-            textarea.value = report;
-            textarea.style.width = '100%';
-            textarea.style.height = '400px';
-            textarea.style.fontSize = '13px';
-            textarea.style.fontFamily = 'monospace';
-            textarea.style.border = '1px solid #D4E8DC';
-            textarea.style.borderRadius = '8px';
-            textarea.style.padding = '12px';
-
-            const modal = document.createElement('div');
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100%';
-            modal.style.height = '100%';
-            modal.style.background = 'rgba(0,0,0,0.5)';
-            modal.style.display = 'flex';
-            modal.style.alignItems = 'center';
-            modal.style.justifyContent = 'center';
-            modal.style.zIndex = '9999';
-
-            const box = document.createElement('div');
-            box.style.background = 'white';
-            box.style.borderRadius = '16px';
-            box.style.padding = '24px';
-            box.style.maxWidth = '600px';
-            box.style.width = '90%';
-            box.style.maxHeight = '90vh';
-            box.style.overflow = 'auto';
-            box.style.boxShadow = '0 25px 50px -12px rgba(0,0,0,0.25)';
-
-            const title = document.createElement('h2');
-            title.textContent = 'Budget Analysis Report';
-            title.style.fontSize = '18px';
-            title.style.fontWeight = '700';
-            title.style.color = '#1A5C3A';
-            title.style.marginBottom = '12px';
-
-            const closeBtn = document.createElement('button');
-            closeBtn.textContent = 'Close';
-            closeBtn.style.marginTop = '16px';
-            closeBtn.style.padding = '8px 24px';
-            closeBtn.style.background = '#1A5C3A';
-            closeBtn.style.color = 'white';
-            closeBtn.style.border = 'none';
-            closeBtn.style.borderRadius = '8px';
-            closeBtn.style.fontWeight = '600';
-            closeBtn.style.cursor = 'pointer';
-            closeBtn.onclick = () => modal.remove();
-
-            box.appendChild(title);
-            box.appendChild(textarea);
-            box.appendChild(closeBtn);
-            modal.appendChild(box);
-            document.body.appendChild(modal);
+            window.open('budget_analysis_report.php', '_blank', 'noopener');
         }
 
         // ── Open Forecast Modal ──
         function openForecastModal() {
-            const data = window._forecastData || { recommendedBudget: 0, perProgram: [] };
 
-            // Build detailed forecast table for modal
-            let forecastDetails = '';
-            if (data.perProgram && data.perProgram.length > 0) {
-                forecastDetails = `
-                    <h3 class="text-[13px] font-semibold text-green-600 mb-3">Per-Program Forecast Calculation</h3>
-                    <div class="border border-slate-200 rounded-lg overflow-hidden">
-                        <table class="forecast-table w-full text-[11px]">
-                            <thead>
-                                <tr>
-                                    <th>Program</th>
-                                    <th>Period</th>
-                                    <th>Current Budget</th>
-                                    <th>Spent (YTD)</th>
-                                    <th>Utilization</th>
-                                    <th>Yearly Spend</th>
-                                    <th>Recommended (15% buffer)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.perProgram.map(p => `
-                                    <tr>
-                                        <td class="font-medium text-green-700">${p.program}</td>
-                                        <td>${p.period}</td>
-                                        <td>₱${p.budget.toLocaleString()}</td>
-                                        <td>₱${p.spent.toLocaleString()}</td>
-                                        <td>${p.utilization}%</td>
-                                        <td>₱${Math.round(p.period === 'Quarterly' ? p.spent * 4 : p.period === 'Half-Year' ? p.spent * 2 : p.spent).toLocaleString()}</td>
-                                        <td class="font-semibold text-blue-600">₱${p.recommended.toLocaleString()}</td>
-                                    </tr>
-                                `).join('')}
-                                <tr class="forecast-total">
-                                    <td colspan="6" class="text-right font-bold">TOTAL RECOMMENDED</td>
-                                    <td class="font-bold text-blue-600">₱${(data.recommendedBudget || 0).toLocaleString()}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-[12px]">
-                        <p><strong>Calculation Method:</strong></p>
-                        <p class="text-slate-600 mt-1">For each program, we calculate the yearly spending (adjusting based on the period) and add a 15% buffer.</p>
-                        <p class="text-slate-600">Formula: <strong>Recommended = (Spent × Period Multiplier) × 1.15</strong></p>
-                        <ul class="text-slate-500 mt-2 text-[11px] list-disc list-inside">
-                            <li>Quarterly: × 4 (annualized)</li>
-                            <li>Half-Year: × 2 (annualized)</li>
-                            <li>Annually: × 1 (already annual)</li>
-                        </ul>
-                    </div>
-                `;
-            } else {
-                forecastDetails =
-                    `<p class="text-slate-500 text-[12px]">Run the forecast calculation first to see per-program recommendations.</p>`;
-            }
+            const data = window._forecastData || {
+                perProgram: [],
+                recommendedBudget: 0
+            };
+
+            let forecastDetails = `
+        <div class="overflow-x-auto">
+            <table class="forecast-table w-full text-[12px]">
+                <thead>
+                    <tr>
+                        <th>Program</th>
+                        <th>Period</th>
+                        <th>Beneficiaries</th>
+                        <th>Period Budget</th>
+                        <th>Spent</th>
+                        <th>Utilization</th>
+                        <th>Recommendation</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    ${data.perProgram.map(p => `
+                        <tr>
+
+                            <td class="font-medium text-green-700">
+                                ${escapeHtml(p.program)}
+                            </td>
+
+                            <td>
+                                ${p.periodLabel}
+                            </td>
+
+                            <td>
+                                ${Number(p.beneficiaries || 0).toLocaleString()}
+                            </td>
+
+                            <td>
+                                ${peso(p.periodBudget)}
+                            </td>
+
+                            <td>
+                                ${peso(p.spent)}
+                            </td>
+
+                            <td>
+                                <div class="flex items-center gap-2">
+
+                                    <span class="min-w-[45px]">
+                                        ${Number(p.utilization || 0).toFixed(1)}%
+                                    </span>
+
+                                    <div class="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+
+                                        <div
+                                            class="h-full rounded-full ${Number(p.utilization || 0) >= 70
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500'
+                }"
+                                            style="width:${Math.min(
+                    100,
+                    Number(p.utilization || 0)
+                )}%">
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </td>
+
+                            <td class="${p.recommendation === 'Consider Increase'
+                    ? 'text-blue-600'
+                    : p.recommendation === 'No Increase Needed'
+                        ? 'text-emerald-600'
+                        : 'text-amber-600'
+                } font-semibold">
+
+                                ${escapeHtml(p.recommendation)}
+
+                            </td>
+
+                        </tr>
+                    `).join('')}
+                </tbody>
+
+            </table>
+        </div>
+    `;
 
             document.getElementById('forecastDetails').innerHTML = forecastDetails;
-            document.getElementById('forecastRecommended').value = '₱' + (data.recommendedBudget || 0).toLocaleString();
+
+            // Always start at 0% when the modal opens.
+            document.getElementById('forecastIncreasePct').value = '0';
+
+            updateForecastRecommendation();
+
             document.getElementById('forecastModal').classList.remove('hidden');
             document.getElementById('forecastModal').style.display = 'flex';
         }
 
+        function updateForecastRecommendation() {
+
+            const data = window._forecastData || {
+                perProgram: []
+            };
+
+            const pctInput = document.getElementById('forecastIncreasePct');
+
+            let pct = Number(pctInput ? pctInput.value : 0);
+
+            if (!Number.isFinite(pct)) {
+                pct = 0;
+            }
+
+            pct = Math.max(0, Math.min(100, pct));
+
+            /*
+             * Only programs classified as "Consider Increase"
+             * are eligible for the custom increase.
+             *
+             * Programs with:
+             * - No Increase Needed
+             * - Review
+             *
+             * receive ₱0 increase.
+             */
+
+            let baseBudget = 0;
+
+            data.perProgram.forEach(p => {
+
+                if (p.recommendation === 'Consider Increase') {
+
+                    baseBudget += Number(p.periodBudget || 0);
+
+                }
+
+            });
+
+            const increaseAmount =
+                baseBudget * (pct / 100);
+
+            const recommendedBudget =
+                baseBudget + increaseAmount;
+
+            // Update calculation display
+            const baseEl = document.getElementById('forecastBaseBudget');
+            const increaseEl = document.getElementById('forecastIncreaseAmount');
+            const recommendedEl = document.getElementById('forecastRecommended');
+            const formulaEl = document.getElementById('forecastFormula');
+
+            if (baseEl) {
+                baseEl.textContent = peso(baseBudget);
+            }
+
+            if (increaseEl) {
+                increaseEl.textContent = peso(increaseAmount);
+            }
+
+            if (recommendedEl) {
+                recommendedEl.textContent = peso(recommendedBudget);
+            }
+
+            if (formulaEl) {
+
+                formulaEl.innerHTML = `
+            Formula:
+            <strong>
+                ${peso(baseBudget)} × ${pct.toFixed(1)}%
+                = ${peso(increaseAmount)}
+            </strong>
+            <br>
+
+            <span class="text-slate-500">
+                ${peso(baseBudget)}
+                +
+                ${peso(increaseAmount)}
+                =
+                <strong class="text-emerald-700">
+                    ${peso(recommendedBudget)}
+                </strong>
+            </span>
+        `;
+
+            }
+
+            return recommendedBudget;
+        }
         function closeForecastModal() {
             document.getElementById('forecastModal').classList.add('hidden');
             document.getElementById('forecastModal').style.display = 'none';
         }
 
-        // ── Export Forecast CSV ──
-        function exportForecastCSV() {
-            const data = window._forecastData;
-            if (!data || !data.perProgram || data.perProgram.length === 0) {
-                showToast('No forecast data to export.', 'error');
-                return;
+        // ── Generate Forecast PDF ──
+        function exportForecastPDF() {
+
+            const pctInput = document.getElementById('forecastIncreasePct');
+
+            let pct = Number(
+                pctInput ? pctInput.value : 0
+            );
+
+            if (!Number.isFinite(pct)) {
+                pct = 0;
             }
 
-            let csv = 'Municipal Social Welfare and Development Office\n';
-            csv += 'San Enrique, Negros Occidental\n';
-            csv += 'Budget Forecast Report\n\n';
-            csv += 'Program,Period,Current Budget,Spent (YTD),Utilization,Yearly Spend,Recommended (15% Buffer),Status\n';
+            pct = Math.max(0, Math.min(100, pct));
 
-            data.perProgram.forEach(p => {
-                csv +=
-                    `${p.program},${p.period},${p.budget},${p.spent},${p.utilization}%,${Math.round(p.period === 'Quarterly' ? p.spent * 4 : p.period === 'Half-Year' ? p.spent * 2 : p.spent)},${p.recommended},${p.status.label}\n`;
-            });
+            const url =
+                `budget_forecast_report.php?increase_pct=${encodeURIComponent(pct)}`;
 
-            csv += `\nTOTAL RECOMMENDED,${data.recommendedBudget}\n`;
-            csv += `\nGenerated on: ${new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}\n`;
+            window.open(
+                url,
+                '_blank',
+                'noopener'
+            );
+        }
+        // ── Augmentation client-side validation ──
+        function validateAugmentationForm() {
+            const source = document.getElementById('augmentSource').value;
+            const targetId = document.getElementById('augmentTargetProgram').value;
+            const donorId = document.getElementById('augmentDonorProgram').value;
+            const amount = Number(document.getElementById('augmentAmount').value || 0);
 
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'Budget_Forecast_Report_' + new Date().toISOString().slice(0, 10) + '.csv';
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('CSV exported successfully!');
+            if (!targetId || amount <= 0 || !source) {
+                return true; // Let normal HTML5 validation handle these fields.
+            }
+
+            if (source === 'From another program' && donorId === targetId) {
+                alert('Cannot transfer from the same program.');
+                return false;
+            }
+
+            return true;
         }
 
         // ── Toast ──
@@ -1097,7 +1462,8 @@ $budgetDataPhp = array_map(function ($p) {
 
         // ── Event listeners for donor program change ──
         document.addEventListener('DOMContentLoaded', function () {
-            document.getElementById('augmentDonorProgram').addEventListener('change', updateDonorRemaining);
+            document.getElementById('augmentDonorProgram')
+                .addEventListener('change', updateDonorRemaining);
         });
 
         // ── Flash message from budgetmanagementaction.php (after a redirect) ──

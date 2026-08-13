@@ -1,120 +1,163 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-    error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-    require 'auth.php';
-    requireRole(['Admin']);
-    require 'db_connect.php';
+require 'auth.php';
+requireRole(['Admin', 'Social Worker']);
+require 'db_connect.php';
 
-    // This page never renders anything — it only processes a POST from
-    // budgetmanagement.php, then redirects back with a flash message
-    // (?msg=...&type=success|error) that the page picks up and shows as a toast.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: budgetmanagement.php');
+    exit;
+}
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        header('Location: budgetmanagement.php');
-        exit;
+$user_id = (int) ($_SESSION['user_id'] ?? 0);
+$action = $_POST['action'] ?? '';
+
+function redirectBack(string $msg, string $type = 'success'): void
+{
+    header('Location: budgetmanagement.php?msg=' . urlencode($msg) . '&type=' . $type);
+    exit;
+}
+
+function periodCount(string $period): int
+{
+    return $period === 'Quarterly' ? 4 : ($period === 'Half-Year' ? 2 : 1);
+}
+
+/*
+ * AUGMENT
+ * - External augmentation increases the annual budget.
+ * - Transfer from another program moves budget between programs.
+ * - Both sides are logged.
+ */
+if ($action === 'augment') {
+
+    $targetId = (int) ($_POST['target_program_id'] ?? 0);
+    $amount   = (float) ($_POST['amount'] ?? 0);
+    $source   = trim($_POST['source'] ?? '');
+    $reason   = trim($_POST['reason'] ?? '');
+
+    if ($targetId <= 0 || $amount <= 0 || $source === '') {
+        redirectBack('Please fill in all required augmentation fields.', 'error');
     }
 
-    $user_id = $_SESSION['user_id'];
-    $action = $_POST['action'] ?? '';
+    try {
+        $pdo->beginTransaction();
 
-    function redirectBack(string $msg, string $type = 'success'): void
-    {
-        header('Location: budgetmanagement.php?msg=' . urlencode($msg) . '&type=' . $type);
-        exit;
-    }
+        $stmt = $pdo->prepare("
+            SELECT program_id, program_name, prog_annual_budget
+            FROM program
+            WHERE program_id = ?
+            FOR UPDATE
+        ");
+        $stmt->execute([$targetId]);
+        $target = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // AUGMENT (add funds from an external source, or transfer from another
-    // program's remaining budget)
-    if ($action === 'augment') {
-
-        $targetId = (int) ($_POST['target_program_id'] ?? 0);
-        $amount = (float) ($_POST['amount'] ?? 0);
-        $source = trim($_POST['source'] ?? '');
-        $reason = trim($_POST['reason'] ?? '');
-
-        if ($targetId <= 0 || $amount <= 0 || $source === '') {
-            redirectBack('Please fill in all required augmentation fields.', 'error');
+        if (!$target) {
+            throw new Exception('Target program not found.');
         }
 
-        try {
-            $pdo->beginTransaction();
+        $sourceLabel = $source;
 
-            // Lock the target row so two admins can't augment the same program
-            // at the same time and corrupt the running total.
-            $stmt = $pdo->prepare("SELECT program_name FROM program WHERE program_id = ? FOR UPDATE");
-            $stmt->execute([$targetId]);
-            $target = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$target) {
-                throw new Exception('Target program not found.');
+        if ($source === 'From another program') {
+
+            $donorId = (int) ($_POST['donor_program_id'] ?? 0);
+
+            if ($donorId <= 0) {
+                throw new Exception('Please select the program to transfer from.');
             }
 
-            $sourceLabel = $source;
-            $logAction = 'Augment';
+            if ($donorId === $targetId) {
+                throw new Exception('Cannot transfer from the same program.');
+            }
 
-            if ($source === 'From another program') {
-                $donorId = (int) ($_POST['donor_program_id'] ?? 0);
+            $donorStmt = $pdo->prepare("
+                SELECT
+                    p.program_id,
+                    p.program_name,
+                    p.prog_annual_budget,
+                    COALESCE(av.released, 0) + COALESCE(pp.released, 0) AS spent
+                FROM program p
+                LEFT JOIN (
+                    SELECT program_id, SUM(av_amount) released
+                    FROM availment
+                    WHERE av_status = 'Released'
+                    GROUP BY program_id
+                ) av ON av.program_id = p.program_id
+                LEFT JOIN (
+                    SELECT program_id, SUM(pp_budget) released
+                    FROM project_proposal
+                    WHERE pp_status = 'Released'
+                    GROUP BY program_id
+                ) pp ON pp.program_id = p.program_id
+                WHERE p.program_id = ?
+                FOR UPDATE
+            ");
+            $donorStmt->execute([$donorId]);
+            $donor = $donorStmt->fetch(PDO::FETCH_ASSOC);
 
-                if ($donorId <= 0) {
-                    throw new Exception('Please select the program to transfer from.');
-                }
-                if ($donorId === $targetId) {
-                    throw new Exception('Cannot transfer from the same program.');
-                }
+            if (!$donor) {
+                throw new Exception('Donor program not found.');
+            }
 
-                $donorStmt = $pdo->prepare("
-                    SELECT
-                        p.program_name,
-                        p.prog_annual_budget,
-                        COALESCE(SUM(a.av_amount),0) AS spent
-                    FROM program p
-                    LEFT JOIN availment a
-                        ON a.program_id = p.program_id
-                    AND a.av_status = 'Released'
-                    WHERE p.program_id = ?
-                    GROUP BY
-                        p.program_id,
-                        p.program_name,
-                        p.prog_annual_budget
-                    FOR UPDATE
-                ");
+            $donorRemaining = max(
+                0,
+                (float) $donor['prog_annual_budget'] - (float) $donor['spent']
+            );
 
+            if ($amount > $donorRemaining) {
+                throw new Exception(
+                    'Insufficient funds. Donor only has ₱' .
+                    number_format($donorRemaining, 2) . ' remaining.'
+                );
+            }
 
-                $donorStmt->execute([$donorId]);
-                $donor = $donorStmt->fetch(PDO::FETCH_ASSOC);
+            $pdo->prepare("
+                UPDATE program
+                SET prog_annual_budget = prog_annual_budget - ?
+                WHERE program_id = ?
+            ")->execute([$amount, $donorId]);
 
-                if (!$donor) {
-                    throw new Exception('Donor program not found.');
-                }
+            $pdo->prepare("
+                INSERT INTO budget_log
+                    (program_id, user_id, action_type, amount, source, reason, reference_no)
+                VALUES
+                    (?, ?, 'Transfer Out', ?, ?, ?, ?)
+            ")->execute([
+                $donorId,
+                $user_id,
+                $amount,
+                'To ' . $target['program_name'],
+                $reason,
+                'TRF-' . date('YmdHis') . '-' . $donorId . '-' . $targetId
+            ]);
 
-                $donorRemaining =
-                    (float) $donor['prog_annual_budget']
-                    -
-                    (float) $donor['spent'];
-                if ($amount > $donorRemaining) {
-                    throw new Exception(
-                        'Insufficient funds. Donor only has ₱' .
-                        number_format($donorRemaining, 2) .
-                        ' remaining.'
-                    );
-                }
-                // Real transfer: the amount leaves the donor's budget entirely
-                // (not logged as "spent" — spent is reserved for actual client availments).
-                $pdo->prepare("
-                    UPDATE program
-                    SET prog_annual_budget = prog_annual_budget - ?
-                    WHERE program_id = ?
-                ")->execute([$amount, $donorId]);
+            $sourceLabel = 'Transfer from ' . $donor['program_name'];
 
-                $pdo->prepare("
-                    INSERT INTO budget_log (program_id, user_id, action_type, amount, source, reason)
-                    VALUES (?, ?, 'Transfer Out', ?, ?, ?)
-                ")->execute([$donorId, $user_id, $amount, 'To ' . $target['program_name'], $reason]);
+            $pdo->prepare("
+                UPDATE program
+                SET prog_annual_budget = prog_annual_budget + ?
+                WHERE program_id = ?
+            ")->execute([$amount, $targetId]);
 
-                $sourceLabel = 'Transfer from ' . $donor['program_name'];
-                $logAction = 'Transfer In';
+            $pdo->prepare("
+                INSERT INTO budget_log
+                    (program_id, user_id, action_type, amount, source, reason, reference_no)
+                VALUES
+                    (?, ?, 'Transfer In', ?, ?, ?, ?)
+            ")->execute([
+                $targetId,
+                $user_id,
+                $amount,
+                $sourceLabel,
+                $reason,
+                'TRF-' . date('YmdHis') . '-' . $donorId . '-' . $targetId
+            ]);
 
-            } elseif ($source === 'Other') {
+        } else {
+
+            if ($source === 'Other') {
                 $other = trim($_POST['other_source'] ?? '');
                 if ($other === '') {
                     throw new Exception('Please specify the source.');
@@ -122,119 +165,245 @@
                 $sourceLabel = $other;
             }
 
-            // Add the amount to the target program's budget
             $pdo->prepare("
                 UPDATE program
                 SET prog_annual_budget = prog_annual_budget + ?
                 WHERE program_id = ?
             ")->execute([$amount, $targetId]);
 
-
             $pdo->prepare("
-                INSERT INTO budget_log (program_id, user_id, action_type, amount, source, reason)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ")->execute([$targetId, $user_id, $logAction, $amount, $sourceLabel, $reason]);
+                INSERT INTO budget_log
+                    (program_id, user_id, action_type, amount, source, reason, reference_no)
+                VALUES
+                    (?, ?, 'Augment', ?, ?, ?, ?)
+            ")->execute([
+                $targetId,
+                $user_id,
+                $amount,
+                $sourceLabel,
+                $reason,
+                'AUG-' . date('YmdHis') . '-' . $targetId
+            ]);
+        }
 
-            $pdo->commit();
+        $pdo->commit();
 
-            redirectBack(
-                "Budget for {$target['program_name']} augmented by ₱" . number_format($amount, 2) . " from {$sourceLabel}."
+        redirectBack(
+            "Budget for {$target['program_name']} augmented by ₱" .
+            number_format($amount, 2) . " from {$sourceLabel}."
+        );
+
+    } catch (Throwable $e) {
+
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        redirectBack($e->getMessage(), 'error');
+    }
+}
+
+/*
+ * END PERIOD EARLY
+ *
+ * Important:
+ * - DO NOT reduce prog_annual_budget.
+ * - Record the unused current-period amount as returned to Accounting Office.
+ * - Advance Quarterly Q1→Q2→Q3→Q4 or Half-Year 1→2.
+ * - Annual programs cannot use End Early.
+ * - Maximum of 3 early advances per program/year.
+ * - New period starts immediately when this action is completed.
+ */
+elseif ($action === 'end_period') {
+
+    $programId = (int) ($_POST['program_id'] ?? 0);
+
+    if ($programId <= 0) {
+        redirectBack('Invalid program.', 'error');
+    }
+
+    try {
+
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare("
+            SELECT
+                p.program_id,
+                p.program_name,
+                p.prog_period,
+                p.prog_annual_budget,
+                COALESCE(p.prog_current_period, 1) AS current_period,
+                COALESCE(p.prog_early_end_count, 0) AS early_end_count,
+                p.prog_period_started_at
+            FROM program p
+            WHERE p.program_id = ?
+            FOR UPDATE
+        ");
+        $stmt->execute([$programId]);
+
+        $program = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$program) {
+            throw new Exception('Program not found.');
+        }
+
+        $period = $program['prog_period'];
+        $maxPeriods = periodCount($period);
+        $currentPeriod = (int) $program['current_period'];
+        $earlyEndCount = (int) $program['early_end_count'];
+
+        if ($period === 'Annually') {
+            throw new Exception('Annual programs do not have an End Early action.');
+        }
+
+        if ($currentPeriod >= $maxPeriods) {
+            throw new Exception('This is already the final period. There is no next period to advance to.');
+        }
+
+        // End Early limits are derived from the configured period:
+        // Quarterly = 3 advances (Q1→Q2→Q3→Q4)
+        // Half-Year  = 1 advance (1st Half→2nd Half)
+        // Annual     = not applicable (handled above)
+        $maxEarlyAdvances = max(0, $maxPeriods - 1);
+
+        if ($earlyEndCount >= $maxEarlyAdvances) {
+            throw new Exception(
+                "The maximum of {$maxEarlyAdvances} early period advance" .
+                ($maxEarlyAdvances === 1 ? '' : 's') .
+                " has already been used for this program."
             );
-
-        } catch (Exception $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            redirectBack($e->getMessage(), 'error');
         }
 
-        // ─────────────────────────────────────────────────────────────────────────
-    // END PERIOD EARLY (unused remaining budget is considered returned to the LGU)
-    // ─────────────────────────────────────────────────────────────────────────
-    } elseif ($action === 'end_period') {
+        /*
+         * Ensure the current period has a start timestamp.
+         * For a newly migrated record, use the current timestamp.
+         */
+        $periodStartedAt = $program['prog_period_started_at'];
 
-        $programId = (int) ($_POST['program_id'] ?? 0);
-        if ($programId <= 0) {
-            redirectBack('Invalid program.', 'error');
-        }
+        if (empty($periodStartedAt)) {
+            $periodStartedAt = date('Y-m-d H:i:s');
 
-        try {
-            $pdo->beginTransaction();
-
-            $stmt = $pdo->prepare("
-                SELECT
-                    p.program_name,
-                    p.prog_annual_budget,
-                    COALESCE(SUM(a.av_amount),0) AS spent
-                FROM program p
-                LEFT JOIN availment a
-                    ON a.program_id = p.program_id
-                AND a.av_status = 'Released'
-                WHERE p.program_id = ?
-                GROUP BY
-                    p.program_id,
-                    p.program_name,
-                    p.prog_annual_budget
-                FOR UPDATE
-                ");
-
-            $stmt->execute([$programId]);
-            $program = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$program) {
-                throw new Exception('Program not found.');
-            }
-
-            $remaining = (float) $program['prog_annual_budget'] - (float) $program['spent'];
-
-            // Guard: if spent somehow exceeds the annual budget (bad data, late-posted
-            // availments, manual edits, etc.), $remaining goes negative. Subtracting a
-            // negative number from prog_annual_budget would silently INCREASE the budget,
-            // which is the opposite of what "end period" should ever do. Treat this as
-            // a data problem that needs a human to look at it, rather than clamping to 0
-            // and quietly hiding the overspend.
-            if ($remaining < 0) {
-                throw new Exception(
-                    "{$program['program_name']} shows spending of ₱" . number_format((float) $program['spent'], 2) .
-                    " against a budget of ₱" . number_format((float) $program['prog_annual_budget'], 2) .
-                    " (overspent by ₱" . number_format(abs($remaining), 2) . "). " .
-                    "Cannot end period until this is reconciled."
-                );
-            }
-
-            // Idempotency guard: if a program's remaining is already 0 (e.g. a
-            // double-submitted request, or the period was already ended), there's
-            // nothing left to return. Avoid writing a spurious ₱0.00 log entry.
-            if ($remaining == 0) {
-                $pdo->commit();
-                redirectBack("{$program['program_name']} has no remaining budget to return; nothing to do.");
-            }
-
-            // The annual budget shrinks down to exactly what's been spent so far;
-            // the unused remainder is what gets "returned to the LGU."
             $pdo->prepare("
                 UPDATE program
-                SET prog_annual_budget = prog_annual_budget - ?
+                SET prog_period_started_at = ?
                 WHERE program_id = ?
-            ")->execute([$remaining, $programId]);
-
-            $pdo->prepare("
-                INSERT INTO budget_log (program_id, user_id, action_type, amount, source, reason)
-                VALUES (?, ?, 'End Period Early', ?, 'Returned to LGU', NULL)
-            ")->execute([$programId, $user_id, $remaining]);
-
-            $pdo->commit();
-
-            redirectBack(
-                "{$program['program_name']} period ended early. ₱" . number_format($remaining, 2) . " returned to LGU."
-            );
-
-        } catch (Exception $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            redirectBack($e->getMessage(), 'error');
+            ")->execute([$periodStartedAt, $programId]);
         }
 
-    } else {
-        redirectBack('Unknown action.', 'error');
+        /*
+         * Only RELEASED transactions count as spending.
+         * The current period begins at prog_period_started_at.
+         */
+        $avStmt = $pdo->prepare("
+            SELECT COALESCE(SUM(av_amount), 0)
+            FROM availment
+            WHERE program_id = ?
+              AND av_status = 'Released'
+              AND av_date_released IS NOT NULL
+              AND av_date_released >= DATE(?)
+        ");
+        $avStmt->execute([$programId, $periodStartedAt]);
+        $releasedAvailments = (float) $avStmt->fetchColumn();
+
+        $ppStmt = $pdo->prepare("
+            SELECT COALESCE(SUM(pp_budget), 0)
+            FROM project_proposal
+            WHERE program_id = ?
+              AND pp_status = 'Released'
+              AND pp_date_released IS NOT NULL
+              AND pp_date_released >= DATE(?)
+        ");
+        $ppStmt->execute([$programId, $periodStartedAt]);
+        $releasedProposals = (float) $ppStmt->fetchColumn();
+
+        $spent = $releasedAvailments + $releasedProposals;
+
+        $periodBudget =
+            (float) $program['prog_annual_budget'] /
+            $maxPeriods;
+
+        $remaining = $periodBudget - $spent;
+
+        if ($remaining < -0.01) {
+            throw new Exception(
+                "{$program['program_name']} is overspent in the current period by ₱" .
+                number_format(abs($remaining), 2) .
+                ". Reconcile the period before ending it early."
+            );
+        }
+
+        $remaining = max(0, $remaining);
+
+        /*
+         * Advance to the next period.
+         */
+        $nextPeriod = $currentPeriod + 1;
+        $nextEarlyCount = $earlyEndCount + 1;
+        $newPeriodStartedAt = date('Y-m-d H:i:s');
+
+        $pdo->prepare("
+            UPDATE program
+            SET
+                prog_current_period = ?,
+                prog_early_end_count = ?,
+                prog_period_started_at = ?
+            WHERE program_id = ?
+        ")->execute([
+            $nextPeriod,
+            $nextEarlyCount,
+            $newPeriodStartedAt,
+            $programId
+        ]);
+
+        /*
+         * Keep an accounting-proof record.
+         * The annual budget itself is NOT reduced.
+         */
+        $reason = 'Current period ended early. Unused period budget returned to Accounting Office.';
+
+        $pdo->prepare("
+            INSERT INTO budget_log
+                (program_id, user_id, action_type, period_number, next_period, amount,
+                 returned_amount, source, reason, reference_no)
+            VALUES
+                (?, ?, 'End Period Early', ?, ?, ?, ?, 'Returned to Accounting Office', ?, ?)
+        ")->execute([
+            $programId,
+            $user_id,
+            $currentPeriod,
+            $nextPeriod,
+            $remaining,
+            $remaining,
+            $reason,
+            'RET-' . date('YmdHis') . '-' . $programId . '-P' . $currentPeriod
+        ]);
+
+        $pdo->commit();
+
+        $periodName = $period === 'Quarterly'
+            ? 'Q' . $currentPeriod
+            : 'Half-Year ' . $currentPeriod;
+
+        $nextName = $period === 'Quarterly'
+            ? 'Q' . $nextPeriod
+            : 'Half-Year ' . $nextPeriod;
+
+        redirectBack(
+            "{$program['program_name']} {$periodName} ended early. " .
+            "₱" . number_format($remaining, 2) .
+            " returned to the Accounting Office. " .
+            "The program is now on {$nextName}."
+        );
+
+    } catch (Throwable $e) {
+
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        redirectBack($e->getMessage(), 'error');
     }
+
+} else {
+    redirectBack('Unknown action.', 'error');
+}
