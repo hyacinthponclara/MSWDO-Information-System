@@ -68,6 +68,10 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
         rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -178,6 +182,58 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
         th.sortable.desc .sort-icon {
             opacity: 1;
         }
+
+        .export-dropdown {
+            position: relative;
+            display: inline-block;
+            z-index: 100000 !important;
+            isolation: isolate;
+        }
+
+        .export-dropdown-content {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: #fff;
+            min-width: 240px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+            border-radius: 0.5rem;
+            border: 1px solid #D4E8DC;
+            z-index: 100001 !important;
+            overflow: visible;
+        }
+
+        .export-dropdown-content a {
+            position: relative;
+            z-index: 100002;
+        }
+
+        .export-dropdown-content a {
+            color: #1A5C3A;
+            padding: 0.7rem 1rem;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.875rem;
+            transition: background 0.15s;
+            cursor: pointer;
+        }
+
+        .export-dropdown-content a:hover {
+            background: #EEF6F0;
+        }
+
+        .export-dropdown-content a i {
+            width: 18px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .export-dropdown.active .export-dropdown-content {
+            display: block;
+        }
     </style>
 </head>
 
@@ -198,14 +254,34 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
         <main class="flex-1 p-6 space-y-5 overflow-y-auto">
 
             <!-- Page Title -->
-            <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
+            <div class="relative z-50 flex flex-wrap items-center justify-between gap-3 animate-fade-up">
                 <div>
                     <h1 class="text-xl font-serif text-green-600">AICS Transaction History</h1>
                     <p class="text-[13px] text-slate-500 mt-0.5">View, filter, and export all AICS transactions (FBML &amp; Educational).</p>
                 </div>
-                <button onclick="exportCSV()" class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700">
-                    <i class="fas fa-file-csv mr-1"></i> Export CSV
-                </button>
+                <div class="export-dropdown relative z-[9999]" id="exportDropdownContainer">
+                    <button type="button"
+                        class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700"
+                        id="exportDropdownBtn">
+                        <i class="fas fa-download mr-1"></i>
+                        Export
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </button>
+                    <div class="export-dropdown-content">
+                        <a id="exportPdf">
+                            <i class="fas fa-file-pdf"></i>
+                            PDF Document (.pdf)
+                        </a>
+                        <a id="exportDocx">
+                            <i class="fas fa-file-word"></i>
+                            Word Document (.docx)
+                        </a>
+                        <a id="exportXlsx">
+                            <i class="fas fa-file-excel"></i>
+                            Microsoft Excel (.xlsx)
+                        </a>
+                    </div>
+                </div>
             </div>
 
             <!-- Budget Summary Cards -->
@@ -276,6 +352,17 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
             <!-- Filters & Sorting -->
             <div class="flex flex-wrap items-center gap-3 animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
                 <div class="flex flex-wrap items-center gap-3">
+                    <div>
+                        <label class="text-[10px] uppercase tracking-wider text-slate-400 block">Search</label>
+                        <div class="relative">
+                            <i
+                                class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]"></i>
+                            <input type="search" id="filterSearch" placeholder="Search beneficiary, type, amount, status..."
+                                autocomplete="off"
+                                class="w-56 text-[12px] border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"
+                                oninput="applyFilters()" />
+                        </div>
+                    </div>
                     <div>
                         <label class="text-[10px] uppercase tracking-wider text-slate-400 block">Budget Source</label>
                         <select id="filterBudget" class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none" onchange="updateTypeOptions(); applyFilters();">
@@ -449,22 +536,134 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
             document.getElementById('paginationInfo').textContent = `Showing 1–${data.length} of ${data.length}`;
         }
 
-        function applyFilters() {
-            const budgetFilter = document.getElementById('filterBudget').value;
-            const typeFilter = document.getElementById('filterType').value;
-            const fromDate = document.getElementById('filterFrom').value;
-            const toDate = document.getElementById('filterTo').value;
+        function normalizeDateForFilter(value) {
+    if (!value) return '';
 
-            filteredData = transactions.filter(row => {
-                if (budgetFilter !== 'all' && row.budgetSource !== budgetFilter) return false;
-                if (typeFilter !== 'all' && row.type !== typeFilter) return false;
-                if (fromDate && row.date < fromDate) return false;
-                if (toDate && row.date > toDate) return false;
-                return true;
-            });
+    const raw = String(value).trim();
 
-            sortData();
+    // Already YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        return raw;
+    }
+
+    const date = new Date(raw);
+
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+
+function applyFilters(resetPage = true) {
+
+    const searchTerm =
+        document.getElementById('filterSearch')?.value
+            .trim()
+            .toLowerCase() || '';
+
+    const budgetFilter =
+        document.getElementById('filterBudget').value;
+
+    const typeFilter =
+        document.getElementById('filterType').value;
+
+    const fromDate =
+        document.getElementById('filterFrom').value;
+
+    const toDate =
+        document.getElementById('filterTo').value;
+
+
+    // Invalid date range
+    if (fromDate && toDate && fromDate > toDate) {
+        filteredData = [];
+        renderTable(filteredData);
+        return;
+    }
+
+
+    filteredData = transactions.filter(row => {
+
+        // -----------------------------
+        // BUDGET SOURCE FILTER
+        // -----------------------------
+        if (
+            budgetFilter !== 'all' &&
+            String(row.budgetSource || '').toLowerCase() !==
+            String(budgetFilter || '').toLowerCase()
+        ) {
+            return false;
         }
+
+
+        // -----------------------------
+        // TYPE FILTER
+        // -----------------------------
+        if (
+            typeFilter !== 'all' &&
+            String(row.type || '').toLowerCase() !==
+            String(typeFilter || '').toLowerCase()
+        ) {
+            return false;
+        }
+
+
+        // -----------------------------
+        // DATE FILTER
+        // -----------------------------
+        const rowDate = normalizeDateForFilter(row.date);
+
+        if (fromDate && (!rowDate || rowDate < fromDate)) {
+            return false;
+        }
+
+        if (toDate && (!rowDate || rowDate > toDate)) {
+            return false;
+        }
+
+
+        // -----------------------------
+        // SEARCH
+        // -----------------------------
+        if (searchTerm) {
+
+            const searchableText = [
+                row.availmentId,
+                row.beneficiary,
+                row.budgetSource,
+                row.type,
+                row.amount,
+                row.status,
+                row.date,
+                row.dateReleased
+            ]
+                .map(value => String(value ?? ''))
+                .join(' ')
+                .toLowerCase();
+
+            if (!searchableText.includes(searchTerm)) {
+                return false;
+            }
+        }
+
+
+        return true;
+    });
+
+
+    if (resetPage) {
+        // Reset to first page if pagination is added later
+        currentPage = 1;
+    }
+
+    sortData();
+}
 
         function sortData() {
             const key = currentSort.key;
@@ -507,59 +706,1651 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
             sortData();
         }
 
-        // ── Enhanced CSV Export ──
-        function exportCSV() {
-            const data = filteredData;
-            if (data.length === 0) {
-                showToast('No data to export.', 'error');
-                return;
+        // ============================================================
+// EXPORT HELPERS
+// ============================================================
+
+const PREPARED_BY_NAME = 'MA. TERESA C. PONCLARA, RSW';
+const PREPARED_BY_TITLE = 'MSWDO';
+
+
+function getDateOnly() {
+    return new Date().toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+
+function getTimeOnly() {
+    return new Date().toLocaleTimeString('en-PH', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+
+function getFooterTimestamp() {
+    return `Generated on ${getDateOnly()} at ${getTimeOnly()}`;
+}
+
+
+function formatDate(value) {
+
+    if (!value) return '';
+
+    const raw = String(value).trim();
+
+    if (!raw) return '';
+
+    // Keep YYYY-MM-DD values clean
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        const [year, month, day] = raw.split('-');
+
+        return new Date(
+            Number(year),
+            Number(month) - 1,
+            Number(day)
+        ).toLocaleDateString('en-PH', {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit'
+        });
+    }
+
+    const parsed = new Date(raw);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return raw;
+    }
+
+    return parsed.toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit'
+    });
+}
+
+
+function formatPeso(value) {
+
+    return `₱${Number(value || 0).toLocaleString('en-PH', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    })}`;
+}
+
+
+// ============================================================
+// GET FILTERED EXPORT DATA
+// IMPORTANT: exports ALL filtered records,
+// NOT just records currently visible in the table.
+// ============================================================
+
+function getExportData() {
+
+    return filteredData.map(row => ({
+
+        'Beneficiary':
+            row.beneficiary || '',
+
+        'Budget Source':
+            `AICS ${row.budgetSource || ''}`,
+
+        'Type':
+            row.type || '',
+
+        'Amount':
+            Number(row.amount || 0),
+
+        'Date Applied':
+            row.date || '',
+
+        'Status':
+            row.status || 'Approved',
+
+        'Date Released':
+            row.dateReleased || ''
+
+    }));
+}
+
+// ============================================================
+// EXCEL EXPORT
+// ============================================================
+
+async function exportToXlsx() {
+
+    try {
+
+        if (!window.ExcelJS) {
+            throw new Error('ExcelJS library not loaded.');
+        }
+
+        const rows = getExportData();
+
+        if (rows.length === 0) {
+            showToast('No data to export.', 'error');
+            return;
+        }
+
+
+        const wb = new ExcelJS.Workbook();
+
+        wb.creator = 'MSWDO San Enrique Information System';
+        wb.modified = new Date();
+
+
+        const ws = wb.addWorksheet('AICS Transactions');
+
+
+        // LANDSCAPE
+        ws.pageSetup = {
+            paperSize: ws.PAPERSIZE_LEGAL,
+            orientation: 'landscape',
+            fitToPage: true,
+            fitToWidth: 1,
+            fitToHeight: 0,
+
+            margins: {
+                left: 0.2,
+                right: 0.2,
+                top: 0.3,
+                bottom: 0.3,
+                header: 0.1,
+                footer: 0.1
+            }
+        };
+
+
+        const columns = [
+
+            {
+                header: 'BENEFICIARY',
+                key: 'Beneficiary',
+                width: 35
+            },
+
+            {
+                header: 'BUDGET SOURCE',
+                key: 'Budget Source',
+                width: 22
+            },
+
+            {
+                header: 'TYPE',
+                key: 'Type',
+                width: 18
+            },
+
+            {
+                header: 'AMOUNT',
+                key: 'Amount',
+                width: 20
+            },
+
+            {
+                header: 'DATE APPLIED',
+                key: 'Date Applied',
+                width: 18
+            },
+
+            {
+                header: 'STATUS',
+                key: 'Status',
+                width: 18
+            },
+
+            {
+                header: 'DATE RELEASED',
+                key: 'Date Released',
+                width: 18
             }
 
-            // Get filter values
-            const budgetFilter = document.getElementById('filterBudget');
-            const typeFilter = document.getElementById('filterType');
-            const fromDate = document.getElementById('filterFrom').value;
-            const toDate = document.getElementById('filterTo').value;
+        ];
 
-            const budgetLabel = budgetFilter.options[budgetFilter.selectedIndex].text;
-            const typeLabel = typeFilter.options[typeFilter.selectedIndex].text;
 
-            // Build CSV content
-            let csv = '';
-            // ── HEADER ──
-            csv += 'Municipal Social Welfare and Development Office\n';
-            csv += 'San Enrique, Negros Occidental\n';
-            csv += 'AICS Transaction Report\n\n';
+        // --------------------------------------------------------
+        // HEADER
+        // --------------------------------------------------------
 
-            // ── FILTER SUMMARY ──
-            csv += 'Budget Source: ' + budgetLabel + '\n';
-            csv += 'Type: ' + typeLabel + '\n';
-            if (fromDate) csv += 'Date From: ' + fromDate + '\n';
-            if (toDate) csv += 'Date To: ' + toDate + '\n';
-            csv += '\n';
+        const titleRows = [
+            'Republic of the Philippines',
+            'Province of Negros Occidental',
+            'Municipality of San Enrique',
+            'Municipal Social Welfare and Development Office',
+            'AICS TRANSACTION REPORT',
+            `Calendar Year ${new Date().getFullYear()}`
+        ];
 
-            // ── COLUMN HEADERS ──
-            csv += 'Beneficiary,Budget Source,Type,Amount,Date Applied,Status,Date Released\n';
 
-            // ── DATA ROWS ──
-            data.forEach(row => {
-                csv += `${row.beneficiary},AICS ${row.budgetSource},${row.type},${row.amount},${row.date},${row.status || 'Approved'},${row.dateReleased || ''}\n`;
+        titleRows.forEach((text, index) => {
+
+            const rowNumber = index + 1;
+
+            ws.mergeCells(
+                rowNumber,
+                1,
+                rowNumber,
+                columns.length
+            );
+
+            const cell = ws.getCell(rowNumber, 1);
+
+            cell.value = text;
+
+            cell.font = {
+                name: 'Arial',
+                size: rowNumber === 5 ? 13 : 11,
+                bold: rowNumber !== 1 && rowNumber !== 6
+            };
+
+            cell.alignment = {
+                horizontal: 'center',
+                vertical: 'middle'
+            };
+
+        });
+
+
+        // --------------------------------------------------------
+        // FILTER SUMMARY
+        // --------------------------------------------------------
+
+        const budgetSelect =
+            document.getElementById('filterBudget');
+
+        const typeSelect =
+            document.getElementById('filterType');
+
+        const fromDate =
+            document.getElementById('filterFrom').value;
+
+        const toDate =
+            document.getElementById('filterTo').value;
+
+
+        ws.mergeCells(7, 1, 7, columns.length);
+
+        ws.getCell(7, 1).value =
+            `Budget Source: ${budgetSelect.options[budgetSelect.selectedIndex].text} | ` +
+            `Type: ${typeSelect.options[typeSelect.selectedIndex].text}` +
+            `${fromDate ? ` | From: ${formatDate(fromDate)}` : ''}` +
+            `${toDate ? ` | To: ${formatDate(toDate)}` : ''}`;
+
+        ws.getCell(7, 1).font = {
+            name: 'Arial',
+            size: 10
+        };
+
+        ws.getCell(7, 1).alignment = {
+            horizontal: 'center'
+        };
+
+
+        // --------------------------------------------------------
+        // TABLE HEADER
+        // --------------------------------------------------------
+
+        const headerRow = 9;
+
+        columns.forEach((column, index) => {
+
+            const cell =
+                ws.getCell(headerRow, index + 1);
+
+            cell.value = column.header;
+
+            cell.font = {
+                name: 'Arial',
+                size: 10,
+                bold: true
+            };
+
+            cell.alignment = {
+                horizontal: 'center',
+                vertical: 'middle',
+                wrapText: true
+            };
+
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: {
+                    argb: 'FFEFEFEF'
+                }
+            };
+
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+
+            ws.getColumn(index + 1).width =
+                column.width;
+
+        });
+
+
+        // --------------------------------------------------------
+        // DATA
+        // --------------------------------------------------------
+
+        let currentRow = headerRow + 1;
+        let totalAmount = 0;
+
+
+        rows.forEach(data => {
+
+            const row =
+                ws.getRow(currentRow++);
+
+            columns.forEach((column, index) => {
+
+                const cell =
+                    row.getCell(index + 1);
+
+                let value =
+                    data[column.key] ?? '';
+
+
+                if (column.key === 'Amount') {
+
+                    value =
+                        Number(value || 0);
+
+                    totalAmount += value;
+
+                }
+
+
+                if (
+                    column.key === 'Date Applied' ||
+                    column.key === 'Date Released'
+                ) {
+
+                    value =
+                        formatDate(value);
+
+                }
+
+
+                cell.value = value;
+
+                cell.font = {
+                    name: 'Arial',
+                    size: 10
+                };
+
+                cell.alignment = {
+                    horizontal:
+                        column.key === 'Amount'
+                            ? 'right'
+                            : 'center',
+
+                    vertical: 'middle',
+
+                    wrapText: true
+                };
+
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+
+
+                if (column.key === 'Amount') {
+
+                    cell.numFmt =
+                        '₱#,##0.00';
+
+                }
+
             });
 
-            // ── FOOTER ──
-            csv += '\n';
-            csv += 'Generated on: ' + new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) + '\n';
+        });
 
-            // Create and download file
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'AICS_Transactions_' + new Date().toISOString().slice(0, 10) + '.csv';
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('CSV exported successfully!');
+
+        // --------------------------------------------------------
+        // TOTAL
+        // --------------------------------------------------------
+
+        const totalRow =
+            ws.getRow(currentRow++);
+
+
+        totalRow.getCell(1).value =
+            'TOTAL';
+
+        totalRow.getCell(1).font = {
+            name: 'Arial',
+            size: 10,
+            bold: true
+        };
+
+
+        totalRow.getCell(4).value =
+            totalAmount;
+
+        totalRow.getCell(4).numFmt =
+            '₱#,##0.00';
+
+        totalRow.getCell(4).font = {
+            name: 'Arial',
+            size: 10,
+            bold: true
+        };
+
+
+        for (
+            let i = 1;
+            i <= columns.length;
+            i++
+        ) {
+
+            const cell =
+                totalRow.getCell(i);
+
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: {
+                    argb: 'FFEFEFEF'
+                }
+            };
+
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+
         }
+
+
+        // --------------------------------------------------------
+        // FOOTER
+        // --------------------------------------------------------
+
+        const footerRow =
+            currentRow + 2;
+
+        ws.mergeCells(
+            footerRow,
+            1,
+            footerRow,
+            3
+        );
+
+        ws.getCell(
+            footerRow,
+            1
+        ).value = 'Prepared by:';
+
+
+        ws.mergeCells(
+            footerRow + 3,
+            1,
+            footerRow + 3,
+            3
+        );
+
+        ws.getCell(
+            footerRow + 3,
+            1
+        ).value = PREPARED_BY_NAME;
+
+        ws.getCell(
+            footerRow + 3,
+            1
+        ).font = {
+            name: 'Arial',
+            size: 10,
+            bold: true
+        };
+
+
+        ws.mergeCells(
+            footerRow + 4,
+            1,
+            footerRow + 4,
+            3
+        );
+
+        ws.getCell(
+            footerRow + 4,
+            1
+        ).value = PREPARED_BY_TITLE;
+
+
+        const buffer =
+            await wb.xlsx.writeBuffer();
+
+
+        const blob = new Blob(
+            [buffer],
+            {
+                type:
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            }
+        );
+
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const a =
+            document.createElement('a');
+
+        a.href = url;
+
+        a.download =
+            `MSWDO_San_Enrique_AICS_Transactions_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
+
+
+        showToast('Excel exported successfully!');
+
+    } catch (err) {
+
+        console.error(
+            'Excel export failed:',
+            err
+        );
+
+        alert(
+            'Excel export failed: ' +
+            (err.message || err)
+        );
+
+    }
+
+}
+
+// ============================================================
+// PDF EXPORT
+// ============================================================
+
+async function exportToPdf() {
+
+    try {
+
+        if (!window.jspdf) {
+            throw new Error(
+                'jsPDF library not loaded.'
+            );
+        }
+
+        const { jsPDF } = window.jspdf;
+
+        const rows = getExportData();
+
+        if (rows.length === 0) {
+            showToast('No data to export.', 'error');
+            return;
+        }
+
+
+        // ALWAYS LANDSCAPE
+        const doc =
+            new jsPDF(
+                'l',
+                'pt',
+                'legal'
+            );
+
+
+        const pageWidth =
+            doc.internal.pageSize.getWidth();
+
+        const margin = 30;
+
+
+        // --------------------------------------------------------
+        // HEADER
+        // --------------------------------------------------------
+
+        doc.setFont(
+            'helvetica',
+            'normal'
+        );
+
+        doc.setFontSize(11);
+
+        doc.text(
+            'Republic of the Philippines',
+            pageWidth / 2,
+            36,
+            { align: 'center' }
+        );
+
+
+        doc.setFont(
+            'helvetica',
+            'bold'
+        );
+
+        doc.text(
+            'Province of Negros Occidental',
+            pageWidth / 2,
+            54,
+            { align: 'center' }
+        );
+
+        doc.text(
+            'Municipality of San Enrique',
+            pageWidth / 2,
+            72,
+            { align: 'center' }
+        );
+
+        doc.text(
+            'Municipal Social Welfare and Development Office',
+            pageWidth / 2,
+            90,
+            { align: 'center' }
+        );
+
+
+        doc.setFontSize(14);
+
+        doc.text(
+            'AICS TRANSACTION REPORT',
+            pageWidth / 2,
+            120,
+            { align: 'center' }
+        );
+
+
+        doc.setFont(
+            'helvetica',
+            'normal'
+        );
+
+        doc.setFontSize(10);
+
+        doc.text(
+            `Calendar Year ${new Date().getFullYear()}`,
+            pageWidth / 2,
+            138,
+            { align: 'center' }
+        );
+
+
+        // --------------------------------------------------------
+        // FILTER SUMMARY
+        // --------------------------------------------------------
+
+        const budgetSelect =
+            document.getElementById('filterBudget');
+
+        const typeSelect =
+            document.getElementById('filterType');
+
+        const fromDate =
+            document.getElementById('filterFrom').value;
+
+        const toDate =
+            document.getElementById('filterTo').value;
+
+
+        const filterText =
+            `Budget: ${budgetSelect.options[budgetSelect.selectedIndex].text} | ` +
+            `Type: ${typeSelect.options[typeSelect.selectedIndex].text}` +
+            `${fromDate ? ` | From: ${formatDate(fromDate)}` : ''}` +
+            `${toDate ? ` | To: ${formatDate(toDate)}` : ''}`;
+
+
+        doc.text(
+            filterText,
+            pageWidth / 2,
+            153,
+            { align: 'center' }
+        );
+
+
+        // --------------------------------------------------------
+        // TABLE
+        // --------------------------------------------------------
+
+        let totalAmount = 0;
+
+        const tableData =
+            rows.map(row => {
+
+                totalAmount +=
+                    Number(row.Amount || 0);
+
+                return [
+
+                    row.Beneficiary,
+
+                    row['Budget Source'],
+
+                    row.Type,
+
+                    formatPeso(row.Amount),
+
+                    formatDate(row['Date Applied']),
+
+                    row.Status,
+
+                    formatDate(row['Date Released'])
+
+                ];
+
+            });
+
+
+        tableData.push([
+            '',
+            '',
+            'TOTAL',
+            formatPeso(totalAmount),
+            '',
+            '',
+            ''
+        ]);
+
+
+        doc.autoTable({
+
+            startY: 170,
+
+            head: [[
+                'Beneficiary',
+                'Budget Source',
+                'Type',
+                'Amount',
+                'Date Applied',
+                'Status',
+                'Date Released'
+            ]],
+
+            body: tableData,
+
+            theme: 'grid',
+
+            styles: {
+                font: 'helvetica',
+                fontSize: 9,
+                cellPadding: 4,
+                valign: 'middle'
+            },
+
+            headStyles: {
+                fillColor: [240, 240, 240],
+                textColor: [0, 0, 0],
+                fontStyle: 'bold',
+                fontSize: 9,
+                halign: 'center'
+            },
+
+            columnStyles: {
+
+                0: {
+                    cellWidth: 150,
+                    halign: 'left'
+                },
+
+                1: {
+                    cellWidth: 100,
+                    halign: 'center'
+                },
+
+                2: {
+                    cellWidth: 85,
+                    halign: 'center'
+                },
+
+                3: {
+                    cellWidth: 100,
+                    halign: 'right'
+                },
+
+                4: {
+                    cellWidth: 95,
+                    halign: 'center'
+                },
+
+                5: {
+                    cellWidth: 85,
+                    halign: 'center'
+                },
+
+                6: {
+                    cellWidth: 95,
+                    halign: 'center'
+                }
+
+            },
+
+            margin: {
+                left: margin,
+                right: margin
+            },
+
+
+            didParseCell: function(data) {
+
+                // TOTAL ROW
+                if (
+                    data.row.index ===
+                    tableData.length - 1
+                ) {
+
+                    data.cell.styles.fontStyle =
+                        'bold';
+
+                    data.cell.styles.fillColor =
+                        [240, 240, 240];
+
+                }
+
+            }
+
+        });
+
+
+        // --------------------------------------------------------
+        // FOOTER
+        // --------------------------------------------------------
+
+        const finalY =
+            doc.lastAutoTable.finalY + 30;
+
+
+        doc.setFontSize(10);
+
+        doc.setFont(
+            'helvetica',
+            'normal'
+        );
+
+        doc.text(
+            'Prepared by:',
+            margin,
+            finalY
+        );
+
+
+        doc.setFont(
+            'helvetica',
+            'bold'
+        );
+
+        doc.text(
+            PREPARED_BY_NAME,
+            margin,
+            finalY + 30
+        );
+
+
+        doc.line(
+            margin,
+            finalY + 20,
+            margin + 200,
+            finalY + 20
+        );
+
+
+        doc.setFont(
+            'helvetica',
+            'normal'
+        );
+
+        doc.text(
+            PREPARED_BY_TITLE,
+            margin,
+            finalY + 44
+        );
+
+
+        doc.setFontSize(8);
+
+        doc.setFont(
+            'helvetica',
+            'italic'
+        );
+
+        doc.text(
+            getFooterTimestamp(),
+            pageWidth - margin,
+            doc.internal.pageSize.getHeight() - 20,
+            { align: 'right' }
+        );
+
+
+        // --------------------------------------------------------
+        // DOWNLOAD
+        // --------------------------------------------------------
+
+        doc.save(
+            `MSWDO_San_Enrique_AICS_Transactions_${new Date().toISOString().slice(0, 10)}.pdf`
+        );
+
+
+        showToast(
+            'PDF exported successfully!'
+        );
+
+
+    } catch (err) {
+
+        console.error(
+            'PDF export failed:',
+            err
+        );
+
+        alert(
+            'PDF export failed: ' +
+            (err.message || err)
+        );
+
+    }
+
+}
+
+// ============================================================
+// WORD EXPORT
+// ============================================================
+
+async function exportToDocx() {
+
+    try {
+
+        if (!window.JSZip) {
+            throw new Error(
+                'JSZip library not loaded.'
+            );
+        }
+
+
+        const rows =
+            getExportData();
+
+
+        if (rows.length === 0) {
+            showToast(
+                'No data to export.',
+                'error'
+            );
+            return;
+        }
+
+
+        const zip =
+            new JSZip();
+
+
+        const esc = value =>
+            String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+
+
+        const columns = [
+            'Beneficiary',
+            'Budget Source',
+            'Type',
+            'Amount',
+            'Date Applied',
+            'Status',
+            'Date Released'
+        ];
+
+
+        let totalAmount = 0;
+
+
+        let tableRows = '';
+
+
+        // HEADER ROW
+
+        tableRows += `
+            <w:tr>
+                ${columns.map(col => `
+                    <w:tc>
+                        <w:tcPr>
+                            <w:shd w:fill="EFEFEF"/>
+                            <w:tcW w:w="2000" w:type="dxa"/>
+                        </w:tcPr>
+
+                        <w:p>
+                            <w:pPr>
+                                <w:jc w:val="center"/>
+                            </w:pPr>
+
+                            <w:r>
+                                <w:rPr>
+                                    <w:b/>
+                                    <w:rFonts
+                                        w:ascii="Arial"
+                                        w:hAnsi="Arial"/>
+                                    <w:sz w:val="18"/>
+                                </w:rPr>
+
+                                <w:t>
+                                    ${esc(col.toUpperCase())}
+                                </w:t>
+                            </w:r>
+                        </w:p>
+                    </w:tc>
+                `).join('')}
+            </w:tr>
+        `;
+
+
+        // DATA ROWS
+
+        rows.forEach(row => {
+
+            totalAmount +=
+                Number(row.Amount || 0);
+
+
+            const values = [
+
+                row.Beneficiary,
+
+                row['Budget Source'],
+
+                row.Type,
+
+                formatPeso(row.Amount),
+
+                formatDate(row['Date Applied']),
+
+                row.Status,
+
+                formatDate(row['Date Released'])
+
+            ];
+
+
+            tableRows += `
+                <w:tr>
+
+                    ${values.map((value, index) => `
+                        <w:tc>
+
+                            <w:tcPr>
+                                <w:tcW
+                                    w:w="2000"
+                                    w:type="dxa"/>
+
+                                <w:tcBorders>
+                                    <w:top
+                                        w:val="single"
+                                        w:sz="4"
+                                        w:color="000000"/>
+
+                                    <w:left
+                                        w:val="single"
+                                        w:sz="4"
+                                        w:color="000000"/>
+
+                                    <w:bottom
+                                        w:val="single"
+                                        w:sz="4"
+                                        w:color="000000"/>
+
+                                    <w:right
+                                        w:val="single"
+                                        w:sz="4"
+                                        w:color="000000"/>
+                                </w:tcBorders>
+                            </w:tcPr>
+
+                            <w:p>
+
+                                <w:pPr>
+                                    <w:jc
+                                        w:val="${index === 3 ? 'right' : 'center'}"/>
+                                </w:pPr>
+
+                                <w:r>
+
+                                    <w:rPr>
+                                        <w:rFonts
+                                            w:ascii="Arial"
+                                            w:hAnsi="Arial"/>
+
+                                        <w:sz w:val="18"/>
+                                    </w:rPr>
+
+                                    <w:t>
+                                        ${esc(value)}
+                                    </w:t>
+
+                                </w:r>
+
+                            </w:p>
+
+                        </w:tc>
+                    `).join('')}
+
+                </w:tr>
+            `;
+
+        });
+
+
+        // TOTAL ROW
+
+        tableRows += `
+            <w:tr>
+
+                <w:tc>
+                    <w:tcPr>
+                        <w:shd w:fill="EFEFEF"/>
+                    </w:tcPr>
+
+                    <w:p>
+                        <w:r>
+                            <w:rPr>
+                                <w:b/>
+                            </w:rPr>
+
+                            <w:t>TOTAL</w:t>
+                        </w:r>
+                    </w:p>
+                </w:tc>
+
+                <w:tc>
+                    <w:p/>
+                </w:tc>
+
+                <w:tc>
+                    <w:p/>
+                </w:tc>
+
+                <w:tc>
+                    <w:tcPr>
+                        <w:shd w:fill="EFEFEF"/>
+                    </w:tcPr>
+
+                    <w:p>
+                        <w:pPr>
+                            <w:jc w:val="right"/>
+                        </w:pPr>
+
+                        <w:r>
+                            <w:rPr>
+                                <w:b/>
+                            </w:rPr>
+
+                            <w:t>
+                                ${esc(formatPeso(totalAmount))}
+                            </w:t>
+                        </w:r>
+                    </w:p>
+                </w:tc>
+
+                <w:tc><w:p/></w:tc>
+                <w:tc><w:p/></w:tc>
+                <w:tc><w:p/></w:tc>
+
+            </w:tr>
+        `;
+
+
+        // --------------------------------------------------------
+        // DOCUMENT XML
+        // --------------------------------------------------------
+
+        const documentXml = `
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+<w:document
+    xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+
+    <w:body>
+
+        <w:p>
+            <w:pPr>
+                <w:jc w:val="center"/>
+            </w:pPr>
+
+            <w:r>
+                <w:rPr>
+                    <w:rFonts
+                        w:ascii="Arial"
+                        w:hAnsi="Arial"/>
+                    <w:sz w:val="22"/>
+                </w:rPr>
+
+                <w:t>
+                    Republic of the Philippines
+                </w:t>
+            </w:r>
+        </w:p>
+
+
+        <w:p>
+            <w:pPr>
+                <w:jc w:val="center"/>
+            </w:pPr>
+
+            <w:r>
+                <w:rPr>
+                    <w:b/>
+                    <w:rFonts
+                        w:ascii="Arial"
+                        w:hAnsi="Arial"/>
+                    <w:sz w:val="22"/>
+                </w:rPr>
+
+                <w:t>
+                    Province of Negros Occidental
+                </w:t>
+            </w:r>
+        </w:p>
+
+
+        <w:p>
+            <w:pPr>
+                <w:jc w:val="center"/>
+            </w:pPr>
+
+            <w:r>
+                <w:rPr>
+                    <w:b/>
+                    <w:rFonts
+                        w:ascii="Arial"
+                        w:hAnsi="Arial"/>
+                    <w:sz w:val="22"/>
+                </w:rPr>
+
+                <w:t>
+                    Municipality of San Enrique
+                </w:t>
+            </w:r>
+        </w:p>
+
+
+        <w:p>
+            <w:pPr>
+                <w:jc w:val="center"/>
+            </w:pPr>
+
+            <w:r>
+                <w:rPr>
+                    <w:b/>
+                    <w:rFonts
+                        w:ascii="Arial"
+                        w:hAnsi="Arial"/>
+                    <w:sz w:val="22"/>
+                </w:rPr>
+
+                <w:t>
+                    Municipal Social Welfare and Development Office
+                </w:t>
+            </w:r>
+        </w:p>
+
+
+        <w:p>
+            <w:pPr>
+                <w:jc w:val="center"/>
+            </w:pPr>
+
+            <w:r>
+                <w:rPr>
+                    <w:b/>
+                    <w:rFonts
+                        w:ascii="Arial"
+                        w:hAnsi="Arial"/>
+                    <w:sz w:val="28"/>
+                </w:rPr>
+
+                <w:t>
+                    AICS TRANSACTION REPORT
+                </w:t>
+            </w:r>
+        </w:p>
+
+
+        <w:p>
+            <w:pPr>
+                <w:jc w:val="center"/>
+            </w:pPr>
+
+            <w:r>
+                <w:rPr>
+                    <w:rFonts
+                        w:ascii="Arial"
+                        w:hAnsi="Arial"/>
+                    <w:sz w:val="20"/>
+                </w:rPr>
+
+                <w:t>
+                    Calendar Year ${new Date().getFullYear()}
+                </w:t>
+            </w:r>
+        </w:p>
+
+
+        <w:p/>
+
+        <w:tbl>
+
+            <w:tblPr>
+
+                <w:tblW
+                    w:w="15800"
+                    w:type="dxa"/>
+
+                <w:tblLayout
+                    w:type="fixed"/>
+
+            </w:tblPr>
+
+
+            ${tableRows}
+
+        </w:tbl>
+
+
+        <w:p/>
+
+        <w:p>
+            <w:r>
+                <w:t>Prepared by:</w:t>
+            </w:r>
+        </w:p>
+
+
+        <w:p>
+            <w:r>
+                <w:rPr>
+                    <w:b/>
+                </w:rPr>
+
+                <w:t>
+                    ${esc(PREPARED_BY_NAME)}
+                </w:t>
+            </w:r>
+        </w:p>
+
+
+        <w:p>
+            <w:r>
+                <w:t>
+                    ${esc(PREPARED_BY_TITLE)}
+                </w:t>
+            </w:r>
+        </w:p>
+
+
+        <w:p>
+            <w:r>
+                <w:rPr>
+                    <w:i/>
+                </w:rPr>
+
+                <w:t>
+                    ${esc(getFooterTimestamp())}
+                </w:t>
+            </w:r>
+        </w:p>
+
+
+        <w:sectPr>
+
+            <!-- LANDSCAPE -->
+
+            <w:pgSz
+                w:w="15840"
+                w:h="12240"
+                w:orient="landscape"/>
+
+            <w:pgMar
+                w:top="500"
+                w:right="500"
+                w:bottom="500"
+                w:left="500"/>
+
+        </w:sectPr>
+
+    </w:body>
+
+</w:document>
+`;
+
+
+        // --------------------------------------------------------
+        // DOCX FILE STRUCTURE
+        // --------------------------------------------------------
+
+        const contentTypes = `
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+<Types
+    xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+
+    <Default
+        Extension="rels"
+        ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+
+    <Default
+        Extension="xml"
+        ContentType="application/xml"/>
+
+    <Override
+        PartName="/word/document.xml"
+        ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+
+</Types>
+`;
+
+
+        const relationships = `
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+<Relationships
+    xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+
+    <Relationship
+        Id="rId1"
+        Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+        Target="word/document.xml"/>
+
+</Relationships>
+`;
+
+
+        const wordRelationships = `
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+<Relationships
+    xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>
+`;
+
+
+        zip.file(
+            '[Content_Types].xml',
+            contentTypes
+        );
+
+        zip.folder('_rels')
+            .file(
+                '.rels',
+                relationships
+            );
+
+        zip.folder('word')
+            .file(
+                'document.xml',
+                documentXml
+            );
+
+        zip.folder('word')
+            .folder('_rels')
+            .file(
+                'document.xml.rels',
+                wordRelationships
+            );
+
+
+        const blob =
+            await zip.generateAsync({
+                type: 'blob',
+                mimeType:
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            });
+
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const a =
+            document.createElement('a');
+
+        a.href = url;
+
+        a.download =
+            `MSWDO_San_Enrique_AICS_Transactions_${new Date().toISOString().slice(0, 10)}.docx`;
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
+
+
+        showToast(
+            'Word exported successfully!'
+        );
+
+
+    } catch (err) {
+
+        console.error(
+            'Word export failed:',
+            err
+        );
+
+        alert(
+            'Word export failed: ' +
+            (err.message || err)
+        );
+
+    }
+
+}
+
+// ============================================================
+// EXPORT BUTTON EVENT LISTENERS
+// ============================================================
+
+document
+    .getElementById('exportXlsx')
+    .addEventListener('click', async (e) => {
+
+        e.preventDefault();
+
+        document
+            .getElementById('exportDropdownContainer')
+            .classList.remove('active');
+
+        await exportToXlsx();
+
+    });
+
+
+document
+    .getElementById('exportPdf')
+    .addEventListener('click', async (e) => {
+
+        e.preventDefault();
+
+        document
+            .getElementById('exportDropdownContainer')
+            .classList.remove('active');
+
+        await exportToPdf();
+
+    });
+
+
+document
+    .getElementById('exportDocx')
+    .addEventListener('click', async (e) => {
+
+        e.preventDefault();
+
+        document
+            .getElementById('exportDropdownContainer')
+            .classList.remove('active');
+
+        await exportToDocx();
+
+    });
+
+
+// ============================================================
+// EXPORT DROPDOWN
+// ============================================================
+
+document
+    .getElementById('exportDropdownBtn')
+    .addEventListener('click', (e) => {
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        document
+            .getElementById('exportDropdownContainer')
+            .classList.toggle('active');
+
+    });
+
+
+document.addEventListener('click', (e) => {
+
+    const dropdown =
+        document.getElementById(
+            'exportDropdownContainer'
+        );
+
+    if (!dropdown.contains(e.target)) {
+
+        dropdown.classList.remove(
+            'active'
+        );
+
+    }
+
+});
+
+
 
         function showToast(msg, type = 'success') {
             const t = document.getElementById('toast');

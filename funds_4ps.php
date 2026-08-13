@@ -151,20 +151,27 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
         .export-dropdown {
             position: relative;
             display: inline-block;
-            z-index: 9999;
+            z-index: 100000 !important;
+            isolation: isolate;
         }
 
         .export-dropdown-content {
             display: none;
             position: absolute;
+            top: calc(100% + 6px);
             right: 0;
             background: #fff;
-            min-width: 220px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 240px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
             border-radius: 0.5rem;
             border: 1px solid #D4E8DC;
-            z-index: 99999;
+            z-index: 100001 !important;
             overflow: visible;
+        }
+
+        .export-dropdown-content a {
+            position: relative;
+            z-index: 100002;
         }
 
         .export-dropdown-content a {
@@ -213,13 +220,13 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
         <main class="flex-1 p-6 space-y-5 overflow-y-auto">
 
             <!-- Page Title -->
-            <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
+            <div class="relative z-50 flex flex-wrap items-center justify-between gap-3 animate-fade-up">
                 <div>
                     <h1 class="text-xl font-serif text-green-600">4Ps Fund Requests</h1>
                     <p class="text-[13px] text-slate-500 mt-0.5">View, filter, and export all 4Ps fund requests.</p>
                 </div>
-                <div class="export-dropdown relative z-[9999]" id="exportDropdownContainer">
 
+                <div class="export-dropdown relative z-[9999]" id="exportDropdownContainer">
                     <button type="button"
                         class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700"
                         id="exportDropdownBtn">
@@ -227,27 +234,22 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                         Export
                         <i class="fas fa-chevron-down text-xs"></i>
                     </button>
-
                     <div class="export-dropdown-content">
-
                         <a id="exportPdf">
                             <i class="fas fa-file-pdf"></i>
                             PDF Document (.pdf)
                         </a>
-
                         <a id="exportDocx">
                             <i class="fas fa-file-word"></i>
                             Word Document (.docx)
                         </a>
-
                         <a id="exportXlsx">
                             <i class="fas fa-file-excel"></i>
                             Microsoft Excel (.xlsx)
                         </a>
-
                     </div>
-
                 </div>
+                
             </div>
 
             <!-- Budget Summary Card -->
@@ -292,6 +294,17 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
             <div
                 class="flex flex-wrap items-center gap-3 animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
                 <div class="flex flex-wrap items-center gap-3">
+                    <div>
+                        <label class="text-[10px] uppercase tracking-wider text-slate-400 block">Search</label>
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]"></i>
+                            <input type="search" id="filterSearch"
+                                placeholder="Search fund requests..."
+                                autocomplete="off"
+                                class="w-56 text-[12px] border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"
+                                oninput="applyFilters()" />
+                        </div>
+                    </div>
                     <div>
                         <label class="text-[10px] uppercase tracking-wider text-slate-400 block">From</label>
                         <input type="date" id="filterFrom"
@@ -453,7 +466,7 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="10" class="px-5 py-10 text-center text-slate-400">
-                            No 4Ps fund requests found for the selected date range.
+                            No 4Ps fund requests match the current search and date filters.
                         </td>
                     </tr>
                 `;
@@ -509,8 +522,13 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
             const from = total === 0 ? 0 : startIndex + 1;
             const to = endIndex;
 
+            const fromFilter = document.getElementById('filterFrom')?.value || '';
+            const toFilter = document.getElementById('filterTo')?.value || '';
+
             document.getElementById('rowCount').textContent =
-                `Showing ${total} fund request${total === 1 ? '' : 's'}`;
+                (fromFilter && toFilter && fromFilter > toFilter)
+                    ? 'Invalid date range'
+                    : `Showing ${total} fund request${total === 1 ? '' : 's'}`;
 
             document.getElementById('paginationInfo').textContent =
                 total === 0
@@ -587,15 +605,79 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
             renderTable(filteredData);
         }
 
+        function normalizeDateForFilter(value) {
+            if (!value) return '';
+
+            const raw = String(value).trim();
+
+            // Already in the native date-input format.
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+                return raw;
+            }
+
+            const parsed = new Date(raw);
+            if (Number.isNaN(parsed.getTime())) {
+                return '';
+            }
+
+            const year = parsed.getFullYear();
+            const month = String(parsed.getMonth() + 1).padStart(2, '0');
+            const day = String(parsed.getDate()).padStart(2, '0');
+
+            return `${year}-${month}-${day}`;
+        }
+
         function applyFilters(resetPage = true) {
+            const searchTerm = document.getElementById('filterSearch')?.value
+                .trim()
+                .toLowerCase() || '';
+
             const fromDate = document.getElementById('filterFrom').value;
             const toDate = document.getElementById('filterTo').value;
 
-            filteredData = fundRequests.filter(row => {
-                if (fromDate && row.date < fromDate) return false;
-                if (toDate && row.date > toDate) return false;
-                return true;
-            });
+            // Prevent an impossible range from silently producing confusing results.
+            if (fromDate && toDate && fromDate > toDate) {
+                filteredData = [];
+            } else {
+                filteredData = fundRequests.filter(row => {
+                    const rowDate = normalizeDateForFilter(row.date);
+
+                    if (fromDate && (!rowDate || rowDate < fromDate)) {
+                        return false;
+                    }
+
+                    if (toDate && (!rowDate || rowDate > toDate)) {
+                        return false;
+                    }
+
+                    if (searchTerm) {
+                        const searchableText = [
+                            row.program,
+                            row.type,
+                            row.id,
+                            row.title,
+                            row.duration,
+                            row.venue,
+                            row.participants,
+                            row.budget,
+                            row.fundSource,
+                            row.source,
+                            row.date,
+                            row.status,
+                            row.dateReleased
+                        ]
+                            .map(value => String(value ?? ''))
+                            .join(' ')
+                            .toLowerCase();
+
+                        if (!searchableText.includes(searchTerm)) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                });
+            }
 
             if (resetPage) {
                 currentPage = 1;
@@ -688,18 +770,38 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
             return `Generated on ${getDateOnly()} at ${getTimeOnly()}`;
         }
 
+        // Format exported dates consistently for PDF/Word/Excel.
+        // The table can contain either YYYY-MM-DD values or browser-parseable dates.
+        function formatDate(value) {
+            if (!value) return '';
+
+            const raw = String(value).trim();
+
+            if (!raw) return '';
+
+            const parsed = new Date(raw);
+
+            if (Number.isNaN(parsed.getTime())) {
+                return raw;
+            }
+
+            return parsed.toLocaleDateString('en-PH', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit'
+            });
+        }
+
         function getExportData() {
             // Export the complete filtered dataset, not just the current page.
             return filteredData.map(row => ({
-                'Program': row.program,
-                'Request Type': row.type,
                 'Request ID': row.id,
                 'Title / Beneficiary': row.title,
                 'Duration': row.duration,
                 'Venue': row.venue,
                 'Participants': row.participants,
                 'Budget': row.budget,
-                'Source of Fund': row.source,
+                'Source of Fund': row.fundSource ?? row.source ?? '',
                 'Date Submitted': row.date,
                 'Status': row.status,
                 'Date Released': row.dateReleased || ''
@@ -721,18 +823,16 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                 wb.modified = new Date();
 
                 const cols = [
-                    { header: 'PROGRAM', key: 'Program', width: 18 },
-                    { header: 'REQUEST TYPE', key: 'Request Type', width: 20 },
-                    { header: 'REQUEST ID', key: 'Request ID', width: 12 },
-                    { header: 'TITLE / BENEFICIARY', key: 'Title / Beneficiary', width: 40 },
-                    { header: 'DURATION', key: 'Duration', width: 11 },
-                    { header: 'VENUE', key: 'Venue', width: 32 },
-                    { header: 'PARTICIPANTS', key: 'Participants', width: 13 },
-                    { header: 'BUDGET', key: 'Budget', width: 18 },
-                    { header: 'SOURCE OF FUND', key: 'Source of Fund', width: 22 },
-                    { header: 'DATE SUBMITTED', key: 'Date Submitted', width: 15 },
-                    { header: 'STATUS', key: 'Status', width: 13 },
-                    { header: 'DATE RELEASED', key: 'Date Released', width: 15 }
+                    { header: 'REQUEST ID', key: 'Request ID', width: 16 },
+                    { header: 'TITLE / BENEFICIARY', key: 'Title / Beneficiary', width: 43 },
+                    { header: 'DURATION', key: 'Duration', width: 14 },
+                    { header: 'VENUE', key: 'Venue', width: 36 },
+                    { header: 'PARTICIPANTS', key: 'Participants', width: 17 },
+                    { header: 'BUDGET', key: 'Budget', width: 22 },
+                    { header: 'SOURCE OF FUND', key: 'Source of Fund', width: 26 },
+                    { header: 'DATE SUBMITTED', key: 'Date Submitted', width: 19 },
+                    { header: 'STATUS', key: 'Status', width: 17 },
+                    { header: 'DATE RELEASED', key: 'Date Released', width: 19 }
                 ];
 
                 const BLACK = 'FF000000';
@@ -1112,8 +1212,6 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                 const rows = getExportData();
 
                 const cols = [
-                    { header: 'Program', dataKey: 'Program' },
-                    { header: 'Request Type', dataKey: 'Request Type' },
                     { header: 'Request ID', dataKey: 'Request ID' },
                     { header: 'Title / Beneficiary', dataKey: 'Title / Beneficiary' },
                     { header: 'Duration', dataKey: 'Duration' },
@@ -1162,8 +1260,6 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
 
                 data.push({
 
-                    'Program': 'TOTAL',
-                    'Request Type': '',
                     'Request ID': '',
                     'Title / Beneficiary': '',
                     'Duration': '',
@@ -1435,8 +1531,6 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                         .replace(/'/g, '&apos;');
 
                 const cols = [
-                    'Program',
-                    'Request Type',
                     'Request ID',
                     'Title / Beneficiary',
                     'Duration',
@@ -1450,18 +1544,16 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                 ];
 
                 const widths = [
-                    1200,
-                    1300,
-                    850,
-                    3000,
-                    850,
-                    2000,
-                    900,
-                    1300,
-                    1500,
                     1100,
-                    900,
-                    1100
+                    3250,
+                    1100,
+                    2250,
+                    1150,
+                    1550,
+                    1750,
+                    1350,
+                    1150,
+                    1350
                 ];
 
                 let totalParticipants = 0;
@@ -1538,8 +1630,6 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
 
                     const vals = [
 
-                        r.Program,
-                        r['Request Type'],
                         r['Request ID'],
                         r['Title / Beneficiary'],
                         r.Duration,
@@ -1905,13 +1995,13 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
 
         document.getElementById('exportDropdownBtn')
             .addEventListener('click', (e) => {
-
+                e.preventDefault();
                 e.stopPropagation();
 
-                document
-                    .getElementById('exportDropdownContainer')
-                    .classList.toggle('active');
+                const dropdown =
+                    document.getElementById('exportDropdownContainer');
 
+                dropdown.classList.toggle('active');
             });
 
 
