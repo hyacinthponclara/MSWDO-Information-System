@@ -75,10 +75,12 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
         .sidebar-item {
             transition: all .15s ease;
         }
+
         .sidebar-item:hover {
             background: rgba(255, 255, 255, .07);
             color: rgba(255, 255, 255, .95);
         }
+
         .sidebar-item.active {
             background: rgba(26, 92, 58, .25);
             border-left-color: #C49A2A;
@@ -88,6 +90,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
         .stat-card {
             transition: transform .2s ease, box-shadow .2s ease;
         }
+
         .stat-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(26, 92, 58, .1);
@@ -96,6 +99,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
         .btn-action {
             transition: all .15s ease;
         }
+
         .btn-action:hover {
             transform: translateY(-1px);
         }
@@ -103,6 +107,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
         .table-row {
             transition: background .12s;
         }
+
         .table-row:hover {
             background: #EEF6F0;
         }
@@ -110,6 +115,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
         ::-webkit-scrollbar {
             width: 4px;
         }
+
         ::-webkit-scrollbar-thumb {
             background: rgba(26, 92, 58, .2);
             border-radius: 2px;
@@ -119,17 +125,21 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
             cursor: pointer;
             user-select: none;
         }
+
         th.sortable:hover {
             background: #E2E8F0;
         }
+
         th.sortable .sort-icon {
             margin-left: 4px;
             font-size: 10px;
             opacity: 0.5;
         }
+
         th.sortable.asc .sort-icon {
             opacity: 1;
         }
+
         th.sortable.desc .sort-icon {
             opacity: 1;
         }
@@ -144,7 +154,8 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
     <div class="ml-64 flex-1 flex flex-col min-h-screen">
 
         <!-- Top Bar -->
-        <header class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
+        <header
+            class="bg-white border-b border-slate-200 h-14 flex items-center justify-between px-6 sticky top-0 z-20">
             <div class="flex items-center gap-2 text-[13px]">
                 <span class="text-green-600 font-semibold">PWD Fund Requests</span>
             </div>
@@ -156,9 +167,10 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
             <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
                 <div>
                     <h1 class="text-xl font-serif text-green-600">PWD Fund Requests</h1>
-                    <p class="text-[13px] text-slate-500 mt-0.5">View, filter, and export all Persons with Disability (PWD) fund requests.</p>
+                    <p class="text-[13px] text-slate-500 mt-0.5">View, filter, and export all pwd fund requests.</p>
                 </div>
-                <button onclick="exportCSV()" class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700">
+                <button onclick="exportCSV()"
+                    class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700">
                     <i class="fas fa-file-csv mr-1"></i> Export CSV
                 </button>
             </div>
@@ -167,8 +179,8 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
             <div class="grid grid-cols-1 md:grid-cols-1 gap-4 animate-fade-up-1">
                 <div class="bg-white rounded-2xl border border-slate-200 p-5">
                     <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-[13px] font-semibold text-green-600"><i class="fas fa-wheelchair mr-1.5 text-green-400"></i>PWD Budget</h3>
-                        <span class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Provincial</span>
+                        <h3 class="text-[13px] font-semibold text-green-600"><i
+                                class="fas fa-home mr-1.5 text-green-400"></i>PWD Budget</h3>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
                         <div>
@@ -176,7 +188,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
                             <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?></p>
                         </div>
                         <div>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Allocated</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Released</p>
                             <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?></p>
                         </div>
                         <div>
@@ -197,15 +209,20 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
             </div>
 
             <!-- Filters -->
-            <div class="flex flex-wrap items-center gap-3 animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
+            <div
+                class="flex flex-wrap items-center gap-3 animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
                 <div class="flex flex-wrap items-center gap-3">
                     <div>
                         <label class="text-[10px] uppercase tracking-wider text-slate-400 block">From</label>
-                        <input type="date" id="filterFrom" class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none" onchange="applyFilters()" />
+                        <input type="date" id="filterFrom"
+                            class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"
+                            onchange="applyFilters()" />
                     </div>
                     <div>
                         <label class="text-[10px] uppercase tracking-wider text-slate-400 block">To</label>
-                        <input type="date" id="filterTo" class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none" onchange="applyFilters()" />
+                        <input type="date" id="filterTo"
+                            class="text-[12px] border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"
+                            onchange="applyFilters()" />
                     </div>
                 </div>
                 <div class="flex-1"></div>
@@ -220,15 +237,27 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
                     <table class="w-full text-[12px]" id="fundRequestTable">
                         <thead>
                             <tr class="bg-slate-50 border-b border-slate-100">
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Fund Request Title</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Duration</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Venue</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Participants</th>
-                                <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold" data-sort="amount" onclick="sortTable('amount')">
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Fund Request Title</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Duration</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Venue</th>
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Participants</th>
+                                <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold"
+                                    data-sort="amount" onclick="sortTable('amount')">
                                     Budget <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Source of Fund</th>
-                                <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold" data-sort="date" onclick="sortTable('date')">
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                    Source of Fund</th>
+                                <th class="sortable text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold"
+                                    data-sort="date" onclick="sortTable('date')">
                                     Date Submitted <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
                                 <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
@@ -247,11 +276,25 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
                     </table>
                 </div>
                 <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100">
-                    <span class="text-[11px] text-slate-400" id="paginationInfo">Showing 1–10 of 10</span>
-                    <div class="flex items-center gap-1">
-                        <button class="text-[11px] text-slate-400 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Previous</button>
-                        <button class="text-[11px] font-medium text-white bg-green-600 rounded-lg px-3 py-1">1</button>
-                        <button class="text-[11px] text-slate-600 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Next</button>
+                    <span class="text-[11px] text-slate-400" id="paginationInfo">Showing 0 of 0</span>
+                    <div class="flex items-center gap-1" id="paginationControls">
+                        <button
+                            id="prevPage"
+                            type="button"
+                            onclick="changePage(-1)"
+                            class="text-[11px] text-slate-500 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                            Previous
+                        </button>
+
+                        <span id="pageNumbers" class="flex items-center gap-1"></span>
+
+                        <button
+                            id="nextPage"
+                            type="button"
+                            onclick="changePage(1)"
+                            class="text-[11px] text-slate-500 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                            Next
+                        </button>
                     </div>
                 </div>
             </div>
@@ -259,23 +302,40 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
         </main>
 
         <!-- Footer -->
-        <footer class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
+        <footer
+            class="border-t border-slate-200 bg-white px-6 py-3 flex items-center justify-between text-[11px] text-slate-400">
             <span>MSWDO San Enrique Information System</span>
         </footer>
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-green-700 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
+    <div id="toast"
+        class="fixed bottom-6 right-6 bg-green-700 text-white text-[13px] font-medium px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 opacity-0 translate-y-4 pointer-events-none transition-all duration-300 z-50">
         <i class="fas fa-check-circle text-green-300"></i>
         <span id="toastMsg">Action completed!</span>
     </div>
 
     <script>
-        // ── Database Data (PWD fund requests) ──
-        const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
+        // ── Database Data (pwd fund requests) ──
+        const fundRequests = <?= json_encode(
+            $fundRequestsPhp,
+            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP
+        ) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...fundRequests];
+        let currentPage = 1;
+
+        const rowsPerPage = 10;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
         function statusClass(status) {
             if (status === 'Released') {
@@ -299,39 +359,159 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
 
         function renderTable(data) {
             const tbody = document.getElementById('tableBody');
+
+            const total = data.length;
+            const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
+
+            if (currentPage > totalPages) {
+                currentPage = totalPages;
+            }
+
+            const startIndex = total === 0 ? 0 : (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, total);
+            const pageData = data.slice(startIndex, endIndex);
+
             tbody.innerHTML = '';
-            data.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = 'table-row';
-                tr.innerHTML = `
-                    <td class="px-5 py-3 font-medium text-green-700">${row.title}</td>
-                    <td class="px-5 py-3 text-slate-600">${row.duration}</td>
-                    <td class="px-5 py-3 text-slate-600">${row.venue}</td>
-                    <td class="px-5 py-3 text-slate-600">${row.participants}</td>
-                    <td class="px-5 py-3 font-semibold text-slate-700">₱${row.budget.toLocaleString()}</td>
-                    <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">${row.fundSource}</span></td>
-                    <td class="px-5 py-3 text-slate-400">${row.date}</td>
-                    <td class="px-5 py-3">
-                        <span class="px-2 py-1 rounded-full text-[10px] font-semibold ${statusClass(row.status)}">
-                            ${statusLabel(row.status)}
-                        </span>
-                    </td>
-                    <td class="px-5 py-3 text-slate-400">
-                        ${row.dateReleased ? row.dateReleased : '—'}
-                    </td>
-                    <td class="px-5 py-3">
-        <a href="project_proposal_view.php?id=${row.id}" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
-             View
-        </a>
-    </td>
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="px-5 py-10 text-center text-slate-400">
+                            No pwd fund requests found for the selected date range.
+                        </td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
-            });
-            document.getElementById('rowCount').textContent = `Showing ${data.length} fund requests`;
-            document.getElementById('paginationInfo').textContent = `Showing 1–${data.length} of ${data.length}`;
+            } else {
+                pageData.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'table-row';
+
+                    const title = escapeHtml(row.title);
+                    const duration = escapeHtml(row.duration);
+                    const venue = escapeHtml(row.venue);
+                    const participants = escapeHtml(row.participants);
+                    const fundSource = escapeHtml(row.fundSource);
+                    const date = escapeHtml(row.date);
+                    const dateReleased = escapeHtml(row.dateReleased || '—');
+                    const status = escapeHtml(statusLabel(row.status));
+                    const budget = Number(row.budget || 0);
+
+                    tr.innerHTML = `
+                        <td class="px-5 py-3 font-medium text-green-700">${title}</td>
+                        <td class="px-5 py-3 text-slate-600">${duration}</td>
+                        <td class="px-5 py-3 text-slate-600">${venue}</td>
+                        <td class="px-5 py-3 text-slate-600">${participants}</td>
+                        <td class="px-5 py-3 font-semibold text-slate-700">₱${budget.toLocaleString('en-PH', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        })}</td>
+                        <td class="px-5 py-3">
+                            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">
+                                ${fundSource}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-slate-400">${date}</td>
+                        <td class="px-5 py-3">
+                            <span class="px-2 py-1 rounded-full text-[10px] font-semibold ${statusClass(row.status)}">
+                                ${status}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-slate-400">${dateReleased}</td>
+                        <td class="px-5 py-3">
+                            <a
+                                href="project_proposal_view.php?id=${encodeURIComponent(row.id)}"
+                                class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    `;
+
+                    tbody.appendChild(tr);
+                });
+            }
+
+            const from = total === 0 ? 0 : startIndex + 1;
+            const to = endIndex;
+
+            document.getElementById('rowCount').textContent =
+                `Showing ${total} fund request${total === 1 ? '' : 's'}`;
+
+            document.getElementById('paginationInfo').textContent =
+                total === 0
+                    ? 'Showing 0 of 0'
+                    : `Showing ${from}–${to} of ${total}`;
+
+            renderPagination(totalPages);
         }
 
-        function applyFilters() {
+        function renderPagination(totalPages) {
+            const pageNumbers = document.getElementById('pageNumbers');
+            const prevButton = document.getElementById('prevPage');
+            const nextButton = document.getElementById('nextPage');
+
+            pageNumbers.innerHTML = '';
+
+            prevButton.disabled = currentPage <= 1;
+            nextButton.disabled = currentPage >= totalPages;
+
+            if (totalPages <= 1) {
+                return;
+            }
+
+            const maxButtons = 5;
+
+            let startPage = Math.max(
+                1,
+                currentPage - Math.floor(maxButtons / 2)
+            );
+
+            let endPage = Math.min(
+                totalPages,
+                startPage + maxButtons - 1
+            );
+
+            if (endPage - startPage + 1 < maxButtons) {
+                startPage = Math.max(
+                    1,
+                    endPage - maxButtons + 1
+                );
+            }
+
+            for (let page = startPage; page <= endPage; page++) {
+                const button = document.createElement('button');
+
+                button.type = 'button';
+                button.textContent = page;
+                button.className = page === currentPage
+                    ? 'text-[11px] font-medium text-white bg-green-600 rounded-lg px-3 py-1'
+                    : 'text-[11px] text-slate-600 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors';
+
+                button.onclick = () => {
+                    currentPage = page;
+                    renderTable(filteredData);
+                };
+
+                pageNumbers.appendChild(button);
+            }
+        }
+
+        function changePage(direction) {
+            const totalPages = Math.max(
+                1,
+                Math.ceil(filteredData.length / rowsPerPage)
+            );
+
+            const nextPage = currentPage + direction;
+
+            if (nextPage < 1 || nextPage > totalPages) {
+                return;
+            }
+
+            currentPage = nextPage;
+            renderTable(filteredData);
+        }
+
+        function applyFilters(resetPage = true) {
             const fromDate = document.getElementById('filterFrom').value;
             const toDate = document.getElementById('filterTo').value;
 
@@ -340,35 +520,55 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
                 if (toDate && row.date > toDate) return false;
                 return true;
             });
+
+            if (resetPage) {
+                currentPage = 1;
+            }
+
             sortData();
         }
 
         function sortData() {
             const key = currentSort.key;
             const dir = currentSort.dir;
+
             filteredData.sort((a, b) => {
                 let valA = a[key];
                 let valB = b[key];
-                if (key === 'amount') {
-                    valA = parseFloat(valA);
-                    valB = parseFloat(valB);
+
+                if (key === 'amount' || key === 'budget') {
+                    valA = parseFloat(valA) || 0;
+                    valB = parseFloat(valB) || 0;
                 } else if (key === 'date') {
                     valA = new Date(valA);
                     valB = new Date(valB);
+                } else {
+                    valA = String(valA ?? '').toLowerCase();
+                    valB = String(valB ?? '').toLowerCase();
                 }
+
                 if (valA < valB) return dir === 'asc' ? -1 : 1;
                 if (valA > valB) return dir === 'asc' ? 1 : -1;
                 return 0;
             });
+
             renderTable(filteredData);
-            // Update sort icons
+
             document.querySelectorAll('th.sortable').forEach(th => {
                 th.classList.remove('asc', 'desc');
+
                 const icon = th.querySelector('.sort-icon i');
+
                 if (th.dataset.sort === key) {
                     th.classList.add(dir);
-                    icon.className = dir === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
-                } else {
+
+                    if (icon) {
+                        icon.className =
+                            dir === 'asc'
+                                ? 'fas fa-sort-up'
+                                : 'fas fa-sort-down';
+                    }
+                } else if (icon) {
                     icon.className = 'fas fa-sort';
                 }
             });
@@ -376,11 +576,14 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
 
         function sortTable(key) {
             if (currentSort.key === key) {
-                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+                currentSort.dir =
+                    currentSort.dir === 'asc' ? 'desc' : 'asc';
             } else {
                 currentSort.key = key;
                 currentSort.dir = 'asc';
             }
+
+            currentPage = 1;
             sortData();
         }
 
@@ -416,7 +619,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'PWD Program');
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'PWD_Fund_Requests_' + new Date().toISOString().slice(0, 10) + '.csv';
+            a.download = 'PWD Program_Fund_Requests_' + new Date().toISOString().slice(0, 10) + '.csv';
             a.click();
             URL.revokeObjectURL(url);
             showToast('CSV exported successfully!');

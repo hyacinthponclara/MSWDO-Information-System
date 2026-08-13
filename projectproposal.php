@@ -1,22 +1,81 @@
 <?php
 require 'auth.php';
-requireRole(['Admin']);
+requireRole(['Admin', 'Staff']);
 require 'db_connect.php';
 
 function saveFile($field, $folder)
 {
-    if (!isset($_FILES[$field]) || $_FILES[$field]['error'] !== UPLOAD_ERR_OK) {
-        return null; // if wala uploaded store NULL in database
+    if (!isset($_FILES[$field])) {
+        throw new RuntimeException('Please upload the Project Proposal document.');
     }
-    $original = basename($_FILES[$field]['name']);
-    $safe_name = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $original);
-    if (!is_dir($folder)) {
-        mkdir($folder, 0755, true); // Create upload folder if missing
+
+    $file = $_FILES[$field];
+
+    if ($file['error'] === UPLOAD_ERR_NO_FILE) {
+        throw new RuntimeException('Please upload the Project Proposal document.');
     }
-    if (move_uploaded_file($_FILES[$field]['tmp_name'], $folder . $safe_name)) {
-        return $safe_name;
+
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('The uploaded file could not be processed. Please try again.');
     }
-    return null;
+
+    // Maximum 10 MB.
+    $maxSize = 10 * 1024 * 1024;
+    if ((int) $file['size'] > $maxSize) {
+        throw new RuntimeException('The Project Proposal document must not exceed 10 MB.');
+    }
+
+    $original = basename($file['name']);
+    $extension = strtolower(pathinfo($original, PATHINFO_EXTENSION));
+
+    $allowedExtensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+    if (!in_array($extension, $allowedExtensions, true)) {
+        throw new RuntimeException(
+            'Invalid file type. Please upload a PDF, DOC, DOCX, JPG, JPEG, or PNG file.'
+        );
+    }
+
+    // Verify the actual file MIME type rather than trusting the extension.
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->file($file['tmp_name']);
+
+    $allowedMimes = [
+        'pdf'  => ['application/pdf'],
+        'doc'  => ['application/msword'],
+        'docx' => [
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/zip',
+        ],
+        'jpg'  => ['image/jpeg'],
+        'jpeg' => ['image/jpeg'],
+        'png'  => ['image/png'],
+    ];
+
+    if (!isset($allowedMimes[$extension]) || !in_array($mime, $allowedMimes[$extension], true)) {
+        throw new RuntimeException(
+            'The uploaded file content does not match its file type.'
+        );
+    }
+
+    if (!is_dir($folder) && !mkdir($folder, 0755, true) && !is_dir($folder)) {
+        throw new RuntimeException('The upload folder could not be created.');
+    }
+
+    $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $original);
+    $safeName = trim($safeName, '._-') ?: ('proposal.' . $extension);
+
+    // Random prefix prevents filename collisions.
+    $safeName = bin2hex(random_bytes(12)) . '_' . $safeName;
+    $destination = rtrim($folder, '/\\') . DIRECTORY_SEPARATOR . $safeName;
+
+    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        throw new RuntimeException('The uploaded file could not be saved. Please try again.');
+    }
+
+    return [
+        'name' => $safeName,
+        'path' => $destination,
+    ];
 }
 
 $errors = [];
@@ -108,6 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'The uploaded file could not be processed. Please try again.';
     }
 
+    $uploadedFilePath = null;
+
     if (empty($errors)) {
         $pdo->beginTransaction();
         try {
@@ -122,7 +183,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     . $program['program_name'] . ' (₱' . number_format($lockedRemaining, 2) . ' remaining). '
                     . 'This may have changed since the page loaded — please review and resubmit.';
             } else {
-                $pp_document = saveFile('pp_document', 'uploads/project_proposals/');
+                $uploadedFile = saveFile('pp_document', 'uploads/project_proposals/');
+                $pp_document = $uploadedFile['name'];
+                $uploadedFilePath = $uploadedFile['path'];
 
                 $stmt = $pdo->prepare("
                     INSERT INTO project_proposal (
@@ -162,8 +225,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
         } catch (\Throwable $e) {
-            $pdo->rollBack();
-            $errors[] = 'Something went wrong while saving your proposal. Please try again.';
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            // Remove the uploaded file if the database transaction failed,
+            // so an orphaned document is not left on the server.
+            if ($uploadedFilePath !== null && is_file($uploadedFilePath)) {
+                @unlink($uploadedFilePath);
+            }
+
+            $errors[] = $e instanceof RuntimeException
+                ? $e->getMessage()
+                : 'Something went wrong while saving your proposal. Please try again.';
         }
     }
 }
@@ -493,11 +567,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div id="uploadContent">
                                     <i class="fas fa-cloud-upload-alt text-3xl text-green-400 mb-2 block"></i>
                                     <p class="text-[13px] text-slate-600">Click to upload or drag and drop</p>
-                                    <p class="text-[11px] text-slate-400 mt-1">Accepted:.png,.jpg,.jpeg,.img,.pdf,.doc,.docx (max 10MB)
+                                    <p class="text-[11px] text-slate-400 mt-1">Accepted: .png, .jpg, .jpeg, .pdf, .doc, .docx (max 10MB)
                                     </p>
                                 </div>
                                 <input type="file" id="fileInput" name="pp_document" class="hidden"
-                                    accept=".png,.jpg,.jpeg,.img,.pdf,.doc,.docx" onchange="fileSelected(this)">
+                                    accept=".png,.jpg,.jpeg,.pdf,.doc,.docx" onchange="fileSelected(this)">
                             </div>
                             <p class="text-[11px] text-slate-400 mt-3"><i class="fas fa-info-circle mr-1"></i> Upload
                                 the
@@ -633,6 +707,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (!fundSource) { showToast('Please enter the Source of Fund.', 'error'); return; }
             if (!file) { showToast('Please upload the proposal document.', 'error'); return; }
+
+            const maxFileSize = 10 * 1024 * 1024;
+            if (file.size > maxFileSize) {
+                showToast('The proposal document must not exceed 10 MB.', 'error');
+                return;
+            }
+
+            const allowedExtensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            if (!allowedExtensions.includes(fileExtension)) {
+                showToast('Please upload a PDF, DOC, DOCX, JPG, JPEG, or PNG file.', 'error');
+                return;
+            }
 
             document.getElementById('proposalForm').submit();
         }

@@ -189,7 +189,7 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                             <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?></p>
                         </div>
                         <div>
-                            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Allocated</p>
+                            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Released</p>
                             <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?></p>
                         </div>
                         <div>
@@ -277,13 +277,25 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                     </table>
                 </div>
                 <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100">
-                    <span class="text-[11px] text-slate-400" id="paginationInfo">Showing 1–10 of 10</span>
-                    <div class="flex items-center gap-1">
+                    <span class="text-[11px] text-slate-400" id="paginationInfo">Showing 0 of 0</span>
+                    <div class="flex items-center gap-1" id="paginationControls">
                         <button
-                            class="text-[11px] text-slate-400 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Previous</button>
-                        <button class="text-[11px] font-medium text-white bg-green-600 rounded-lg px-3 py-1">1</button>
+                            id="prevPage"
+                            type="button"
+                            onclick="changePage(-1)"
+                            class="text-[11px] text-slate-500 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                            Previous
+                        </button>
+
+                        <span id="pageNumbers" class="flex items-center gap-1"></span>
+
                         <button
-                            class="text-[11px] text-slate-600 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors">Next</button>
+                            id="nextPage"
+                            type="button"
+                            onclick="changePage(1)"
+                            class="text-[11px] text-slate-500 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                            Next
+                        </button>
                     </div>
                 </div>
             </div>
@@ -306,10 +318,25 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
 
     <script>
         // ── Database Data (4Ps fund requests) ──
-        const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
+        const fundRequests = <?= json_encode(
+            $fundRequestsPhp,
+            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP
+        ) ?>;
 
         let currentSort = { key: 'date', dir: 'asc' };
         let filteredData = [...fundRequests];
+        let currentPage = 1;
+
+        const rowsPerPage = 10;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
         function statusClass(status) {
             if (status === 'Released') {
@@ -333,39 +360,159 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
 
         function renderTable(data) {
             const tbody = document.getElementById('tableBody');
+
+            const total = data.length;
+            const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
+
+            if (currentPage > totalPages) {
+                currentPage = totalPages;
+            }
+
+            const startIndex = total === 0 ? 0 : (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, total);
+            const pageData = data.slice(startIndex, endIndex);
+
             tbody.innerHTML = '';
-            data.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = 'table-row';
-                tr.innerHTML = `
-                    <td class="px-5 py-3 font-medium text-green-700">${row.title}</td>
-                    <td class="px-5 py-3 text-slate-600">${row.duration}</td>
-                    <td class="px-5 py-3 text-slate-600">${row.venue}</td>
-                    <td class="px-5 py-3 text-slate-600">${row.participants}</td>
-                    <td class="px-5 py-3 font-semibold text-slate-700">₱${row.budget.toLocaleString()}</td>
-                    <td class="px-5 py-3"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">${row.fundSource}</span></td>
-                    <td class="px-5 py-3 text-slate-400">${row.date}</td>
-                    <td class="px-5 py-3">
-                        <span class="px-2 py-1 rounded-full text-[10px] font-semibold ${statusClass(row.status)}">
-                            ${statusLabel(row.status)}
-                        </span>
-                    </td>
-                    <td class="px-5 py-3 text-slate-400">
-                        ${row.dateReleased ? row.dateReleased : '—'}
-                    </td>
-                    <td class="px-5 py-3">
-        <a href="project_proposal_view.php?id=${row.id}" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
-             View
-        </a>
-    </td>
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="px-5 py-10 text-center text-slate-400">
+                            No 4Ps fund requests found for the selected date range.
+                        </td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
-            });
-            document.getElementById('rowCount').textContent = `Showing ${data.length} fund requests`;
-            document.getElementById('paginationInfo').textContent = `Showing 1–${data.length} of ${data.length}`;
+            } else {
+                pageData.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'table-row';
+
+                    const title = escapeHtml(row.title);
+                    const duration = escapeHtml(row.duration);
+                    const venue = escapeHtml(row.venue);
+                    const participants = escapeHtml(row.participants);
+                    const fundSource = escapeHtml(row.fundSource);
+                    const date = escapeHtml(row.date);
+                    const dateReleased = escapeHtml(row.dateReleased || '—');
+                    const status = escapeHtml(statusLabel(row.status));
+                    const budget = Number(row.budget || 0);
+
+                    tr.innerHTML = `
+                        <td class="px-5 py-3 font-medium text-green-700">${title}</td>
+                        <td class="px-5 py-3 text-slate-600">${duration}</td>
+                        <td class="px-5 py-3 text-slate-600">${venue}</td>
+                        <td class="px-5 py-3 text-slate-600">${participants}</td>
+                        <td class="px-5 py-3 font-semibold text-slate-700">₱${budget.toLocaleString('en-PH', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        })}</td>
+                        <td class="px-5 py-3">
+                            <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">
+                                ${fundSource}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-slate-400">${date}</td>
+                        <td class="px-5 py-3">
+                            <span class="px-2 py-1 rounded-full text-[10px] font-semibold ${statusClass(row.status)}">
+                                ${status}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-slate-400">${dateReleased}</td>
+                        <td class="px-5 py-3">
+                            <a
+                                href="project_proposal_view.php?id=${encodeURIComponent(row.id)}"
+                                class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    `;
+
+                    tbody.appendChild(tr);
+                });
+            }
+
+            const from = total === 0 ? 0 : startIndex + 1;
+            const to = endIndex;
+
+            document.getElementById('rowCount').textContent =
+                `Showing ${total} fund request${total === 1 ? '' : 's'}`;
+
+            document.getElementById('paginationInfo').textContent =
+                total === 0
+                    ? 'Showing 0 of 0'
+                    : `Showing ${from}–${to} of ${total}`;
+
+            renderPagination(totalPages);
         }
 
-        function applyFilters() {
+        function renderPagination(totalPages) {
+            const pageNumbers = document.getElementById('pageNumbers');
+            const prevButton = document.getElementById('prevPage');
+            const nextButton = document.getElementById('nextPage');
+
+            pageNumbers.innerHTML = '';
+
+            prevButton.disabled = currentPage <= 1;
+            nextButton.disabled = currentPage >= totalPages;
+
+            if (totalPages <= 1) {
+                return;
+            }
+
+            const maxButtons = 5;
+
+            let startPage = Math.max(
+                1,
+                currentPage - Math.floor(maxButtons / 2)
+            );
+
+            let endPage = Math.min(
+                totalPages,
+                startPage + maxButtons - 1
+            );
+
+            if (endPage - startPage + 1 < maxButtons) {
+                startPage = Math.max(
+                    1,
+                    endPage - maxButtons + 1
+                );
+            }
+
+            for (let page = startPage; page <= endPage; page++) {
+                const button = document.createElement('button');
+
+                button.type = 'button';
+                button.textContent = page;
+                button.className = page === currentPage
+                    ? 'text-[11px] font-medium text-white bg-green-600 rounded-lg px-3 py-1'
+                    : 'text-[11px] text-slate-600 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors';
+
+                button.onclick = () => {
+                    currentPage = page;
+                    renderTable(filteredData);
+                };
+
+                pageNumbers.appendChild(button);
+            }
+        }
+
+        function changePage(direction) {
+            const totalPages = Math.max(
+                1,
+                Math.ceil(filteredData.length / rowsPerPage)
+            );
+
+            const nextPage = currentPage + direction;
+
+            if (nextPage < 1 || nextPage > totalPages) {
+                return;
+            }
+
+            currentPage = nextPage;
+            renderTable(filteredData);
+        }
+
+        function applyFilters(resetPage = true) {
             const fromDate = document.getElementById('filterFrom').value;
             const toDate = document.getElementById('filterTo').value;
 
@@ -374,35 +521,55 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                 if (toDate && row.date > toDate) return false;
                 return true;
             });
+
+            if (resetPage) {
+                currentPage = 1;
+            }
+
             sortData();
         }
 
         function sortData() {
             const key = currentSort.key;
             const dir = currentSort.dir;
+
             filteredData.sort((a, b) => {
                 let valA = a[key];
                 let valB = b[key];
-                if (key === 'amount') {
-                    valA = parseFloat(valA);
-                    valB = parseFloat(valB);
+
+                if (key === 'amount' || key === 'budget') {
+                    valA = parseFloat(valA) || 0;
+                    valB = parseFloat(valB) || 0;
                 } else if (key === 'date') {
                     valA = new Date(valA);
                     valB = new Date(valB);
+                } else {
+                    valA = String(valA ?? '').toLowerCase();
+                    valB = String(valB ?? '').toLowerCase();
                 }
+
                 if (valA < valB) return dir === 'asc' ? -1 : 1;
                 if (valA > valB) return dir === 'asc' ? 1 : -1;
                 return 0;
             });
+
             renderTable(filteredData);
-            // Update sort icons
+
             document.querySelectorAll('th.sortable').forEach(th => {
                 th.classList.remove('asc', 'desc');
+
                 const icon = th.querySelector('.sort-icon i');
+
                 if (th.dataset.sort === key) {
                     th.classList.add(dir);
-                    icon.className = dir === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
-                } else {
+
+                    if (icon) {
+                        icon.className =
+                            dir === 'asc'
+                                ? 'fas fa-sort-up'
+                                : 'fas fa-sort-down';
+                    }
+                } else if (icon) {
                     icon.className = 'fas fa-sort';
                 }
             });
@@ -410,11 +577,14 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
 
         function sortTable(key) {
             if (currentSort.key === key) {
-                currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+                currentSort.dir =
+                    currentSort.dir === 'asc' ? 'desc' : 'asc';
             } else {
                 currentSort.key = key;
                 currentSort.dir = 'asc';
             }
+
+            currentPage = 1;
             sortData();
         }
 

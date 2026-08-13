@@ -119,6 +119,7 @@ foreach ($aicsSubtypes as $sub) {
             ON c.client_id = a.client_id
         JOIN program p
             ON p.program_id = a.program_id
+        WHERE p.program_name IN ('AICS FBML', 'AICS Educational')
         ORDER BY a.av_date_applied DESC
     ");
     $stmt->execute();
@@ -333,7 +334,7 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     border-radius: 0.5rem;
     border: 1px solid #D4E8DC;
-    z-index: 1000;
+    z-index: 99999;
     overflow: visible;
 }
 
@@ -382,7 +383,7 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
         <main class="flex-1 p-6 space-y-5 overflow-y-auto">
 
             <!-- Page Title -->
-            <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
+            <div class="relative z-50 flex flex-wrap items-center justify-between gap-3 animate-fade-up">
                 <div>
                     <h1 class="text-xl font-serif text-green-600">Program Reports</h1>
                     <p class="text-[13px] text-slate-500 mt-0.5">
@@ -390,7 +391,7 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
                     </p>
                 </div>
 
-                <div class="export-dropdown" id="exportDropdownContainer">
+                <div class="export-dropdown relative z-[9999]" id="exportDropdownContainer">
 
     <button
         type="button"
@@ -425,7 +426,7 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
             </div>
 
             <!-- Summary Statistics -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 animate-fade-up-1">
+            <div class="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-3 animate-fade-up-1">
 
                 <div class="bg-white rounded-2xl border border-slate-200 p-4">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wider">
@@ -466,7 +467,7 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
             </div>
 
             <!-- Filters -->
-            <div class="flex flex-wrap items-end gap-3 animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
+            <div class="relative z-10 flex flex-wrap items-end gap-3 animate-fade-up-2 bg-white rounded-2xl border border-slate-200 p-4">
 
                 <div>
                     <label class="text-[10px] uppercase tracking-wider text-slate-400 block">
@@ -509,7 +510,7 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
 
                 <div>
                     <label class="text-[10px] uppercase tracking-wider text-slate-400 block">
-                        From
+                        Request Date From
                     </label>
 
                     <input
@@ -522,7 +523,7 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
 
                 <div>
                     <label class="text-[10px] uppercase tracking-wider text-slate-400 block">
-                        To
+                        Request Date To
                     </label>
 
                     <input
@@ -883,10 +884,6 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
                 0
             );
 
-            const programs = new Set(
-                data.map(row => row.program)
-            );
-
             document.getElementById('totalRequests').textContent =
                 data.length;
 
@@ -896,8 +893,10 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
             document.getElementById('totalReleased').textContent =
                 formatCurrency(totalReleased);
 
+            // This report intentionally covers 9 user-facing programs.
+            // AICS FBML and AICS Educational are one report program.
             document.getElementById('totalPrograms').textContent =
-                programs.size;
+                <?= $totalPrograms ?>;
 
             document.getElementById('rowCount').textContent =
                 `Showing ${data.length} request${data.length === 1 ? '' : 's'}`;
@@ -936,6 +935,9 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
                     return false;
                 }
 
+                // row.date is the request/application date:
+                // pp_date_submitted for project proposals and
+                // av_date_applied for AICS availments.
                 if (
                     fromDate &&
                     row.date < fromDate
@@ -1172,7 +1174,7 @@ function getFooterTimestamp() {
 }
 
 function getExportData() {
-
+    // Export the complete filtered dataset, not just the current page.
     return filteredData.map(row => ({
         'Program': row.program,
         'Request Type': row.type,
@@ -2220,8 +2222,10 @@ async function exportToDocx() {
             </w:p>
         `;
 
+        const xmlDeclaration = '<' + '?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+
         const documentXml =
-            `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            `${xmlDeclaration}
             <w:document
                 xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
 
@@ -2255,7 +2259,7 @@ async function exportToDocx() {
         );
 
         const rels =
-            `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            `${xmlDeclaration}
 
             <Relationships
                 xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -2273,7 +2277,7 @@ async function exportToDocx() {
         );
 
         const contentTypes =
-            `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            `${xmlDeclaration}
 
             <Types
                 xmlns="http://schemas.openxmlformats.org/package/2006/content-types">

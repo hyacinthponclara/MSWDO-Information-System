@@ -62,257 +62,680 @@ function saveFile($field, $folder)
 
 
 $errors = [];
+$savedFiles = [];
+
+/**
+ * Return true when at least one successfully uploaded file exists for a field.
+ * Works for both normal inputs and [] multi-file inputs.
+ */
+function hasUploadedFile(string $field): bool
+{
+    if (!isset($_FILES[$field])) {
+        return false;
+    }
+
+    $file = $_FILES[$field];
+
+    if (is_array($file['name'])) {
+        foreach ($file['name'] as $i => $name) {
+            if (($file['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+                && trim((string) $name) !== '') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    return ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+        && trim((string) ($file['name'] ?? '')) !== '';
+}
+
+/**
+ * Validate the required upload fields on the server.
+ * Browser required="required" is not sufficient because it can be bypassed.
+ */
+function requireUploadedFiles(array &$errors, array $fields): void
+{
+    foreach ($fields as $field => $label) {
+        if (!hasUploadedFile($field)) {
+            $errors[] = $label . ' is required.';
+        }
+    }
+}
+
+/**
+ * Save a file and remember its path so it can be removed if the DB transaction
+ * is rolled back. This prevents orphaned files when an INSERT fails.
+ */
+function saveFileTracked(string $field, string $folder, array &$savedFiles): ?string
+{
+    if (!isset($_FILES[$field])) {
+        return null;
+    }
+
+    $file = $_FILES[$field];
+    $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+    $maxBytes = 10 * 1024 * 1024; // 10 MB per uploaded file
+
+    if (is_array($file['name'])) {
+        $saved = [];
+
+        foreach ($file['name'] as $i => $original) {
+            $error = $file['error'][$i] ?? UPLOAD_ERR_NO_FILE;
+            if ($error === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            if ($error !== UPLOAD_ERR_OK) {
+                throw new RuntimeException('One of the files for ' . $field . ' could not be uploaded.');
+            }
+
+            $tmp = $file['tmp_name'][$i] ?? '';
+            $size = (int) ($file['size'][$i] ?? 0);
+            $ext = strtolower(pathinfo((string) $original, PATHINFO_EXTENSION));
+
+            if (!in_array($ext, $allowedExtensions, true)) {
+                throw new RuntimeException('Invalid file type for ' . $field . '. Only PDF, JPG, JPEG, and PNG files are allowed.');
+            }
+            if ($size <= 0 || $size > $maxBytes) {
+                throw new RuntimeException('A file for ' . $field . ' exceeds the 10 MB size limit or is empty.');
+            }
+
+            if (!is_dir($folder) && !mkdir($folder, 0755, true) && !is_dir($folder)) {
+                throw new RuntimeException('Unable to create the upload folder.');
+            }
+
+            $safeName = date('YmdHis') . '_' . bin2hex(random_bytes(6)) . '_' .
+                preg_replace('/[^a-zA-Z0-9._-]/', '_', basename((string) $original));
+            $path = $folder . $safeName;
+
+            if (!move_uploaded_file($tmp, $path)) {
+                throw new RuntimeException('Unable to save an uploaded file for ' . $field . '.');
+            }
+
+            $savedFiles[] = $path;
+            $saved[] = $safeName;
+        }
+
+        return $saved ? implode(',', $saved) : null;
+    }
+
+    $error = $file['error'] ?? UPLOAD_ERR_NO_FILE;
+    if ($error === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+    if ($error !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('The file for ' . $field . ' could not be uploaded.');
+    }
+
+    $original = basename((string) $file['name']);
+    $size = (int) ($file['size'] ?? 0);
+    $ext = strtolower(pathinfo($original, PATHINFO_EXTENSION));
+
+    if (!in_array($ext, $allowedExtensions, true)) {
+        throw new RuntimeException('Invalid file type for ' . $field . '. Only PDF, JPG, JPEG, and PNG files are allowed.');
+    }
+    if ($size <= 0 || $size > $maxBytes) {
+        throw new RuntimeException('The file for ' . $field . ' exceeds the 10 MB size limit or is empty.');
+    }
+
+    if (!is_dir($folder) && !mkdir($folder, 0755, true) && !is_dir($folder)) {
+        throw new RuntimeException('Unable to create the upload folder.');
+    }
+
+    $safeName = date('YmdHis') . '_' . bin2hex(random_bytes(6)) . '_' .
+        preg_replace('/[^a-zA-Z0-9._-]/', '_', $original);
+    $path = $folder . $safeName;
+
+    if (!move_uploaded_file($file['tmp_name'], $path)) {
+        throw new RuntimeException('Unable to save the uploaded file for ' . $field . '.');
+    }
+
+    $savedFiles[] = $path;
+    return $safeName;
+}
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $user_id = $_SESSION['user_id'];
-
+    $user_id = (int) ($_SESSION['user_id'] ?? 0);
     $aics_type = trim($_POST['aics_type'] ?? '');
-
     $amount = (float) ($_POST['amount'] ?? 0);
     $date_applied = trim($_POST['date_applied'] ?? '');
     $remarks = trim($_POST['remarks'] ?? '') ?: null;
 
-    //  Validation 
-    if (empty($aics_type))
-        $errors[] = 'Please select an assistance type.';
-    if ($amount < 500 || $amount > 5000)
+    $patientDifferent = (int) ($_POST['patient_different'] ?? 0) === 1;
+    $patientName = trim($_POST['patient_name'] ?? '');
+    $patientAgeRaw = trim($_POST['patient_age'] ?? '');
+    $patientRelationship = trim($_POST['patient_relationship'] ?? '');
+
+    // -------------------------
+    // Basic server-side validation
+    // -------------------------
+    $allowedTypes = ['medical', 'financial', 'educational', 'livelihood', 'burial'];
+
+    if (!in_array($aics_type, $allowedTypes, true)) {
+        $errors[] = 'Please select a valid assistance type.';
+    }
+    if ($amount < 500 || $amount > 5000) {
         $errors[] = 'Amount must be between ₱500 and ₱5,000.';
-    if (empty($date_applied))
+    }
+    if ($date_applied === '') {
         $errors[] = 'Date Applied is required.';
-    elseif (strtotime($date_applied) > strtotime(date('Y-m-d')))
-        $errors[] = 'Date Applied cannot be a future date.';
+    } else {
+        $appliedDate = DateTime::createFromFormat('Y-m-d', $date_applied);
+        $dateErrors = DateTime::getLastErrors();
+        if (!$appliedDate || ($dateErrors !== false && ($dateErrors['warning_count'] > 0 || $dateErrors['error_count'] > 0))) {
+            $errors[] = 'Date Applied is invalid.';
+        } elseif ($date_applied > date('Y-m-d')) {
+            $errors[] = 'Date Applied cannot be a future date.';
+        }
+    }
+
+    if ($user_id <= 0) {
+        $errors[] = 'Your user session is invalid. Please log in again.';
+    }
+
+    if ($aics_type === 'medical') {
+        requireUploadedFiles($errors, [
+            'doc_medcert' => 'Medical Certificate / Abstract',
+            'doc_labresults' => 'Laboratory Results / Resita',
+            'doc_validid' => 'Valid ID',
+            'doc_indigency' => 'Barangay Indigency Certificate',
+        ]);
+
+        if ($patientDifferent) {
+            if ($patientName === '') {
+                $errors[] = 'Patient Name is required when Different patient is selected.';
+            }
+            if ($patientAgeRaw !== '' && (!ctype_digit($patientAgeRaw) || (int) $patientAgeRaw > 150)) {
+                $errors[] = 'Patient Age must be a valid age.';
+            }
+            if ($patientRelationship === '') {
+                $errors[] = 'Relationship to Client is required when Different patient is selected.';
+            }
+        }
+    } elseif ($aics_type === 'financial') {
+        requireUploadedFiles($errors, [
+            'fin_doc_mayors' => "Mayor's Approval",
+            'fin_doc_id' => 'Valid ID',
+            'fin_doc_indigency' => 'Barangay Indigency Certificate',
+        ]);
+    } elseif ($aics_type === 'educational') {
+        requireUploadedFiles($errors, [
+            'edu_doc_card' => 'Grades / Report Card',
+            'edu_doc_enroll' => 'Certificate of Enrollment',
+            'edu_doc_indigency' => 'Certificate of Indigency',
+            'edu_doc_residency' => 'Certificate of Residency',
+            'edu_doc_studentid' => 'Student ID',
+            'edu_doc_claimantid' => "Claimant's Valid ID",
+        ]);
+
+        $eduLevel = trim($_POST['edu_level'] ?? '');
+        $eduPurpose = trim($_POST['edu_purpose'] ?? '');
+        $eduSchool = trim($_POST['edu_school'] ?? '');
+        $eduYear = trim($_POST['edu_school_year'] ?? '');
+        $eduSemester = trim($_POST['edu_semester'] ?? '');
+
+        if (!in_array($eduLevel, ['K-12', 'College', 'Vocational', 'Graduate'], true)) {
+            $errors[] = 'Educational Level is required.';
+        }
+        if ($eduSchool === '') {
+            $errors[] = 'School Name is required.';
+        }
+        if ($eduPurpose === '') {
+            $errors[] = 'Purpose is required.';
+        }
+        if ($eduPurpose === 'Other' && trim($_POST['edu_purpose_other'] ?? '') === '') {
+            $errors[] = 'Please specify the educational purpose.';
+        }
+        if ($eduYear === '') {
+            $errors[] = 'School Year is required.';
+        }
+        if ($eduSemester === '') {
+            $errors[] = 'Semester / Term is required.';
+        }
+    } elseif ($aics_type === 'livelihood') {
+        requireUploadedFiles($errors, [
+            'liv_doc_intent' => 'Letter of Intent',
+            'liv_doc_proposal' => 'Business Proposal',
+            'liv_doc_validid' => 'Valid ID',
+            'liv_doc_indigency' => 'Certificate of Indigency',
+            'liv_doc_residency' => 'Certificate of Residency',
+        ]);
+
+        if (trim($_POST['biz_name'] ?? '') === '') {
+            $errors[] = 'Business Name is required.';
+        }
+        if (trim($_POST['biz_type'] ?? '') === '') {
+            $errors[] = 'Business Type is required.';
+        }
+        if (!isset($_POST['biz_cost']) || $_POST['biz_cost'] === '' || (float) $_POST['biz_cost'] < 0) {
+            $errors[] = 'Start-up Cost is required and cannot be negative.';
+        }
+    } elseif ($aics_type === 'burial') {
+        requireUploadedFiles($errors, [
+            'bur_doc_death' => 'Death Certificate',
+            'bur_doc_contract' => 'Funeral Contract',
+            'bur_doc_validid' => 'Valid ID',
+            'bur_doc_indigency' => 'Barangay Indigency Certificate',
+        ]);
+
+        $ab_deceased_name = trim($_POST['deceased_name'] ?? '');
+        $ab_date_of_death = trim($_POST['date_of_death'] ?? '');
+        $ab_relationship_to_claimant = trim($_POST['relationship_to_claimant'] ?? '');
+        $ab_funeral_home = trim($_POST['funeral_home'] ?? '');
+        $ab_funeral_cost_raw = trim($_POST['funeral_cost'] ?? '');
+
+        if ($ab_deceased_name === '') {
+            $errors[] = 'Name of Deceased is required.';
+        }
+
+        if ($ab_date_of_death === '') {
+            $errors[] = 'Date of Death is required.';
+        } else {
+            $deathDate = DateTime::createFromFormat('Y-m-d', $ab_date_of_death);
+            $deathDateErrors = DateTime::getLastErrors();
+            if (
+                !$deathDate ||
+                ($deathDateErrors !== false && ($deathDateErrors['warning_count'] > 0 || $deathDateErrors['error_count'] > 0))
+            ) {
+                $errors[] = 'Date of Death is invalid.';
+            } elseif ($deathDate > new DateTime('today')) {
+                $errors[] = 'Date of Death cannot be in the future.';
+            }
+        }
+
+        if ($ab_relationship_to_claimant === '') {
+            $errors[] = 'Relationship to Claimant is required.';
+        }
+
+        if ($ab_funeral_cost_raw === '' || !is_numeric($ab_funeral_cost_raw) || (float)$ab_funeral_cost_raw < 0) {
+            $errors[] = 'Funeral Contract Amount is required and cannot be negative.';
+        }
+
+        $ab_funeral_cost = (float) $ab_funeral_cost_raw;
+    }
 
     if (empty($errors)) {
+        try {
+            $pdo->beginTransaction();
 
-        if ($aics_type === 'educational') {
-            $prog_stmt = $pdo->prepare(
-                "SELECT program_id FROM PROGRAM WHERE program_name = 'AICS Educational' LIMIT 1"
-            );
-        } else {
-            $prog_stmt = $pdo->prepare(
-                "SELECT program_id FROM PROGRAM WHERE program_name = 'AICS FBML' LIMIT 1"
-            );
-        }
-        $prog_stmt->execute();
-        $program = $prog_stmt->fetch(PDO::FETCH_ASSOC);
-        $program_id = $program['program_id'] ?? null;
-
-        // CHECK REMAINING BUDGET
-
-        $budgetStmt = $pdo->prepare("
-    SELECT
-        p.prog_annual_budget,
-        COALESCE(
-            SUM(
-                CASE
-                    WHEN a.av_status = 'Released'
-                    THEN a.av_amount
-                    ELSE 0
-                END
-            ),
-            0
-        ) AS spent
-    FROM program p
-    LEFT JOIN availment a
-        ON p.program_id = a.program_id
-        AND YEAR(a.av_date_applied) = YEAR(CURDATE())
-    WHERE p.program_id = ?
-    GROUP BY p.program_id
-");
-
-        $budgetStmt->execute([$program_id]);
-
-        $budget = $budgetStmt->fetch(PDO::FETCH_ASSOC);
-
-        $totalBudget = (float) ($budget['prog_annual_budget'] ?? 0);
-        $spentBudget = (float) ($budget['spent'] ?? 0);
-        $remainingBudget = $totalBudget - $spentBudget;
-
-        if ($amount > $remainingBudget) {
-
-            die("
-        <script>
-            alert('Insufficient remaining budget for this program.');
-            window.history.back();
-        </script>
-    ");
-
-        }
-
-        $stmt = $pdo->prepare("
-            INSERT INTO availment (
-                client_id,
-                program_id,
-                user_id,
-                av_date_applied,
-                av_date_approved,
-                av_amount,
-                av_status,
-                av_date_released,
-                av_remarks
-            ) VALUES (?, ?, ?, ?, CURDATE(), ?, 'Approved', Null, ?)
-        ");
-        $stmt->execute([
-            $client_id,
-            $program_id,
-            $user_id,
-            $date_applied,
-            $amount,
-            $remarks
-        ]);
-        $availment_id = (int) $pdo->lastInsertId();
-
-
-        if ($aics_type === 'medical') {
-            $folder = 'uploads/aics/medical/';
-            $amed_med_cert = saveFile('doc_medcert', $folder);
-            $amed_lab_result = saveFile('doc_labresults', $folder);
-            $amed_valid_id = saveFile('doc_validid', $folder);
-            $amed_cert_indigency = saveFile('doc_indigency', $folder);
-            $amed_hospital_bill = saveFile('doc_hospitalbill', $folder);
-            $amed_discharge_summary = saveFile('doc_discharge', $folder);
-            $amed_med_quotation = saveFile('doc_dialysis', $folder);
-            $amed_mayors_approval = saveFile('doc_mayors', $folder);
-
-            $stmt = $pdo->prepare("
-                INSERT INTO aics_medical (
-                    availment_id, amed_med_cert, amed_valid_id,
-                    amed_cert_indigency, amed_lab_result, amed_hospital_bill,
-                    amed_discharge_summary, amed_med_quotation, amed_mayors_approval
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            // Resolve the correct AICS program.
+            $programName = $aics_type === 'educational' ? 'AICS Educational' : 'AICS FBML';
+            $progStmt = $pdo->prepare("
+                SELECT program_id, prog_annual_budget
+                FROM program
+                WHERE program_name = ?
+                LIMIT 1
+                FOR UPDATE
             ");
-            $stmt->execute([
-                $availment_id,
-                $amed_med_cert,
-                $amed_valid_id,
-                $amed_cert_indigency,
-                $amed_lab_result,
-                $amed_hospital_bill,
-                $amed_discharge_summary,
-                $amed_med_quotation,
-                $amed_mayors_approval
-            ]);
+            $progStmt->execute([$programName]);
+            $program = $progStmt->fetch(PDO::FETCH_ASSOC);
 
-        } elseif ($aics_type === 'financial') {
-            $folder = 'uploads/aics/financial/';
-            $afin_approval = saveFile('fin_doc_mayors', $folder);
-            $afin_supporting_docs = saveFile('fin_doc_indigency', $folder);
-            $afin_supporting_docs_2 = saveFile('fin_doc_support', $folder);
+            if (!$program) {
+                throw new RuntimeException('The AICS program budget record could not be found.');
+            }
 
-            $stmt = $pdo->prepare("
-                INSERT INTO aics_financial (
-                    availment_id, afin_approval,
-                    afin_supporting_docs, afin_supporting_docs_2
-                ) VALUES (?, ?, ?, ?)
+            $program_id = (int) $program['program_id'];
+            $totalBudget = (float) ($program['prog_annual_budget'] ?? 0);
+
+            // Only Released amounts are considered spent/deducted.
+            $spentStmt = $pdo->prepare("
+                SELECT COALESCE(SUM(av_amount), 0)
+                FROM availment
+                WHERE program_id = ?
+                  AND av_status = 'Released'
+                  AND av_date_released IS NOT NULL
+                  AND YEAR(av_date_released) = YEAR(CURDATE())
             ");
-            $stmt->execute([
-                $availment_id,
-                $afin_approval,
-                $afin_supporting_docs,
-                $afin_supporting_docs_2
-            ]);
+            $spentStmt->execute([$program_id]);
+            $spentBudget = (float) $spentStmt->fetchColumn();
+            $remainingBudget = $totalBudget - $spentBudget;
 
-        } elseif ($aics_type === 'educational') {
-            $aed_school_name = trim($_POST['edu_school'] ?? '') ?: null;
-            $aed_educational_level = trim($_POST['edu_level'] ?? '') ?: null;
-            $aed_purpose = trim($_POST['edu_purpose'] ?? '') ?: null;
-            if ($aed_purpose === 'Other') {
-                $aed_purpose_other = trim($_POST['edu_purpose_other'] ?? '');
-                if ($aed_purpose_other !== '') {
-                    $aed_purpose = $aed_purpose_other;
+            if ($amount > $remainingBudget) {
+                throw new RuntimeException('Insufficient remaining budget for this program.');
+            }
+
+            // Re-check AICS limits on the server, using the actual submitted date.
+            // These checks prevent JavaScript from being the only enforcement layer.
+            $year = (int) date('Y', strtotime($date_applied));
+            $applied = new DateTimeImmutable($date_applied);
+            $windowStart = $applied->modify('-2 months');
+            $windowEnd = $applied->modify('+3 months');
+
+            if ($aics_type === 'educational') {
+                $countStmt = $pdo->prepare("
+                    SELECT COUNT(*)
+                    FROM availment
+                    WHERE client_id = ?
+                      AND program_id = ?
+                      AND av_status != 'Denied'
+                      AND YEAR(av_date_applied) = ?
+                ");
+                $countStmt->execute([$client_id, $program_id, $year]);
+                if ((int) $countStmt->fetchColumn() >= 2) {
+                    throw new RuntimeException('Educational assistance year limit reached. Maximum is 2 per year.');
+                }
+
+                $qStmt = $pdo->prepare("
+                    SELECT COUNT(*)
+                    FROM availment
+                    WHERE client_id = ?
+                      AND program_id = ?
+                      AND av_status != 'Denied'
+                      AND av_date_applied >= ?
+                      AND av_date_applied < ?
+                ");
+                $qStmt->execute([$client_id, $program_id, $windowStart->format('Y-m-d'), $windowEnd->format('Y-m-d')]);
+                if ((int) $qStmt->fetchColumn() >= 1) {
+                    throw new RuntimeException('Educational assistance quarter limit reached. Maximum is 1 in the current 3-month window.');
+                }
+            } else {
+                $tableMap = [
+                    'medical' => 'aics_medical',
+                    'financial' => 'aics_financial',
+                    'burial' => 'aics_burial',
+                    'livelihood' => 'aics_livelihood',
+                ];
+                $table = $tableMap[$aics_type];
+
+                $yearStmt = $pdo->prepare("
+                    SELECT COUNT(*)
+                    FROM availment a
+                    INNER JOIN {$table} s ON s.availment_id = a.availment_id
+                    WHERE a.client_id = ?
+                      AND a.program_id = ?
+                      AND a.av_status != 'Denied'
+                      AND YEAR(a.av_date_applied) = ?
+                ");
+                $yearStmt->execute([$client_id, $program_id, $year]);
+                if ((int) $yearStmt->fetchColumn() >= 4) {
+                    throw new RuntimeException(ucfirst($aics_type) . ' assistance year limit reached. Maximum is 4 per year.');
+                }
+
+                // Find the latest prior transaction for this subtype and apply the same
+                // rolling 3-month rule used by the screen. The submitted date is the
+                // reference date for this request.
+                $qStmt = $pdo->prepare("
+                    SELECT a.av_date_applied
+                    FROM availment a
+                    INNER JOIN {$table} s ON s.availment_id = a.availment_id
+                    WHERE a.client_id = ?
+                      AND a.program_id = ?
+                      AND a.av_status != 'Denied'
+                      AND a.av_date_applied <= ?
+                    ORDER BY a.av_date_applied DESC
+                    LIMIT 1
+                ");
+                $qStmt->execute([$client_id, $program_id, $date_applied]);
+                $lastDate = $qStmt->fetchColumn();
+                if ($lastDate) {
+                    $last = new DateTimeImmutable($lastDate);
+                    if ($applied < $last->modify('+3 months')) {
+                        throw new RuntimeException(ucfirst($aics_type) . ' assistance quarter limit reached. Maximum is 1 in the current 3-month window.');
+                    }
                 }
             }
 
-            $folder = 'uploads/aics/educational/';
-            $aed_grades = saveFile('edu_doc_card', $folder);
-            $aed_cert_enrollment = saveFile('edu_doc_enroll', $folder);
-            $aed_cert_indigency = saveFile('edu_doc_indigency', $folder);
-            $aed_cert_residency = saveFile('edu_doc_residency', $folder);
-            $aed_student_id = saveFile('edu_doc_studentid', $folder);
-            $aed_claimant_id = saveFile('edu_doc_claimantid', $folder);
-
+            // -------------------------
+            // Insert the main transaction first, still inside the transaction.
+            // It remains Approved and unreleased; Release Queue changes it to Released.
+            // -------------------------
             $stmt = $pdo->prepare("
-                INSERT INTO aics_educational (
-                    availment_id, aed_grades, aed_cert_enrollment,
-                    aed_cert_indigency, aed_cert_residency,
-                    aed_student_id, aed_claimant_id,
-                    aed_school_name, aed_educational_level, aed_purpose
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO availment (
+                    client_id,
+                    program_id,
+                    user_id,
+                    av_date_applied,
+                    av_date_approved,
+                    av_amount,
+                    av_status,
+                    av_date_released,
+                    av_remarks
+                ) VALUES (?, ?, ?, ?, CURDATE(), ?, 'Approved', NULL, ?)
             ");
             $stmt->execute([
-                $availment_id,
-                $aed_grades,
-                $aed_cert_enrollment,
-                $aed_cert_indigency,
-                $aed_cert_residency,
-                $aed_student_id,
-                $aed_claimant_id,
-                $aed_school_name,
-                $aed_educational_level,
-                $aed_purpose
+                $client_id,
+                $program_id,
+                $user_id,
+                $date_applied,
+                $amount,
+                $remarks
             ]);
+            $availment_id = (int) $pdo->lastInsertId();
 
-        } elseif ($aics_type === 'livelihood') {
-            $aliv_business_name = trim($_POST['biz_name'] ?? '') ?: null;
-            $aliv_business_type = trim($_POST['biz_type'] ?? '') ?: null;
-            $aliv_start_up_cost = (float) ($_POST['biz_cost'] ?? 0);
+            // -------------------------
+            // Save subtype data and documents.
+            // If anything fails, the catch block rolls back the DB and deletes files.
+            // -------------------------
+            if ($aics_type === 'medical') {
+                $folder = 'uploads/aics/medical/';
+                $amed_med_cert = saveFileTracked('doc_medcert', $folder, $savedFiles);
+                $amed_lab_result = saveFileTracked('doc_labresults', $folder, $savedFiles);
+                $amed_valid_id = saveFileTracked('doc_validid', $folder, $savedFiles);
+                $amed_cert_indigency = saveFileTracked('doc_indigency', $folder, $savedFiles);
+                $amed_hospital_bill = saveFileTracked('doc_hospitalbill', $folder, $savedFiles);
+                $amed_discharge_summary = saveFileTracked('doc_discharge', $folder, $savedFiles);
+                $amed_med_quotation = saveFileTracked('doc_dialysis', $folder, $savedFiles);
+                $amed_chemo_protocol = saveFileTracked('doc_chemo', $folder, $savedFiles);
+                $amed_mayors_approval = saveFileTracked('doc_mayors', $folder, $savedFiles);
 
-            $folder = 'uploads/aics/livelihood/';
-            $aliv_letter_intent = saveFile('liv_doc_intent', $folder);
-            $aliv_livelihood_proposal = saveFile('liv_doc_proposal', $folder);
-            $aliv_valid_id = saveFile('liv_doc_validid', $folder);
-            $aliv_cert_indigency = saveFile('liv_doc_indigency', $folder);
-            $aliv_cert_residency = saveFile('liv_doc_residency', $folder);
+                $patientNameToSave = $patientDifferent ? $patientName : trim($client['cl_firstname'] . ' ' . $client['cl_lastname']);
+                $patientAgeToSave = $patientAgeRaw !== '' ? (int) $patientAgeRaw : null;
+                $patientRelationshipToSave = $patientDifferent ? $patientRelationship : 'Self';
 
-            $stmt = $pdo->prepare("
-                INSERT INTO aics_livelihood (
-                    availment_id, aliv_letter_intent, aliv_livelihood_proposal,
-                    aliv_valid_id, aliv_cert_indigency, aliv_cert_residency,
-                    aliv_business_name, aliv_business_type, aliv_start_up_cost
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([
-                $availment_id,
-                $aliv_letter_intent,
-                $aliv_livelihood_proposal,
-                $aliv_valid_id,
-                $aliv_cert_indigency,
-                $aliv_cert_residency,
-                $aliv_business_name,
-                $aliv_business_type,
-                $aliv_start_up_cost
-            ]);
+                $stmt = $pdo->prepare("
+                    INSERT INTO aics_medical (
+                        availment_id,
+                        amed_patient_name,
+                        amed_patient_age,
+                        amed_patient_relationship,
+                        amed_med_cert,
+                        amed_valid_id,
+                        amed_cert_indigency,
+                        amed_lab_result,
+                        amed_hospital_bill,
+                        amed_discharge_summary,
+                        amed_med_quotation,
+                        amed_chemo_protocol,
+                        amed_mayors_approval
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $availment_id,
+                    $patientNameToSave,
+                    $patientAgeToSave,
+                    $patientRelationshipToSave,
+                    $amed_med_cert,
+                    $amed_valid_id,
+                    $amed_cert_indigency,
+                    $amed_lab_result,
+                    $amed_hospital_bill,
+                    $amed_discharge_summary,
+                    $amed_med_quotation,
+                    $amed_chemo_protocol,
+                    $amed_mayors_approval
+                ]);
 
-        } elseif ($aics_type === 'burial') {
-            $folder = 'uploads/aics/burial/';
-            $ab_death_cert = saveFile('bur_doc_death', $folder);
-            $ab_funeral_contract = saveFile('bur_doc_contract', $folder);
-            $ab_valid_id = saveFile('bur_doc_validid', $folder);
-            $ab_brgy_indigency = saveFile('bur_doc_indigency', $folder);
-            $ab_mayors_approval = saveFile('bur_doc_mayors', $folder);
+            } elseif ($aics_type === 'financial') {
+                $folder = 'uploads/aics/financial/';
+                $afin_approval = saveFileTracked('fin_doc_mayors', $folder, $savedFiles);
+                $afin_valid_id = saveFileTracked('fin_doc_id', $folder, $savedFiles);
+                $afin_supporting_docs = saveFileTracked('fin_doc_indigency', $folder, $savedFiles);
+                $afin_supporting_docs_2 = saveFileTracked('fin_doc_support', $folder, $savedFiles);
 
-            $stmt = $pdo->prepare("
-                INSERT INTO aics_burial (
-                    availment_id, ab_death_cert, ab_funeral_contract,
-                    ab_valid_id, ab_brgy_indigency, ab_mayors_approval
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->execute([
-                $availment_id,
-                $ab_death_cert,
-                $ab_funeral_contract,
-                $ab_valid_id,
-                $ab_brgy_indigency,
-                $ab_mayors_approval
-            ]);
+                $stmt = $pdo->prepare("
+                    INSERT INTO aics_financial (
+                        availment_id,
+                        afin_approval,
+                        afin_valid_id,
+                        afin_supporting_docs,
+                        afin_supporting_docs_2
+                    ) VALUES (?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $availment_id,
+                    $afin_approval,
+                    $afin_valid_id,
+                    $afin_supporting_docs,
+                    $afin_supporting_docs_2
+                ]);
+
+            } elseif ($aics_type === 'educational') {
+                $aed_school_name = trim($_POST['edu_school'] ?? '') ?: null;
+                $aed_educational_level = trim($_POST['edu_level'] ?? '') ?: null;
+                $aed_purpose = trim($_POST['edu_purpose'] ?? '') ?: null;
+                if ($aed_purpose === 'Other') {
+                    $aed_purpose_other = trim($_POST['edu_purpose_other'] ?? '');
+                    if ($aed_purpose_other !== '') {
+                        $aed_purpose = $aed_purpose_other;
+                    }
+                }
+                $aed_school_year = trim($_POST['edu_school_year'] ?? '') ?: null;
+                $aed_semester = trim($_POST['edu_semester'] ?? '') ?: null;
+
+                $folder = 'uploads/aics/educational/';
+                $aed_grades = saveFileTracked('edu_doc_card', $folder, $savedFiles);
+                $aed_cert_enrollment = saveFileTracked('edu_doc_enroll', $folder, $savedFiles);
+                $aed_cert_indigency = saveFileTracked('edu_doc_indigency', $folder, $savedFiles);
+                $aed_cert_residency = saveFileTracked('edu_doc_residency', $folder, $savedFiles);
+                $aed_student_id = saveFileTracked('edu_doc_studentid', $folder, $savedFiles);
+                $aed_claimant_id = saveFileTracked('edu_doc_claimantid', $folder, $savedFiles);
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO aics_educational (
+                        availment_id,
+                        aed_grades,
+                        aed_cert_enrollment,
+                        aed_cert_indigency,
+                        aed_cert_residency,
+                        aed_student_id,
+                        aed_claimant_id,
+                        aed_school_name,
+                        aed_educational_level,
+                        aed_purpose,
+                        aed_school_year,
+                        aed_semester
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $availment_id,
+                    $aed_grades,
+                    $aed_cert_enrollment,
+                    $aed_cert_indigency,
+                    $aed_cert_residency,
+                    $aed_student_id,
+                    $aed_claimant_id,
+                    $aed_school_name,
+                    $aed_educational_level,
+                    $aed_purpose,
+                    $aed_school_year,
+                    $aed_semester
+                ]);
+
+            } elseif ($aics_type === 'livelihood') {
+                $aliv_business_name = trim($_POST['biz_name'] ?? '') ?: null;
+                $aliv_business_type = trim($_POST['biz_type'] ?? '') ?: null;
+                $aliv_business_location = trim($_POST['biz_location'] ?? '') ?: null;
+                $aliv_target_start_date = trim($_POST['biz_start_date'] ?? '') ?: null;
+                $aliv_start_up_cost = (float) ($_POST['biz_cost'] ?? 0);
+
+                $folder = 'uploads/aics/livelihood/';
+                $aliv_letter_intent = saveFileTracked('liv_doc_intent', $folder, $savedFiles);
+                $aliv_livelihood_proposal = saveFileTracked('liv_doc_proposal', $folder, $savedFiles);
+                $aliv_valid_id = saveFileTracked('liv_doc_validid', $folder, $savedFiles);
+                $aliv_cert_indigency = saveFileTracked('liv_doc_indigency', $folder, $savedFiles);
+                $aliv_cert_residency = saveFileTracked('liv_doc_residency', $folder, $savedFiles);
+                $aliv_training_certificate = saveFileTracked('liv_doc_training', $folder, $savedFiles);
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO aics_livelihood (
+                        availment_id,
+                        aliv_letter_intent,
+                        aliv_livelihood_proposal,
+                        aliv_valid_id,
+                        aliv_cert_indigency,
+                        aliv_cert_residency,
+                        aliv_business_name,
+                        aliv_business_type,
+                        aliv_business_location,
+                        aliv_target_start_date,
+                        aliv_start_up_cost,
+                        aliv_training_certificate
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $availment_id,
+                    $aliv_letter_intent,
+                    $aliv_livelihood_proposal,
+                    $aliv_valid_id,
+                    $aliv_cert_indigency,
+                    $aliv_cert_residency,
+                    $aliv_business_name,
+                    $aliv_business_type,
+                    $aliv_business_location,
+                    $aliv_target_start_date,
+                    $aliv_start_up_cost,
+                    $aliv_training_certificate
+                ]);
+
+            } elseif ($aics_type === 'burial') {
+                $folder = 'uploads/aics/burial/';
+                $ab_death_cert = saveFileTracked('bur_doc_death', $folder, $savedFiles);
+                $ab_funeral_contract = saveFileTracked('bur_doc_contract', $folder, $savedFiles);
+                $ab_valid_id = saveFileTracked('bur_doc_validid', $folder, $savedFiles);
+                $ab_brgy_indigency = saveFileTracked('bur_doc_indigency', $folder, $savedFiles);
+                $ab_mayors_approval = saveFileTracked('bur_doc_mayors', $folder, $savedFiles);
+
+                $stmt = $pdo->prepare("
+                    INSERT INTO aics_burial (
+                        availment_id,
+                        ab_deceased_name,
+                        ab_date_of_death,
+                        ab_relationship_to_claimant,
+                        ab_funeral_home,
+                        ab_funeral_cost,
+                        ab_death_cert,
+                        ab_funeral_contract,
+                        ab_valid_id,
+                        ab_brgy_indigency,
+                        ab_mayors_approval
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $availment_id,
+                    $ab_deceased_name,
+                    $ab_date_of_death,
+                    $ab_relationship_to_claimant,
+                    $ab_funeral_home !== '' ? $ab_funeral_home : null,
+                    $ab_funeral_cost,
+                    $ab_death_cert,
+                    $ab_funeral_contract,
+                    $ab_valid_id,
+                    $ab_brgy_indigency,
+                    $ab_mayors_approval
+                ]);
+            }
+
+            $pdo->commit();
+
+            header("Location: clientprofile.php?id={$client_id}&saved=aics");
+            exit;
+
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            foreach ($savedFiles as $path) {
+                if (is_file($path)) {
+                    @unlink($path);
+                }
+            }
+
+            $errors[] = 'Unable to save the AICS availment: ' . $e->getMessage();
         }
-
-        header("Location: clientprofile.php?id={$client_id}&saved=aics");
-        exit;
-
     }
-
 }
 
 
@@ -865,6 +1288,7 @@ $post_errors = $errors ?? [];
                     <input type="hidden" name="amount" id="hiddenAmount" value="">
                     <input type="hidden" name="date_applied" id="hiddenApplied" value="">
                     <input type="hidden" name="remarks" id="hiddenRemarks" value="">
+                    <input type="hidden" name="patient_different" id="patientDifferent" value="0">
 
                     <!-- MAIN FORM PANEL -->
                     <div class="screen-panel active" id="panel-main">
@@ -1146,11 +1570,11 @@ $post_errors = $errors ?? [];
                                 <div id="patientFields" class="p-6 hidden">
                                     <div class="grid grid-cols-3 gap-4">
                                         <div><label class="field-label req">Patient Name</label><input type="text"
-                                                class="field" placeholder="Full name of patient"></div>
-                                        <div><label class="field-label">Age</label><input type="number" class="field"
-                                                placeholder="Age" min="0"></div>
+                                                class="field" name="patient_name" placeholder="Full name of patient"></div>
+                                        <div><label class="field-label">Age</label><input type="number" class="field" name="patient_age"
+                                                placeholder="Age" min="0" max="150"></div>
                                         <div><label class="field-label">Relationship to Client</label><input type="text"
-                                                class="field" placeholder="e.g. Child, Spouse"></div>
+                                                class="field" name="patient_relationship" placeholder="e.g. Child, Spouse"></div>
                                     </div>
                                 </div>
                             </div>
@@ -1635,9 +2059,9 @@ $post_errors = $errors ?? [];
                                         </div>
                                     </div>
                                     <div class="grid grid-cols-2 gap-4">
-                                        <div><label class="field-label">Business Location</label><input type="text"
+                                        <div><label class="field-label">Business Location</label><input type="text" name="biz_location"
                                                 class="field" placeholder="Street, barangay, or stall location"></div>
-                                        <div><label class="field-label">Target Start Date</label><input type="date"
+                                        <div><label class="field-label">Target Start Date</label><input type="date" name="biz_start_date"
                                                 class="field"></div>
                                     </div>
                                 </div>
@@ -1770,11 +2194,11 @@ $post_errors = $errors ?? [];
                                 </div>
                                 <div class="p-6 space-y-4">
                                     <div class="grid grid-cols-3 gap-4">
-                                        <div><label class="field-label req">Name of Deceased</label><input type="text"
+                                        <div><label class="field-label req">Name of Deceased</label><input type="text" name="deceased_name"
                                                 class="field" placeholder="Full legal name"></div>
-                                        <div><label class="field-label req">Date of Death</label><input type="date"
+                                        <div><label class="field-label req">Date of Death</label><input type="date" name="date_of_death"
                                                 class="field"></div>
-                                        <div><label class="field-label req">Relationship to Claimant</label><select
+                                        <div><label class="field-label req">Relationship to Claimant</label><select name="relationship_to_claimant"
                                                 class="field">
                                                 <option value="">Select</option>
                                                 <option>Spouse</option>
@@ -1787,11 +2211,11 @@ $post_errors = $errors ?? [];
                                     </div>
                                     <div class="grid grid-cols-2 gap-4">
                                         <div><label class="field-label">Funeral Home / Parlor</label><input type="text"
-                                                class="field" placeholder="Name of funeral establishment"></div>
+                                                name="funeral_home" class="field" placeholder="Name of funeral establishment"></div>
                                         <div><label class="field-label">Funeral Contract Amount (₱)</label>
                                             <div class="relative"><span
                                                     class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[13px]">₱</span><input
-                                                    type="number" min="0" class="field pl-7" placeholder="0.00"></div>
+                                                    type="number" name="funeral_cost" min="0" step="0.01" class="field pl-7" placeholder="0.00"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -2137,6 +2561,8 @@ $post_errors = $errors ?? [];
             track.classList.toggle('bg-slate-200', !patientOn);
             thumb.style.transform = patientOn ? 'translateX(16px)' : '';
             fields.classList.toggle('hidden', !patientOn);
+            const hidden = document.getElementById('patientDifferent');
+            if (hidden) hidden.value = patientOn ? '1' : '0';
         }
 
         function toggleEduPurposeOther(value) {

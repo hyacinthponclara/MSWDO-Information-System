@@ -12,7 +12,7 @@ if ($availment_id <= 0) {
 // ── Base availment + client + barangay + program + creator ──
 $stmt = $pdo->prepare("
     SELECT
-        a.availment_id, a.av_amount, a.av_date_applied, a.av_date_approved,
+        a.availment_id, a.av_amount, a.av_date_applied, a.av_date_approved, a.av_date_created,
         a.av_date_released, a.av_status, a.av_remarks,
         c.client_id, c.cl_firstname, c.cl_lastname, c.cl_age,
         b.barangay_name,
@@ -80,54 +80,59 @@ $availment = [
     'amount'        => (float) $row['av_amount'],
     'date_applied'  => formatAicsDate($row['av_date_applied']) ?? '—',
     'date_approved' => formatAicsDate($row['av_date_approved']),
+    'date_released' => formatAicsDate($row['av_date_released']),
     'status'        => $row['av_status'],
     'remarks'       => $row['av_remarks'],
     'created_by'    => $row['creator_firstname'] ? trim($row['creator_firstname'] . ' ' . $row['creator_lastname']) : '—',
-    'date_created'  => $row['av_date_applied'] ? date('F d, Y h:i A', strtotime($row['av_date_applied'])) : '—',
-    'last_updated'  => date('F d, Y h:i A', strtotime($row['av_date_released'] ?? $row['av_date_approved'] ?? $row['av_date_applied'])),
+    'date_created'  => !empty($row['av_date_created']) ? date('F d, Y h:i A', strtotime($row['av_date_created'])) : '—',
+    'last_updated'  => !empty($row['av_date_created'])
+        ? date('F d, Y h:i A', strtotime($row['av_date_created']))
+        : '—',
 ];
 
 // ── Subtype-specific fields ──
-// Note: several fields from the original mock (patient age/relationship as
-// free entry, medical abstract text, semester, target start date, deceased
-// name, etc.) aren't captured anywhere in the current schema or in aics.php's
-// upload form — those forms only collect document uploads for this subtype,
-// not the descriptive text fields. Those show as "—" below until the form
-// and schema are extended to actually collect them.
 switch ($type) {
     case 'Medical':
-        $availment['patient_name'] = $clientName;
-        $availment['patient_age'] = $row['cl_age'] ?? null;
-        $availment['patient_relationship'] = 'Self';
-        $availment['medical_abstract'] = null;
-        $availment['hospital_bill'] = !empty($subtypeData['amed_hospital_bill']) ? 'On file — see Uploaded Documents' : null;
+        $availment['patient_name'] = $subtypeData['amed_patient_name'] ?: $clientName;
+        $availment['patient_age'] = $subtypeData['amed_patient_age'] ?? ($row['cl_age'] ?? null);
+        $availment['patient_relationship'] = $subtypeData['amed_patient_relationship'] ?: 'Self';
         break;
+
     case 'Financial':
-        $availment['financial_purpose'] = $row['av_remarks'] ?: null;
-        $availment['financial_approval_date'] = formatAicsDate($row['av_date_approved']);
+        // Financial Details intentionally has no Purpose/Approval Date section.
+        // Those were derived/mock values and are not actual financial subtype fields.
         break;
+
     case 'Educational':
         $availment['educational_level'] = $subtypeData['aed_educational_level'] ?? null;
         $availment['school_name'] = $subtypeData['aed_school_name'] ?? null;
-        $availment['semester'] = null;
-        $availment['school_year'] = null;
+        $availment['semester'] = $subtypeData['aed_semester'] ?? null;
+        $availment['school_year'] = $subtypeData['aed_school_year'] ?? null;
         $availment['purpose'] = $subtypeData['aed_purpose'] ?? null;
-        $availment['amount_breakdown'] = null;
         break;
+
     case 'Livelihood':
         $availment['business_name'] = $subtypeData['aliv_business_name'] ?? null;
         $availment['business_type'] = $subtypeData['aliv_business_type'] ?? null;
+        $availment['business_location'] = $subtypeData['aliv_business_location'] ?? null;
         $availment['startup_cost'] = isset($subtypeData['aliv_start_up_cost'])
             ? '₱' . number_format((float) $subtypeData['aliv_start_up_cost'], 2)
             : null;
-        $availment['target_start_date'] = null;
+        $availment['target_start_date'] = !empty($subtypeData['aliv_target_start_date'])
+            ? formatAicsDate($subtypeData['aliv_target_start_date'])
+            : null;
         break;
+
     case 'Burial':
-        $availment['deceased_name'] = null;
-        $availment['date_of_death'] = null;
-        $availment['relationship_to_claimant'] = null;
-        $availment['funeral_home'] = null;
-        $availment['funeral_cost'] = null;
+        $availment['deceased_name'] = $subtypeData['ab_deceased_name'] ?? null;
+        $availment['date_of_death'] = !empty($subtypeData['ab_date_of_death'])
+            ? formatAicsDate($subtypeData['ab_date_of_death'])
+            : null;
+        $availment['relationship_to_claimant'] = $subtypeData['ab_relationship_to_claimant'] ?? null;
+        $availment['funeral_home'] = $subtypeData['ab_funeral_home'] ?? null;
+        $availment['funeral_cost'] = isset($subtypeData['ab_funeral_cost']) && $subtypeData['ab_funeral_cost'] !== null
+            ? '₱' . number_format((float) $subtypeData['ab_funeral_cost'], 2)
+            : null;
         break;
 }
 
@@ -140,9 +145,11 @@ $docLabels = [
     'amed_hospital_bill' => 'Hospital Bill',
     'amed_discharge_summary' => 'Discharge Summary',
     'amed_med_quotation' => 'Medical Quotation (Dialysis)',
+    'amed_chemo_protocol' => 'Medical Protocol (Chemo)',
     'amed_mayors_approval' => "Mayor's Approval",
 
     'afin_approval' => "Mayor's Approval",
+    'afin_valid_id' => 'Valid ID',
     'afin_supporting_docs' => 'Barangay Indigency Certificate',
     'afin_supporting_docs_2' => 'Supporting Document',
 
@@ -158,6 +165,7 @@ $docLabels = [
     'aliv_valid_id' => 'Valid ID',
     'aliv_cert_indigency' => 'Barangay Indigency Certificate',
     'aliv_cert_residency' => 'Certificate of Residency',
+    'aliv_training_certificate' => 'Training Certificate',
 
     'ab_death_cert' => 'Death Certificate',
     'ab_funeral_contract' => 'Funeral Contract',
@@ -420,14 +428,20 @@ $availment['documents'] = $documents;
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="badge-subtype <?= $availment['type_badge'] ?>">
-                            <?= $availment['type'] ?>
+                            <?= htmlspecialchars((string) $availment['type'], ENT_QUOTES, 'UTF-8') ?>
                         </span>
                         <span class="status-<?= strtolower($availment['status']) ?> px-3 py-1 rounded-full text-[11px] font-semibold">
-                            <?= $availment['status'] ?>
+                            <?= htmlspecialchars($availment['status'], ENT_QUOTES, 'UTF-8') ?>
                         </span>
+                        <?php if ($availment['status'] === 'Released' && $availment['date_released']): ?>
                         <span class="text-[11px] text-slate-400">
-                            <i class="far fa-clock mr-1"></i> <?= $availment['last_updated'] ?>
+                            <i class="far fa-clock mr-1"></i> Released <?= htmlspecialchars($availment['date_released'], ENT_QUOTES, 'UTF-8') ?>
                         </span>
+                        <?php else: ?>
+                        <span class="text-[11px] text-slate-400">
+                            <i class="far fa-clock mr-1"></i> <?= htmlspecialchars($availment['last_updated'], ENT_QUOTES, 'UTF-8') ?>
+                        </span>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -444,7 +458,7 @@ $availment['documents'] = $documents;
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
                                     <label class="field-label">Client Name</label>
-                                    <div class="field-value font-semibold text-green-700"><?= $availment['client'] ?></div>
+                                    <div class="field-value font-semibold text-green-700"><?= htmlspecialchars((string) $availment['client'], ENT_QUOTES, 'UTF-8') ?></div>
                                 </div>
                                 <div>
                                     <label class="field-label">Client ID</label>
@@ -452,7 +466,7 @@ $availment['documents'] = $documents;
                                 </div>
                                 <div>
                                     <label class="field-label">Barangay</label>
-                                    <div class="field-value"><?= $availment['barangay'] ?></div>
+                                    <div class="field-value"><?= htmlspecialchars((string) $availment['barangay'], ENT_QUOTES, 'UTF-8') ?></div>
                                 </div>
                                 <div>
                                     <label class="field-label">Availment ID</label>
@@ -472,13 +486,13 @@ $availment['documents'] = $documents;
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
                                     <label class="field-label">Budget Source</label>
-                                    <div class="field-value font-medium"><?= $availment['budget_source'] ?></div>
+                                    <div class="field-value font-medium"><?= htmlspecialchars((string) $availment['budget_source'], ENT_QUOTES, 'UTF-8') ?></div>
                                 </div>
                                 <div>
                                     <label class="field-label">Type</label>
                                     <div class="field-value">
                                         <span class="badge-subtype <?= $availment['type_badge'] ?>">
-                                            <?= $availment['type'] ?>
+                                            <?= htmlspecialchars((string) $availment['type'], ENT_QUOTES, 'UTF-8') ?>
                                         </span>
                                     </div>
                                 </div>
@@ -490,11 +504,7 @@ $availment['documents'] = $documents;
                                     <label class="field-label">Date Applied</label>
                                     <div class="field-value"><?= $availment['date_applied'] ?></div>
                                 </div>
-                                <div>
-                                    <label class="field-label">Date Approved</label>
-                                    <div class="field-value"><?= $availment['date_approved'] ?? '—' ?></div>
-                                </div>
-                                <!-- Date Released REMOVED -->
+                                <!-- Date Approved intentionally hidden from Transaction Details. -->
                             </div>
                         </div>
                     </div>
@@ -522,38 +532,13 @@ $availment['documents'] = $documents;
                                     <label class="field-label">Relationship to Client</label>
                                     <div class="field-value"><?= $availment['patient_relationship'] ?></div>
                                 </div>
-                                <div>
-                                    <label class="field-label">Medical Abstract</label>
-                                    <div class="field-value"><?= $availment['medical_abstract'] ?? '—' ?></div>
-                                </div>
-                                <div>
-                                    <label class="field-label">Hospital Bill</label>
-                                    <div class="field-value"><?= $availment['hospital_bill'] ?? '—' ?></div>
-                                </div>
+
                             </div>
                         </div>
                     </div>
 
                     <?php elseif ($availment['type'] === 'Financial'): ?>
-                    <!-- Financial Section -->
-                    <div class="section-card animate-fade-up-2">
-                        <div class="section-head">
-                            <div class="section-num"><i class="fas fa-coins"></i></div>
-                            <h2 class="text-[14px] font-semibold text-green-600">Financial Details</h2>
-                        </div>
-                        <div class="section-body">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="field-label">Purpose</label>
-                                    <div class="field-value"><?= $availment['financial_purpose'] ?? '—' ?></div>
-                                </div>
-                                <div>
-                                    <label class="field-label">Approval Date</label>
-                                    <div class="field-value"><?= $availment['financial_approval_date'] ?? '—' ?></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- No Financial Details section: Purpose and Approval Date were removed per panel recommendation. -->
 
                     <?php elseif ($availment['type'] === 'Educational'): ?>
                     <!-- Educational Section -->
@@ -584,10 +569,7 @@ $availment['documents'] = $documents;
                                     <label class="field-label">Purpose</label>
                                     <div class="field-value"><?= $availment['purpose'] ?? '—' ?></div>
                                 </div>
-                                <div>
-                                    <label class="field-label">Amount Breakdown</label>
-                                    <div class="field-value"><?= $availment['amount_breakdown'] ?? '—' ?></div>
-                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -608,6 +590,10 @@ $availment['documents'] = $documents;
                                 <div>
                                     <label class="field-label">Business Type</label>
                                     <div class="field-value"><?= $availment['business_type'] ?? '—' ?></div>
+                                </div>
+                                <div>
+                                    <label class="field-label">Business Location</label>
+                                    <div class="field-value"><?= $availment['business_location'] ?? '—' ?></div>
                                 </div>
                                 <div>
                                     <label class="field-label">Start-up Cost</label>
