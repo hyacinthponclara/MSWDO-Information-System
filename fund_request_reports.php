@@ -167,6 +167,10 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
         rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -314,6 +318,49 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
             background: #F3E8FF;
             color: #6D28D9;
         }
+        .export-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.export-dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background: #fff;
+    min-width: 220px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 0.5rem;
+    border: 1px solid #D4E8DC;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.export-dropdown-content a {
+    color: #1A5C3A;
+    padding: 0.7rem 1rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.875rem;
+    transition: background 0.15s;
+    cursor: pointer;
+}
+
+.export-dropdown-content a:hover {
+    background: #EEF6F0;
+}
+
+.export-dropdown-content a i {
+    width: 18px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.export-dropdown.active .export-dropdown-content {
+    display: block;
+}
     </style>
 </head>
 
@@ -342,13 +389,38 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
                     </p>
                 </div>
 
-                <button
-                    onclick="exportCSV()"
-                    class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700"
-                >
-                    <i class="fas fa-file-csv mr-1"></i>
-                    Export CSV
-                </button>
+                <div class="export-dropdown" id="exportDropdownContainer">
+
+    <button
+        type="button"
+        class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700"
+        id="exportDropdownBtn"
+    >
+        <i class="fas fa-download mr-1"></i>
+        Export
+        <i class="fas fa-chevron-down text-xs"></i>
+    </button>
+
+    <div class="export-dropdown-content">
+
+        <a id="exportPdf">
+            <i class="fas fa-file-pdf"></i>
+            PDF Document (.pdf)
+        </a>
+
+        <a id="exportDocx">
+            <i class="fas fa-file-word"></i>
+            Word Document (.docx)
+        </a>
+
+        <a id="exportXlsx">
+            <i class="fas fa-file-excel"></i>
+            Microsoft Excel (.xlsx)
+        </a>
+
+    </div>
+
+</div>
             </div>
 
             <!-- Summary Statistics -->
@@ -1075,166 +1147,1203 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
         }
 
         // ── CSV Export ──
-        // Exports ALL currently filtered records, not just the current page.
-        function exportCSV() {
-            const data = filteredData;
+        const PREPARED_BY_NAME = 'MA. TERESA C. PONCLARA, RSW';
+const PREPARED_BY_TITLE = 'MSWDO';
 
-            if (data.length === 0) {
-                showToast('No data to export.', 'error');
-                return;
+function getDateOnly() {
+    return new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+function getTimeOnly() {
+    return new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+function getFooterTimestamp() {
+    return `Generated on ${getDateOnly()} at ${getTimeOnly()}`;
+}
+
+function getExportData() {
+
+    return filteredData.map(row => ({
+        'Program': row.program,
+        'Request Type': row.type,
+        'Request ID': row.id,
+        'Title / Beneficiary': row.title,
+        'Duration': row.duration,
+        'Venue': row.venue,
+        'Participants': row.participants,
+        'Budget': row.budget,
+        'Source of Fund': row.source,
+        'Date Submitted': row.date,
+        'Status': row.status,
+        'Date Released': row.dateReleased || ''
+    }));
+
+}
+
+async function exportToXlsx() {
+
+    try {
+
+        if (!window.ExcelJS) {
+            throw new Error('ExcelJS library not loaded.');
+        }
+
+        const wb = new ExcelJS.Workbook();
+
+        wb.creator = 'MSWDO San Enrique Information System';
+        wb.modified = new Date();
+
+        const cols = [
+            { header: 'PROGRAM', key: 'Program', width: 18 },
+            { header: 'REQUEST TYPE', key: 'Request Type', width: 20 },
+            { header: 'REQUEST ID', key: 'Request ID', width: 12 },
+            { header: 'TITLE / BENEFICIARY', key: 'Title / Beneficiary', width: 40 },
+            { header: 'DURATION', key: 'Duration', width: 11 },
+            { header: 'VENUE', key: 'Venue', width: 32 },
+            { header: 'PARTICIPANTS', key: 'Participants', width: 13 },
+            { header: 'BUDGET', key: 'Budget', width: 18 },
+            { header: 'SOURCE OF FUND', key: 'Source of Fund', width: 22 },
+            { header: 'DATE SUBMITTED', key: 'Date Submitted', width: 15 },
+            { header: 'STATUS', key: 'Status', width: 13 },
+            { header: 'DATE RELEASED', key: 'Date Released', width: 15 }
+        ];
+
+        const BLACK = 'FF000000';
+
+        const BORDER = {
+            style: 'thin',
+            color: { argb: BLACK }
+        };
+
+        const THIN_BORDERS = {
+            top: BORDER,
+            left: BORDER,
+            bottom: BORDER,
+            right: BORDER
+        };
+
+        const ws = wb.addWorksheet('Program Report');
+
+        ws.pageSetup = {
+            paperSize: ws.PAPERSIZE_LEGAL,
+            orientation: 'landscape',
+            fitToPage: true,
+            fitToWidth: 1,
+            fitToHeight: 0,
+            horizontalCentered: true,
+            margins: {
+                left: 0.2,
+                right: 0.2,
+                top: 0.3,
+                bottom: 0.3,
+                header: 0.1,
+                footer: 0.1
             }
+        };
 
-            const programFilter =
-                document.getElementById('filterProgram');
+        const font = {
+            name: 'Arial',
+            size: 11,
+            color: { argb: BLACK }
+        };
 
-            const statusFilter =
-                document.getElementById('filterStatus');
+        const boldFont = {
+            name: 'Arial',
+            size: 11,
+            bold: true,
+            color: { argb: BLACK }
+        };
 
-            const fromDate =
-                document.getElementById('filterFrom').value;
+        const titleFont = {
+            name: 'Arial',
+            size: 13,
+            bold: true,
+            color: { argb: BLACK }
+        };
 
-            const toDate =
-                document.getElementById('filterTo').value;
+        const mergeTitle = (row, text, useBold = false, size = 11) => {
 
-            const programLabel =
-                programFilter.options[
-                    programFilter.selectedIndex
-                ].text;
+            ws.mergeCells(row, 1, row, cols.length);
 
-            const statusLabel =
-                statusFilter.options[
-                    statusFilter.selectedIndex
-                ].text;
+            const cell = ws.getCell(row, 1);
 
-            const csvEscape = value =>
-                `"${String(value ?? '')
-                    .replace(/"/g, '""')}"`;
+            cell.value = text;
 
-            let csv = '';
+            cell.font = useBold
+                ? { ...boldFont, size }
+                : { ...font, size };
 
-            csv +=
-                'Municipal Social Welfare and Development Office\n';
+            cell.alignment = {
+                horizontal: 'center',
+                vertical: 'middle'
+            };
+        };
 
-            csv +=
-                'San Enrique, Negros Occidental\n';
+        mergeTitle(1, 'Republic of the Philippines');
+        mergeTitle(2, 'Province of Negros Occidental', true);
+        mergeTitle(3, 'Municipality of San Enrique', true);
+        mergeTitle(4, 'Municipal Social Welfare and Development Office', true);
+        mergeTitle(5, 'PROGRAM FUND REQUEST REPORT', true, 13);
+        mergeTitle(6, `Calendar Year ${new Date().getFullYear()}`);
 
-            csv +=
-                'Program Fund Request Report\n\n';
+        const headerRow = 8;
 
-            csv +=
-                'Program Filter: ' +
-                csvEscape(programLabel) +
-                '\n';
+        ws.getRow(headerRow).height = 28;
 
-            csv +=
-                'Status Filter: ' +
-                csvEscape(statusLabel) +
-                '\n';
+        cols.forEach((c, i) => {
 
-            csv +=
-                'Date From: ' +
-                csvEscape(fromDate || 'All') +
-                '\n';
+            const cell = ws.getCell(headerRow, i + 1);
 
-            csv +=
-                'Date To: ' +
-                csvEscape(toDate || 'All') +
-                '\n\n';
+            cell.value = c.header;
 
-            csv +=
-                'Program,Request Type,Request ID,Title / Beneficiary,Duration,Venue,Participants,Budget,Source of Fund,Date Submitted,Status,Date Released\n';
+            cell.font = {
+                name: 'Arial',
+                size: 10,
+                bold: true,
+                color: { argb: BLACK }
+            };
 
-            data.forEach(row => {
+            cell.alignment = {
+                horizontal: i === 0 ? 'left' : 'center',
+                vertical: 'middle',
+                wrapText: true
+            };
 
-                csv += [
-                    row.program,
-                    row.type,
-                    row.id,
-                    row.title,
-                    row.duration,
-                    row.venue,
-                    row.participants,
-                    Number(row.budget || 0).toFixed(2),
-                    row.source,
-                    row.date,
-                    row.status,
-                    row.dateReleased || ''
-                ]
-                    .map(csvEscape)
-                    .join(',') + '\n';
+            cell.border = THIN_BORDERS;
+
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: {
+                    argb: 'FFEFEFEF'
+                }
+            };
+
+            ws.getColumn(i + 1).width = c.width;
+        });
+
+        const rows = getExportData();
+
+        let r = headerRow + 1;
+
+        let totalParticipants = 0;
+        let totalBudget = 0;
+
+        rows.forEach(rowData => {
+
+            const row = ws.getRow(r++);
+
+            row.height = 20;
+
+            cols.forEach((c, i) => {
+
+                const cell = row.getCell(i + 1);
+
+                cell.value = rowData[c.key] ?? '';
+
+                cell.font = {
+                    name: 'Arial',
+                    size: 11,
+                    bold: i === 0,
+                    color: { argb: BLACK }
+                };
+
+                cell.alignment = {
+                    horizontal: i === 0 ? 'left' : 'center',
+                    vertical: 'middle',
+                    wrapText: true
+                };
+
+                cell.border = THIN_BORDERS;
+
+                if (c.key === 'Budget') {
+                    cell.numFmt = '₱#,##0.00';
+                }
             });
 
-            csv += '\n';
+            totalParticipants += Number(rowData.Participants || 0);
+            totalBudget += Number(rowData.Budget || 0);
+        });
 
-            csv +=
-                'Total Requests,' +
-                data.length +
-                '\n';
+        const totalRow = ws.getRow(r++);
 
-            csv +=
-                'Total Requested,' +
-                data.reduce(
-                    (sum, row) =>
-                        sum + Number(row.budget || 0),
-                    0
-                ).toFixed(2) +
-                '\n';
+        totalRow.height = 20;
 
-            csv +=
-                'Total Released,' +
-                data.reduce(
-                    (sum, row) =>
-                        sum + (
-                            row.status === 'Released'
-                                ? Number(row.budget || 0)
-                                : 0
-                        ),
-                    0
-                ).toFixed(2) +
-                '\n';
+        cols.forEach((c, i) => {
 
-            csv +=
-                '\nGenerated on: ' +
-                new Date().toLocaleString(
+            const cell = totalRow.getCell(i + 1);
+
+            cell.value =
+                i === 0
+                    ? 'TOTAL'
+                    : c.key === 'Participants'
+                        ? totalParticipants
+                        : c.key === 'Budget'
+                            ? totalBudget
+                            : '';
+
+            cell.font = {
+                name: 'Arial',
+                size: 11,
+                bold: true,
+                color: { argb: BLACK }
+            };
+
+            cell.alignment = {
+                horizontal: i === 0 ? 'left' : 'center',
+                vertical: 'middle'
+            };
+
+            cell.border = THIN_BORDERS;
+
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: {
+                    argb: 'FFEFEFEF'
+                }
+            };
+
+            if (c.key === 'Budget') {
+                cell.numFmt = '₱#,##0.00';
+            }
+        });
+
+        const sigRow = r + 2;
+
+        ws.getCell(sigRow, 1).value = 'Prepared by:';
+
+        ws.getCell(sigRow, 1).font = font;
+
+        ws.mergeCells(sigRow + 3, 1, sigRow + 3, 3);
+
+        const nameCell = ws.getCell(sigRow + 3, 1);
+
+        nameCell.value = PREPARED_BY_NAME;
+
+        nameCell.font = {
+            ...boldFont
+        };
+
+        nameCell.border = {
+            top: BORDER
+        };
+
+        ws.mergeCells(sigRow + 4, 1, sigRow + 4, 3);
+
+        ws.getCell(sigRow + 4, 1).value =
+            PREPARED_BY_TITLE;
+
+        ws.getCell(sigRow + 4, 1).font = font;
+
+        ws.mergeCells(
+            sigRow + 3,
+            cols.length - 2,
+            sigRow + 3,
+            cols.length
+        );
+
+        const footer =
+            ws.getCell(sigRow + 3, cols.length - 2);
+
+        footer.value = getFooterTimestamp();
+
+        footer.font = {
+            name: 'Arial',
+            size: 9,
+            italic: true,
+            color: { argb: 'FF666666' }
+        };
+
+        footer.alignment = {
+            horizontal: 'right',
+            vertical: 'middle'
+        };
+
+        const buffer = await wb.xlsx.writeBuffer();
+
+        const blob = new Blob(
+            [buffer],
+            {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            }
+        );
+
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+
+        a.href = url;
+
+        a.download =
+            `MSWDO_San_Enrique_Program_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
+
+    } catch (err) {
+
+        console.error('Excel export failed:', err);
+
+        alert(
+            'Excel export failed: ' +
+            (err.message || err)
+        );
+
+    }
+
+}
+
+//PDF Export
+async function exportToPdf() {
+
+    try {
+
+        if (!window.jspdf) {
+            throw new Error('jsPDF library not loaded.');
+        }
+
+        const { jsPDF } = window.jspdf;
+
+        const doc =
+            new jsPDF('l', 'pt', 'legal');
+
+        const pageWidth =
+            doc.internal.pageSize.getWidth();
+
+        const pageHeight =
+            doc.internal.pageSize.getHeight();
+
+        const margin = 30;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+
+        doc.text(
+            'Republic of the Philippines',
+            pageWidth / 2,
+            36,
+            { align: 'center' }
+        );
+
+        doc.setFont('helvetica', 'bold');
+
+        doc.text(
+            'Province of Negros Occidental',
+            pageWidth / 2,
+            54,
+            { align: 'center' }
+        );
+
+        doc.text(
+            'Municipality of San Enrique',
+            pageWidth / 2,
+            72,
+            { align: 'center' }
+        );
+
+        doc.text(
+            'Municipal Social Welfare and Development Office',
+            pageWidth / 2,
+            90,
+            { align: 'center' }
+        );
+
+        doc.setFontSize(13);
+
+        doc.text(
+            'PROGRAM FUND REQUEST REPORT',
+            pageWidth / 2,
+            120,
+            { align: 'center' }
+        );
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+
+        doc.text(
+            `Calendar Year ${new Date().getFullYear()}`,
+            pageWidth / 2,
+            138,
+            { align: 'center' }
+        );
+
+        doc.line(
+            margin,
+            148,
+            pageWidth - margin,
+            148
+        );
+
+        const rows = getExportData();
+
+        const cols = [
+            { header: 'Program', dataKey: 'Program' },
+            { header: 'Request Type', dataKey: 'Request Type' },
+            { header: 'Request ID', dataKey: 'Request ID' },
+            { header: 'Title / Beneficiary', dataKey: 'Title / Beneficiary' },
+            { header: 'Duration', dataKey: 'Duration' },
+            { header: 'Venue', dataKey: 'Venue' },
+            { header: 'Participants', dataKey: 'Participants' },
+            { header: 'Budget', dataKey: 'Budget' },
+            { header: 'Source of Fund', dataKey: 'Source of Fund' },
+            { header: 'Date Submitted', dataKey: 'Date Submitted' },
+            { header: 'Status', dataKey: 'Status' },
+            { header: 'Date Released', dataKey: 'Date Released' }
+        ];
+
+        const data = rows.map(r => ({
+
+            ...r,
+
+            'Budget':
+                `₱${Number(r.Budget || 0).toLocaleString(
                     'en-PH',
                     {
-                        timeZone: 'Asia/Manila'
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
                     }
-                ) +
-                '\n';
+                )}`,
 
-            const blob =
-                new Blob(
-                    [csv],
+            'Date Submitted':
+                formatDate(r['Date Submitted']),
+
+            'Date Released':
+                formatDate(r['Date Released'])
+
+        }));
+
+        let totalParticipants = 0;
+        let totalBudget = 0;
+
+        rows.forEach(r => {
+
+            totalParticipants +=
+                Number(r.Participants || 0);
+
+            totalBudget +=
+                Number(r.Budget || 0);
+
+        });
+
+        data.push({
+
+            'Program': 'TOTAL',
+            'Request Type': '',
+            'Request ID': '',
+            'Title / Beneficiary': '',
+            'Duration': '',
+            'Venue': '',
+            'Participants': totalParticipants,
+
+            'Budget':
+                `₱${totalBudget.toLocaleString(
+                    'en-PH',
                     {
-                        type:
-                            'text/csv;charset=utf-8;'
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
                     }
-                );
+                )}`,
 
-            const url =
-                URL.createObjectURL(blob);
+            'Source of Fund': '',
+            'Date Submitted': '',
+            'Status': '',
+            'Date Released': ''
 
-            const a =
-                document.createElement('a');
+        });
 
-            a.href = url;
+        doc.autoTable({
 
-            a.download =
-                'Program_Fund_Request_Report_' +
-                new Date()
-                    .toISOString()
-                    .slice(0, 10) +
-                '.csv';
+            startY: 160,
 
-            a.click();
+            head: [
+                cols.map(c => c.header)
+            ],
 
+            body:
+                data.map(r =>
+                    cols.map(c =>
+                        r[c.dataKey] ?? ''
+                    )
+                ),
+
+            theme: 'grid',
+
+            headStyles: {
+                fillColor: [240, 240, 240],
+                textColor: [0, 0, 0],
+                fontSize: 9,
+                fontStyle: 'bold',
+                valign: 'middle'
+            },
+
+            bodyStyles: {
+                fontSize: 9,
+                cellPadding: 4,
+                valign: 'middle'
+            },
+
+            columnStyles: {
+
+                0: { cellWidth: 72, halign: 'left' },
+                1: { cellWidth: 85, halign: 'center' },
+                2: { cellWidth: 52, halign: 'center' },
+                3: { cellWidth: 165, halign: 'left' },
+                4: { cellWidth: 48, halign: 'center' },
+                5: { cellWidth: 105, halign: 'left' },
+                6: { cellWidth: 50, halign: 'center' },
+                7: { cellWidth: 78, halign: 'right' },
+                8: { cellWidth: 90, halign: 'center' },
+                9: { cellWidth: 75, halign: 'center' },
+                10: { cellWidth: 58, halign: 'center' },
+                11: { cellWidth: 70, halign: 'center' }
+
+            },
+
+            margin: {
+                left: margin,
+                right: margin
+            },
+
+            pageBreak: 'auto',
+
+            didParseCell: function (data) {
+
+                if (
+                    data.row.index ===
+                    data.table.body.length - 1
+                ) {
+
+                    data.cell.styles.fontStyle =
+                        'bold';
+
+                    data.cell.styles.fillColor =
+                        [240, 240, 240];
+
+                }
+
+            }
+
+        });
+
+        const finalY =
+            doc.lastAutoTable.finalY + 30;
+
+        doc.setFontSize(11);
+
+        doc.setFont('helvetica', 'normal');
+
+        doc.text(
+            'Prepared by:',
+            margin,
+            finalY
+        );
+
+        doc.setFont('helvetica', 'bold');
+
+        doc.text(
+            PREPARED_BY_NAME,
+            margin,
+            finalY + 36
+        );
+
+        doc.line(
+            margin,
+            finalY + 26,
+            margin + 200,
+            finalY + 26
+        );
+
+        doc.setFont('helvetica', 'normal');
+
+        doc.text(
+            PREPARED_BY_TITLE,
+            margin,
+            finalY + 48
+        );
+
+        doc.setFontSize(9);
+
+        doc.setFont('helvetica', 'italic');
+
+        doc.text(
+            getFooterTimestamp(),
+            pageWidth - margin,
+            pageHeight - 24,
+            { align: 'right' }
+        );
+
+        const blob = doc.output('blob');
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const a =
+            document.createElement('a');
+
+        a.href = url;
+
+        a.download =
+            `MSWDO_San_Enrique_Program_Report_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+        setTimeout(() => {
             URL.revokeObjectURL(url);
+        }, 1000);
 
-            showToast(
-                'CSV exported successfully!'
-            );
+    } catch (err) {
+
+        console.error(
+            'PDF export failed:',
+            err
+        );
+
+        alert(
+            'PDF export failed: ' +
+            (err.message || err)
+        );
+
+    }
+
+}
+
+//Word Export
+async function exportToDocx() {
+
+    try {
+
+        if (!window.JSZip) {
+            throw new Error('JSZip library not loaded.');
         }
+
+        const zip = new JSZip();
+
+        const rows = getExportData();
+
+        const esc = value =>
+            String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+
+        const cols = [
+            'Program',
+            'Request Type',
+            'Request ID',
+            'Title / Beneficiary',
+            'Duration',
+            'Venue',
+            'Participants',
+            'Budget',
+            'Source of Fund',
+            'Date Submitted',
+            'Status',
+            'Date Released'
+        ];
+
+        const widths = [
+            1200,
+            1300,
+            850,
+            3000,
+            850,
+            2000,
+            900,
+            1300,
+            1500,
+            1100,
+            900,
+            1100
+        ];
+
+        let totalParticipants = 0;
+        let totalBudget = 0;
+
+        rows.forEach(r => {
+
+            totalParticipants +=
+                Number(r.Participants || 0);
+
+            totalBudget +=
+                Number(r.Budget || 0);
+
+        });
+
+        const cell =
+            (
+                text,
+                width,
+                boldText = false,
+                align = 'center'
+            ) =>
+                `<w:tc>
+                    <w:tcPr>
+                        <w:tcW w:w="${width}" w:type="dxa"/>
+                        <w:tcBorders>
+                            <w:top w:val="single" w:sz="4" w:color="000000"/>
+                            <w:left w:val="single" w:sz="4" w:color="000000"/>
+                            <w:bottom w:val="single" w:sz="4" w:color="000000"/>
+                            <w:right w:val="single" w:sz="4" w:color="000000"/>
+                        </w:tcBorders>
+                    </w:tcPr>
+                    <w:p>
+                        <w:pPr>
+                            <w:jc w:val="${align}"/>
+                        </w:pPr>
+                        <w:r>
+                            <w:rPr>
+                                ${boldText ? '<w:b/>' : ''}
+                                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                                <w:sz w:val="22"/>
+                            </w:rPr>
+                            <w:t>${esc(text)}</w:t>
+                        </w:r>
+                    </w:p>
+                </w:tc>`;
+
+        let table =
+            `<w:tbl>
+                <w:tblPr>
+                    <w:tblW w:w="16000" w:type="dxa"/>
+                    <w:tblLayout w:type="fixed"/>
+                </w:tblPr>
+                <w:tblGrid>
+                    ${widths.map(
+                        w => `<w:gridCol w:w="${w}"/>`
+                    ).join('')}
+                </w:tblGrid>`;
+
+        table +=
+            `<w:tr>
+                ${cols.map(
+                    (h, i) =>
+                        cell(
+                            h,
+                            widths[i],
+                            true,
+                            i === 0 ? 'left' : 'center'
+                        )
+                ).join('')}
+            </w:tr>`;
+
+        rows.forEach(r => {
+
+            const vals = [
+
+                r.Program,
+                r['Request Type'],
+                r['Request ID'],
+                r['Title / Beneficiary'],
+                r.Duration,
+                r.Venue,
+                r.Participants,
+
+                `₱${Number(
+                    r.Budget || 0
+                ).toLocaleString(
+                    'en-PH',
+                    {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }
+                )}`,
+
+                r['Source of Fund'],
+                r['Date Submitted'],
+                r.Status,
+                r['Date Released'] || ''
+
+            ];
+
+            table +=
+                `<w:tr>
+                    ${vals.map(
+                        (v, i) =>
+                            cell(
+                                v,
+                                widths[i],
+                                i === 0,
+                                i === 0 ? 'left' : 'center'
+                            )
+                    ).join('')}
+                </w:tr>`;
+
+        });
+
+        const totalVals = [
+
+            'TOTAL',
+            '',
+            '',
+            '',
+            '',
+            '',
+            totalParticipants,
+
+            `₱${totalBudget.toLocaleString(
+                'en-PH',
+                {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }
+            )}`,
+
+            '',
+            '',
+            '',
+            ''
+
+        ];
+
+        table +=
+            `<w:tr>
+                ${totalVals.map(
+                    (v, i) =>
+                        cell(
+                            v,
+                            widths[i],
+                            true,
+                            i === 0 ? 'left' : 'center'
+                        )
+                ).join('')}
+            </w:tr>
+            </w:tbl>`;
+
+        const content = `
+
+            <w:p>
+                <w:pPr>
+                    <w:jc w:val="center"/>
+                </w:pPr>
+                <w:r>
+                    <w:rPr>
+                        <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                        <w:sz w:val="22"/>
+                    </w:rPr>
+                    <w:t>Republic of the Philippines</w:t>
+                </w:r>
+            </w:p>
+
+            <w:p>
+                <w:pPr>
+                    <w:jc w:val="center"/>
+                </w:pPr>
+                <w:r>
+                    <w:rPr>
+                        <w:b/>
+                        <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                        <w:sz w:val="22"/>
+                    </w:rPr>
+                    <w:t>Province of Negros Occidental</w:t>
+                </w:r>
+            </w:p>
+
+            <w:p>
+                <w:pPr>
+                    <w:jc w:val="center"/>
+                </w:pPr>
+                <w:r>
+                    <w:rPr>
+                        <w:b/>
+                        <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                        <w:sz w:val="22"/>
+                    </w:rPr>
+                    <w:t>Municipality of San Enrique</w:t>
+                </w:r>
+            </w:p>
+
+            <w:p>
+                <w:pPr>
+                    <w:jc w:val="center"/>
+                </w:pPr>
+                <w:r>
+                    <w:rPr>
+                        <w:b/>
+                        <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                        <w:sz w:val="22"/>
+                    </w:rPr>
+                    <w:t>Municipal Social Welfare and Development Office</w:t>
+                </w:r>
+            </w:p>
+
+            <w:p>
+                <w:pPr>
+                    <w:jc w:val="center"/>
+                </w:pPr>
+                <w:r>
+                    <w:rPr>
+                        <w:b/>
+                        <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                        <w:sz w:val="26"/>
+                    </w:rPr>
+                    <w:t>PROGRAM FUND REQUEST REPORT</w:t>
+                </w:r>
+            </w:p>
+
+            <w:p>
+                <w:pPr>
+                    <w:jc w:val="center"/>
+                </w:pPr>
+                <w:r>
+                    <w:rPr>
+                        <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                        <w:sz w:val="20"/>
+                    </w:rPr>
+                    <w:t>Calendar Year ${new Date().getFullYear()}</w:t>
+                </w:r>
+            </w:p>
+
+            ${table}
+
+            <w:p>
+                <w:r>
+                    <w:t>Prepared by:</w:t>
+                </w:r>
+            </w:p>
+
+            <w:p>
+                <w:r>
+                    <w:rPr>
+                        <w:b/>
+                    </w:rPr>
+                    <w:t>${esc(PREPARED_BY_NAME)}</w:t>
+                </w:r>
+            </w:p>
+
+            <w:p>
+                <w:r>
+                    <w:t>${esc(PREPARED_BY_TITLE)}</w:t>
+                </w:r>
+            </w:p>
+
+            <w:p>
+                <w:pPr>
+                    <w:jc w:val="right"/>
+                </w:pPr>
+                <w:r>
+                    <w:rPr>
+                        <w:i/>
+                    </w:rPr>
+                    <w:t>${esc(getFooterTimestamp())}</w:t>
+                </w:r>
+            </w:p>
+        `;
+
+        const documentXml =
+            `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+            <w:document
+                xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+
+                <w:body>
+
+                    ${content}
+
+                    <w:sectPr>
+                        <w:pgSz
+                            w:w="16840"
+                            w:h="12240"
+                            w:orient="landscape"/>
+
+                        <w:pgMar
+                            w:top="540"
+                            w:right="420"
+                            w:bottom="540"
+                            w:left="420"
+                            w:header="240"
+                            w:footer="240"
+                            w:gutter="0"/>
+                    </w:sectPr>
+
+                </w:body>
+
+            </w:document>`;
+
+        zip.file(
+            'word/document.xml',
+            documentXml
+        );
+
+        const rels =
+            `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+            <Relationships
+                xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+
+                <Relationship
+                    Id="rId1"
+                    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+                    Target="word/document.xml"/>
+
+            </Relationships>`;
+
+        zip.file(
+            '_rels/.rels',
+            rels
+        );
+
+        const contentTypes =
+            `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+            <Types
+                xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+
+                <Default
+                    Extension="xml"
+                    ContentType="application/xml"/>
+
+                <Default
+                    Extension="rels"
+                    ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+
+                <Override
+                    PartName="/word/document.xml"
+                    ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+
+            </Types>`;
+
+        zip.file(
+            '[Content_Types].xml',
+            contentTypes
+        );
+
+        const out =
+            await zip.generateAsync({
+                type: 'blob',
+                mimeType:
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            });
+
+        const url =
+            URL.createObjectURL(out);
+
+        const a =
+            document.createElement('a');
+
+        a.href = url;
+
+        a.download =
+            `MSWDO_San_Enrique_Program_Report_${new Date().toISOString().slice(0, 10)}.docx`;
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 1000);
+
+    } catch (err) {
+
+        console.error(
+            'Word export failed:',
+            err
+        );
+
+        alert(
+            'Word export failed: ' +
+            (err.message || err)
+        );
+
+    }
+
+}
+
+//Export Button Event Listener
+document.getElementById('exportXlsx')
+    .addEventListener('click', async (e) => {
+
+        e.preventDefault();
+
+        document
+            .getElementById('exportDropdownContainer')
+            .classList.remove('active');
+
+        await exportToXlsx();
+
+    });
+
+
+document.getElementById('exportPdf')
+    .addEventListener('click', async (e) => {
+
+        e.preventDefault();
+
+        document
+            .getElementById('exportDropdownContainer')
+            .classList.remove('active');
+
+        await exportToPdf();
+
+    });
+
+
+document.getElementById('exportDocx')
+    .addEventListener('click', async (e) => {
+
+        e.preventDefault();
+
+        document
+            .getElementById('exportDropdownContainer')
+            .classList.remove('active');
+
+        await exportToDocx();
+
+    });
+
+
+document.getElementById('exportDropdownBtn')
+    .addEventListener('click', (e) => {
+
+        e.stopPropagation();
+
+        document
+            .getElementById('exportDropdownContainer')
+            .classList.toggle('active');
+
+    });
+
+
+document.addEventListener('click', (e) => {
+
+    const dropdown =
+        document.getElementById(
+            'exportDropdownContainer'
+        );
+
+    if (!dropdown.contains(e.target)) {
+
+        dropdown.classList.remove(
+            'active'
+        );
+
+    }
+
+});
 
         function showToast(
             msg,
