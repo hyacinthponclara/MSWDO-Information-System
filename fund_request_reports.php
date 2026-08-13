@@ -321,6 +321,7 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
         .export-dropdown {
     position: relative;
     display: inline-block;
+    z-index: 9999;
 }
 
 .export-dropdown-content {
@@ -333,7 +334,7 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
     border-radius: 0.5rem;
     border: 1px solid #D4E8DC;
     z-index: 1000;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .export-dropdown-content a {
@@ -1668,79 +1669,146 @@ async function exportToPdf() {
 
         });
 
-        doc.autoTable({
+        const ROWS_PER_PAGE = 15;
+const DATA_ROWS_PER_PAGE = ROWS_PER_PAGE - 1;
 
-            startY: 160,
+// Split the data into groups of 14 records.
+// The header is added automatically to every page.
+for (
+    let start = 0;
+    start < data.length;
+    start += DATA_ROWS_PER_PAGE
+) {
 
-            head: [
-                cols.map(c => c.header)
-            ],
+    const pageRows = data.slice(
+        start,
+        start + DATA_ROWS_PER_PAGE
+    );
 
-            body:
-                data.map(r =>
-                    cols.map(c =>
-                        r[c.dataKey] ?? ''
-                    )
-                ),
+    // Add a new page for every page after the first
+    if (start > 0) {
+        doc.addPage();
+    }
 
-            theme: 'grid',
+    // Header
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
 
-            headStyles: {
-                fillColor: [240, 240, 240],
-                textColor: [0, 0, 0],
-                fontSize: 9,
-                fontStyle: 'bold',
-                valign: 'middle'
-            },
+    doc.text(
+        'Republic of the Philippines',
+        pageWidth / 2,
+        36,
+        { align: 'center' }
+    );
 
-            bodyStyles: {
-                fontSize: 9,
-                cellPadding: 4,
-                valign: 'middle'
-            },
+    doc.setFont('helvetica', 'bold');
 
-            columnStyles: {
+    doc.text(
+        'Province of Negros Occidental',
+        pageWidth / 2,
+        54,
+        { align: 'center' }
+    );
 
-                0: { cellWidth: 72, halign: 'left' },
-                1: { cellWidth: 85, halign: 'center' },
-                2: { cellWidth: 52, halign: 'center' },
-                3: { cellWidth: 165, halign: 'left' },
-                4: { cellWidth: 48, halign: 'center' },
-                5: { cellWidth: 105, halign: 'left' },
-                6: { cellWidth: 50, halign: 'center' },
-                7: { cellWidth: 78, halign: 'right' },
-                8: { cellWidth: 90, halign: 'center' },
-                9: { cellWidth: 75, halign: 'center' },
-                10: { cellWidth: 58, halign: 'center' },
-                11: { cellWidth: 70, halign: 'center' }
+    doc.text(
+        'Municipality of San Enrique',
+        pageWidth / 2,
+        72,
+        { align: 'center' }
+    );
 
-            },
+    doc.text(
+        'Municipal Social Welfare and Development Office',
+        pageWidth / 2,
+        90,
+        { align: 'center' }
+    );
 
-            margin: {
-                left: margin,
-                right: margin
-            },
+    doc.setFontSize(13);
 
-            pageBreak: 'auto',
+    doc.text(
+        'PROGRAM FUND REQUEST REPORT',
+        pageWidth / 2,
+        120,
+        { align: 'center' }
+    );
 
-            didParseCell: function (data) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
 
-                if (
-                    data.row.index ===
-                    data.table.body.length - 1
-                ) {
+    doc.text(
+        `Calendar Year ${new Date().getFullYear()}`,
+        pageWidth / 2,
+        138,
+        { align: 'center' }
+    );
 
-                    data.cell.styles.fontStyle =
-                        'bold';
+    doc.line(
+        margin,
+        148,
+        pageWidth - margin,
+        148
+    );
 
-                    data.cell.styles.fillColor =
-                        [240, 240, 240];
+    // TABLE
+    doc.autoTable({
 
-                }
+        startY: 160,
 
-            }
+        head: [
+            cols.map(c => c.header)
+        ],
 
-        });
+        body:
+            pageRows.map(r =>
+                cols.map(c =>
+                    r[c.dataKey] ?? ''
+                )
+            ),
+
+        theme: 'grid',
+
+        headStyles: {
+            fillColor: [240, 240, 240],
+            textColor: [0, 0, 0],
+            fontSize: 9,
+            fontStyle: 'bold',
+            valign: 'middle'
+        },
+
+        bodyStyles: {
+            fontSize: 9,
+            cellPadding: 4,
+            valign: 'middle'
+        },
+
+        columnStyles: {
+
+            0: { cellWidth: 72, halign: 'left' },
+            1: { cellWidth: 85, halign: 'center' },
+            2: { cellWidth: 52, halign: 'center' },
+            3: { cellWidth: 165, halign: 'left' },
+            4: { cellWidth: 48, halign: 'center' },
+            5: { cellWidth: 105, halign: 'left' },
+            6: { cellWidth: 50, halign: 'center' },
+            7: { cellWidth: 78, halign: 'right' },
+            8: { cellWidth: 90, halign: 'center' },
+            9: { cellWidth: 75, halign: 'center' },
+            10: { cellWidth: 58, halign: 'center' },
+            11: { cellWidth: 70, halign: 'center' }
+
+        },
+
+        margin: {
+            left: margin,
+            right: margin
+        },
+
+        pageBreak: 'avoid'
+
+    });
+
+}
 
         const finalY =
             doc.lastAutoTable.finalY + 30;
