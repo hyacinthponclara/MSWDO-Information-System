@@ -483,127 +483,55 @@ require 'db_connect.php';
             display: none;
         }
 
-        /* Print styles */
+        /* PRINT: MAP ONLY */
         @media print {
-            body {
-                background: #fff !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-
-            .sidebar,
-            .sidebar-overlay,
-            .toolbar,
-            footer,
-            .note,
-            .btn,
-            .export-dropdown,
-            .menu-btn,
-            body>header,
-            .ml-64>header {
-                display: none !important;
+            @page {
+                size: landscape;
+                margin: 0;
             }
 
             html,
             body {
-                height: auto !important;
-                overflow: visible !important;
-            }
-
-            body.min-h-screen,
-            .ml-64 {
-                display: block !important;
-                height: auto !important;
-                min-height: 0 !important;
-                margin-left: 0 !important;
-            }
-
-            main {
-                overflow: visible !important;
-                height: auto !important;
-                padding: 0 !important;
-            }
-
-            .wrap {
-                box-shadow: none !important;
-                border: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                border-radius: 0 !important;
-                max-width: 100% !important;
-            }
-
-            .header {
-                display: none !important;
-            }
-
-            .layout {
-                display: grid !important;
-                grid-template-columns: minmax(0, 1.65fr) minmax(210px, 0.9fr) !important;
-                gap: 14px !important;
                 width: 100% !important;
-                align-items: stretch !important;
-                overflow: visible !important;
+                height: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important;
+                background: #fff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
 
+            /* Hide EVERYTHING except the Leaflet map. */
+            body * {
+                visibility: hidden !important;
+            }
+
+            #map,
+            #map * {
+                visibility: visible !important;
+            }
+
+            /* Make the map occupy the entire printed page. */
             #map {
                 display: block !important;
-                position: relative !important;
-                width: 100% !important;
-                height: 300px !important;
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
                 min-width: 0 !important;
-                max-width: 100% !important;
-                overflow: hidden !important;
-                page-break-inside: avoid;
-                break-inside: avoid;
-                border: 1.5px solid #000 !important;
-                margin: 0 !important;
-                box-sizing: border-box !important;
-            }
-
-            /* Keep the Top 5 Barangays panel beside the map in print. */
-            .layout .panel {
-                display: block !important;
-                width: 100% !important;
-                height: 300px !important;
-                box-sizing: border-box !important;
-                padding: 12px !important;
-                border: 1px solid #000 !important;
-                border-radius: 0 !important;
-                overflow: hidden !important;
-            }
-
-            .layout .panel h3 {
-                font-size: 11pt !important;
-                margin: 0 0 8px 0 !important;
-            }
-
-            .layout .panel h3:nth-of-type(2),
-            .layout .panel #drilldown {
-                display: none !important;
-            }
-
-            .layout .top5 li {
-                font-size: 11pt !important;
-                padding: 6px 0 !important;
-            }
-
-            .overflow-x-auto {
-                width: 94% !important;
-                margin-left: auto !important;
-                margin-right: auto !important;
-                overflow: visible !important;
-            }
-
-            #map .leaflet-container,
-            #map .leaflet-map-pane,
-            #map .leaflet-tile-pane,
-            #map .leaflet-overlay-pane,
-            #map .leaflet-marker-pane,
-            #map .leaflet-shadow-pane,
-            #map .leaflet-marker-icon,
-            #map .leaflet-control-container {
                 max-width: none !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                border-radius: 0 !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
             }
 
             #map .leaflet-container {
@@ -612,40 +540,30 @@ require 'db_connect.php';
                 overflow: hidden !important;
             }
 
-            #map .leaflet-map-pane {
-                width: 100% !important;
+            #map .leaflet-map-pane,
+            #map .leaflet-tile-pane,
+            #map .leaflet-overlay-pane,
+            #map .leaflet-shadow-pane,
+            #map .leaflet-marker-pane,
+            #map .leaflet-tooltip-pane,
+            #map .leaflet-popup-pane,
+            #map .leaflet-control-container {
+                visibility: visible !important;
             }
 
-            table.summary,
-            table.summary th,
-            table.summary td {
-                border-color: #000 !important;
+            /* Keep the map controls, barangay labels, boundaries and legend. */
+            #map .leaflet-control,
+            #map .leaflet-control-attribution,
+            #map .legend {
+                visibility: visible !important;
             }
 
-            table.summary {
-                page-break-inside: avoid;
-                margin-top: 20px !important;
-            }
-
-            table.summary th {
-                background: #fff !important;
-                color: #000 !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-
-            #printLetterhead {
-                display: flex !important;
-                margin-bottom: 18px;
-            }
-
+            /* These are intentionally not printed. */
+            #printLetterhead,
+            #printSignature,
             #printFooter {
-                display: block !important;
-            }
-
-            @page {
-                size: landscape;
-                margin: 0.5in;
+                display: none !important;
+                visibility: hidden !important;
             }
         }
 
@@ -1004,8 +922,8 @@ require 'db_connect.php';
                         </select>
                     </div>
                     <div class="spacer flex-1"></div>
-                    <button class="btn secondary" id="printMapBtn" title="Print Map & Table">
-                        <i class="fas fa-print"></i> <span class="hidden sm:inline">Print</span>
+                    <button class="btn secondary" id="printMapBtn" title="Print Map Only">
+                        <i class="fas fa-print"></i> <span class="hidden sm:inline">Print Map</span>
                     </button>
                     <div class="export-dropdown" id="exportDropdownContainer">
                         <button class="btn" id="exportDropdownBtn">
@@ -2536,18 +2454,35 @@ require 'db_connect.php';
             await exportToDocx();
         });
 
+        // PRINT MAP ONLY
+        // The print CSS hides the entire page except #map.
+        // beforeprint runs after the browser switches to print media, so Leaflet
+        // gets the correct full-page map dimensions before the print preview opens.
+        window.addEventListener('beforeprint', () => {
+            if (map && typeof map.invalidateSize === 'function') {
+                setTimeout(() => {
+                    map.invalidateSize({ pan: false, animate: false });
+                }, 50);
+            }
+        });
+
+        window.addEventListener('afterprint', () => {
+            if (map && typeof map.invalidateSize === 'function') {
+                setTimeout(() => {
+                    map.invalidateSize({ pan: false, animate: false });
+                }, 50);
+            }
+        });
+
         document.getElementById('printMapBtn').addEventListener('click', () => {
-            // Give Leaflet one frame to recalculate the print-sized container
-            // before the browser opens the print preview.
+            // Wait briefly so Leaflet finishes any current map updates, then print.
             if (map && typeof map.invalidateSize === 'function') {
                 map.invalidateSize({ pan: false, animate: false });
             }
+
             setTimeout(() => {
-                if (map && typeof map.invalidateSize === 'function') {
-                    map.invalidateSize({ pan: false, animate: false });
-                }
                 window.print();
-            }, 250);
+            }, 150);
         });
 
         document.getElementById('exportDropdownBtn').addEventListener('click', (e) => {
