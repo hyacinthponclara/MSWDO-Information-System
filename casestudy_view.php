@@ -1,3 +1,392 @@
+<?php
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+require 'auth.php';
+requireRole(['Admin', 'Social Worker', 'Staff']);
+require 'db_connect.php';
+
+$case_study_id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+
+if (!$case_study_id || $case_study_id <= 0) {
+    header('Location: confidential.php');
+    exit;
+}
+
+
+$stmt = $pdo->prepare("
+    SELECT
+        cs.case_study_id,
+        cs.client_id,
+        cs.user_id,
+
+        cs.interview_date,
+        cs.type_of_case_study,
+
+        cs.patient_name,
+        cs.patient_relationship,
+
+        cs.family_composition_json,
+
+        cs.combined_income,
+        cs.monthly_expenses,
+        cs.emergency_fund_available,
+
+        cs.crisis_severity,
+        cs.crisis_experienced,
+
+        cs.problem_presented,
+        cs.home_condition,
+        cs.indigency_assessment,
+        cs.recommendation,
+
+        cs.created_at,
+
+        cs.previous_dswd_assistance,
+        cs.previous_assistance_details,
+        cs.previous_assistance_date,
+
+        cs.insurance_coverage,
+        cs.savings,
+
+        /* CLIENT */
+        c.cl_firstname,
+        c.cl_middlename,
+        c.cl_lastname,
+        c.cl_suffix,
+        c.cl_birthdate,
+        c.cl_age,
+        c.cl_sex,
+        c.cl_civilstatus,
+        c.cl_occupation,
+        c.cl_monthly_income,
+        c.cl_educ_attain,
+        c.cl_contact_num,
+
+        /* BARANGAY */
+        b.barangay_name,
+
+        /* USER / STAFF */
+        u.user_firstname,
+        u.user_middlename,
+        u.user_lastname,
+        u.user_role
+
+    FROM CASE_STUDY cs
+
+    LEFT JOIN CLIENT c
+        ON c.client_id = cs.client_id
+
+    LEFT JOIN BARANGAY b
+        ON b.barangay_id = c.brgy_id
+
+    LEFT JOIN MSWDO_USER u
+        ON u.user_id = cs.user_id
+
+    WHERE cs.case_study_id = :case_study_id
+
+    LIMIT 1
+");
+
+$stmt->execute([
+    ':case_study_id' => $case_study_id
+]);
+
+$caseRow = $stmt->fetch(PDO::FETCH_ASSOC);
+
+
+if (!$caseRow) {
+    header('Location: confidential.php');
+    exit;
+}
+
+
+
+function buildFullName(array $row, string $first, string $middle, string $last, string $suffix = ''): string
+{
+    $parts = [];
+
+    if (!empty($row[$first])) {
+        $parts[] = trim($row[$first]);
+    }
+
+    if (!empty($row[$middle])) {
+        $parts[] = trim($row[$middle]);
+    }
+
+    if (!empty($row[$last])) {
+        $parts[] = trim($row[$last]);
+    }
+
+    if ($suffix !== '' && !empty($row[$suffix])) {
+        $parts[] = trim($row[$suffix]);
+    }
+
+    return trim(implode(' ', $parts));
+}
+
+
+
+$fullName = buildFullName(
+    $caseRow,
+    'cl_firstname',
+    'cl_middlename',
+    'cl_lastname',
+    'cl_suffix'
+);
+
+
+
+$submittedBy = buildFullName(
+    $caseRow,
+    'user_firstname',
+    'user_middlename',
+    'user_lastname'
+);
+
+if ($submittedBy === '') {
+    $submittedBy = '—';
+}
+
+
+
+$family = [];
+
+if (!empty($caseRow['family_composition_json'])) {
+
+    $decodedFamily = json_decode(
+        $caseRow['family_composition_json'],
+        true
+    );
+
+    if (
+        json_last_error() === JSON_ERROR_NONE &&
+        is_array($decodedFamily)
+    ) {
+        $family = $decodedFamily;
+    }
+}
+
+
+
+$interviewDate = !empty($caseRow['interview_date'])
+    ? date('F j, Y', strtotime($caseRow['interview_date']))
+    : '—';
+
+$previousAssistanceDate = !empty($caseRow['previous_assistance_date'])
+    ? date('F j, Y', strtotime($caseRow['previous_assistance_date']))
+    : '—';
+
+$submittedDate = !empty($caseRow['created_at'])
+    ? date('F j, Y g:i A', strtotime($caseRow['created_at']))
+    : '—';
+
+$dateOfBirth = !empty($caseRow['cl_birthdate'])
+    ? date('F j, Y', strtotime($caseRow['cl_birthdate']))
+    : '—';
+
+
+
+$barangayName = !empty($caseRow['barangay_name'])
+    ? $caseRow['barangay_name']
+    : 'Unknown Barangay';
+
+$address =
+    'Barangay ' .
+    $barangayName .
+    ', San Enrique, Negros Occidental';
+
+
+
+$combinedIncome = (float) (
+    $caseRow['combined_income'] ?? 0
+);
+
+$monthlyExpenses = (float) (
+    $caseRow['monthly_expenses'] ?? 0
+);
+
+$savings = (float) (
+    $caseRow['savings'] ?? 0
+);
+
+$netMonthly =
+    $combinedIncome -
+    $monthlyExpenses;
+
+
+
+$emergencyFund =
+    ((int) ($caseRow['emergency_fund_available'] ?? 0) === 1)
+    ? 'Available'
+    : 'None';
+
+
+$hasPreviousAssistance =
+    ((int) ($caseRow['previous_dswd_assistance'] ?? 0) === 1);
+
+
+
+$caseStudyData = [
+
+    'caseStudyId' => (int) $caseRow['case_study_id'],
+
+    'client' => [
+
+        'clientId' =>
+            (int) ($caseRow['client_id'] ?? 0),
+
+        'fullName' =>
+            $fullName,
+
+        'age' =>
+            $caseRow['cl_age'],
+
+        'sex' =>
+            $caseRow['cl_sex'],
+
+        'civilStatus' =>
+            $caseRow['cl_civilstatus'],
+
+        'dateOfBirth' =>
+            $dateOfBirth,
+
+        'address' =>
+            $address,
+
+        'barangay' =>
+            $barangayName,
+
+        'occupation' =>
+            $caseRow['cl_occupation'],
+
+        'education' =>
+            $caseRow['cl_educ_attain'],
+
+        'monthlyIncome' =>
+            (float) ($caseRow['cl_monthly_income'] ?? 0),
+
+        'contactNumber' =>
+            $caseRow['cl_contact_num']
+
+    ],
+
+
+    'interview' => [
+
+        'date' =>
+            $interviewDate,
+
+        'type' =>
+            $caseRow['type_of_case_study']
+
+    ],
+
+
+    'patient' => [
+
+        'fullName' =>
+            $caseRow['patient_name'],
+
+        'relation' =>
+            $caseRow['patient_relationship']
+
+    ],
+
+
+    'family' =>
+        $family,
+
+
+    'finances' => [
+
+        'combinedIncome' =>
+            $combinedIncome,
+
+        'monthlyExpenses' =>
+            $monthlyExpenses,
+
+        'insurance' =>
+            $caseRow['insurance_coverage'],
+
+        'savings' =>
+            $savings,
+
+        'emergencyFund' =>
+            $emergencyFund,
+
+        'netMonthly' =>
+            $netMonthly
+
+    ],
+
+
+    'assessment' => [
+
+        'problemPresented' =>
+            $caseRow['problem_presented'],
+
+        'homeCondition' =>
+            $caseRow['home_condition'],
+
+        'crisisSeverity' =>
+            $caseRow['crisis_severity'],
+
+        'crisisExperienced' =>
+            $caseRow['crisis_experienced']
+
+    ],
+
+
+    'indigency' =>
+        $caseRow['indigency_assessment'],
+
+
+    'previousAssistance' => [
+
+        'hasPrevious' =>
+            $hasPreviousAssistance,
+
+        'details' =>
+            $caseRow['previous_assistance_details'],
+
+        'date' =>
+            $previousAssistanceDate
+
+    ],
+
+
+    'recommendation' =>
+        $caseRow['recommendation'],
+
+
+    'submitted' => [
+
+        /*
+         * CASE_STUDY does not have a status column.
+         * Therefore "Submitted" is the correct derived status.
+         */
+
+        'status' =>
+            'Submitted',
+
+        'submittedDate' =>
+            $submittedDate,
+
+        'submittedBy' =>
+            $submittedBy,
+
+        'designation' =>
+            !empty($caseRow['user_role'])
+            ? $caseRow['user_role']
+            : 'MSWDO'
+
+    ]
+
+];
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -394,15 +783,15 @@
 </head>
 
 <body class="bg-slate2 min-h-screen flex flex-col md:flex-row">
-  <!-- Sidebar (desktop) -->
-  <?php require 'sidebar.php'; ?>
-  <!-- Mobile header -->
-  <div class="md:hidden bg-forest-600 text-white p-3 flex items-center justify-between">
-    <span class="font-serif text-xl">MSWDO</span>
-    <button class="text-white"><i class="fas fa-bars text-xl"></i></button>
-  </div>
-  <!-- ═══════════ MAIN ═══════════ -->
-  <div class="md:ml-64 flex-1 flex flex-col min-h-screen w-full">
+    <!-- Sidebar (desktop) -->
+    <?php require 'sidebar.php'; ?>
+    <!-- Mobile header -->
+    <div class="md:hidden bg-forest-600 text-white p-3 flex items-center justify-between">
+        <span class="font-serif text-xl">MSWDO</span>
+        <button class="text-white"><i class="fas fa-bars text-xl"></i></button>
+    </div>
+    <!-- ═══════════ MAIN ═══════════ -->
+    <div class="md:ml-64 flex-1 flex flex-col min-h-screen w-full">
 
         <!-- TOPBAR -->
 
@@ -860,6 +1249,32 @@
 
                         </div>
 
+                        <div class="grid grid-cols-2 gap-4 mobile-grid-1">
+
+                            <div>
+
+                                <label class="field-label">
+                                    Crisis Severity
+                                </label>
+
+                                <div id="crisisSeverity" class="readonly-field">
+                                </div>
+
+                            </div>
+
+
+                            <div>
+
+                                <label class="field-label">
+                                    Crisis Experienced
+                                </label>
+
+                                <div id="crisisExperienced" class="readonly-field readonly-textarea">
+                                </div>
+
+                            </div>
+
+                        </div>
 
                         <div>
 
@@ -1158,219 +1573,24 @@
 
 
         /* ============================================================
-           DEMO CASE DATA
-        
-           Replace this object with your actual retrieved
-           caseStudyData from your system.
+           DATABASE DATA → JAVASCRIPT
         ============================================================ */
 
-        const caseStudyData = {
-
-            client: {
-
-                fullName: 'Juan Dela Cruz',
-
-                age: 45,
-
-                sex: 'Male',
-
-                dateOfBirth: 'January 15, 1981',
-
-                address: 'Barangay Poblacion, San Enrique, Negros Occidental',
-
-                barangay: 'Poblacion',
-
-                nearestKin: 'Maria Dela Cruz'
-
-            },
-
-
-            interview: {
-
-                date: 'August 8, 2026',
-
-                type: 'Financial Assistance / Medical Assistance'
-
-            },
-
-
-            patient: {
-
-                fullName: 'Juan Dela Cruz',
-
-                relation: 'Client',
-
-                condition: 'Medical assistance requested'
-
-            },
-
-
-            family: [
-
-                {
-
-                    name: 'Juan Dela Cruz',
-
-                    relationship: 'Client',
-
-                    age: 45,
-
-                    sex: 'Male',
-
-                    civilStatus: 'Married',
-
-                    education: 'High School',
-
-                    occupation: 'Laborer',
-
-                    income: 8500
-
-                },
-
-                {
-
-                    name: 'Maria Dela Cruz',
-
-                    relationship: 'Spouse',
-
-                    age: 42,
-
-                    sex: 'Female',
-
-                    civilStatus: 'Married',
-
-                    education: 'High School',
-
-                    occupation: 'Household',
-
-                    income: 0
-
-                },
-
-                {
-
-                    name: 'Pedro Dela Cruz',
-
-                    relationship: 'Son',
-
-                    age: 18,
-
-                    sex: 'Male',
-
-                    civilStatus: 'Single',
-
-                    education: 'College',
-
-                    occupation: 'Student',
-
-                    income: 0
-
-                }
-
-            ],
-
-
-            finances: {
-
-                incomeSources: [
-
-                    {
-                        label: 'Employment / Labor Income',
-                        amount: 8500
-                    }
-
-                ],
-
-                insurance: 'PhilHealth',
-
-                savings: '₱1,500',
-
-                emergencyFund: 'None',
-
-                expenses: [
-
-                    {
-                        label: 'Food',
-                        amount: 4500
-                    },
-
-                    {
-                        label: 'Electricity',
-                        amount: 1200
-                    },
-
-                    {
-                        label: 'Water',
-                        amount: 500
-                    },
-
-                    {
-                        label: 'Transportation',
-                        amount: 800
-                    },
-
-                    {
-                        label: 'Medicine',
-                        amount: 1200
-                    }
-
-                ]
-
-            },
-
-
-            assessment: {
-
-                problemPresented:
-                    'The client is requesting financial assistance to help cover medical expenses related to his current condition. The household is experiencing difficulty meeting the required expenses because of limited and irregular income.',
-
-                homeCondition:
-                    'The family resides in a modest household within the municipality. The primary source of income is labor work, which is not always stable. Available household resources are insufficient to fully cover the family’s regular expenses and the additional medical costs.'
-
-            },
-
-
-            indigency: 'INDIGENT / FINANCIALLY VULNERABLE',
-
-
-            previousAssistance: {
-
-                hasPrevious: true,
-
-                details:
-                    'The client previously received assistance from DSWD/MSWDO for medical expenses.',
-
-                date: 'March 15, 2026'
-
-            },
-
-
-            recommendation:
-                'Based on the assessment conducted, the client and his family are considered financially vulnerable and in need of assistance. It is recommended that appropriate assistance be extended subject to the applicable MSWDO and program requirements.',
-
-
-            submitted: {
-
-                status: 'Submitted',
-
-                submittedDate: 'August 8, 2026',
-
-                submittedBy: 'MSWDO Staff',
-
-                preparedBy: 'MA. TERESA C. PONCLARA, RSW',
-
-                designation: 'MSWDO',
-
-                prcLicense: '0011198',
-
-                licenseValidity: 'August 2025'
-
-            }
-
-        };
-
-
-        /* HELPER FUNCTIONS */
+        const caseStudyData =
+        <?= json_encode(
+            $caseStudyData,
+            JSON_HEX_TAG |
+            JSON_HEX_APOS |
+            JSON_HEX_QUOT |
+            JSON_HEX_AMP |
+            JSON_UNESCAPED_UNICODE |
+            JSON_UNESCAPED_SLASHES
+        ) ?>;
+
+
+        /* ============================================================
+           HELPER FUNCTIONS
+        ============================================================ */
 
         function safeText(value) {
 
@@ -1383,7 +1603,6 @@
             }
 
             return String(value);
-
         }
 
 
@@ -1398,11 +1617,30 @@
             }
 
             return String(value)
-                .replace(/&/g, '&')
-                .replace(/</g, '<')
-                .replace(/>/g, '>')
-                .replace(/"/g, '"')
-                .replace(/'/g, "'");
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+
+        function escapeHtml(value) {
+
+            if (
+                value === null ||
+                value === undefined ||
+                value === ''
+            ) {
+                return '—';
+            }
+
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
 
@@ -1417,1738 +1655,1445 @@
                     maximumFractionDigits: 2
                 }
             );
-
         }
 
 
-        /* SIDEBAR */
+        /* ============================================================
+           SIDEBAR
+        ============================================================ */
 
         function openSidebar() {
 
-            document
-                .getElementById('sidebar')
-                .classList
-                .add('open');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
 
-            document
-                .getElementById('mobileOverlay')
-                .classList
-                .add('show');
-
+            if (sidebar) sidebar.classList.add('open');
+            if (overlay) overlay.classList.add('show');
         }
 
 
         function closeSidebar() {
 
-            document
-                .getElementById('sidebar')
-                .classList
-                .remove('open');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
 
-            document
-                .getElementById('mobileOverlay')
-                .classList
-                .remove('show');
-
+            if (sidebar) sidebar.classList.remove('open');
+            if (overlay) overlay.classList.remove('show');
         }
 
 
-        /* RENDER CLIENT */
+        /* ============================================================
+           RENDER CLIENT
+        ============================================================ */
 
         function renderClient() {
 
             const c = caseStudyData.client || {};
+            const patient = caseStudyData.patient || {};
+            const submitted = caseStudyData.submitted || {};
 
             document.getElementById('clientName').textContent =
                 safeText(c.fullName);
 
             document.getElementById('clientSubtitle').textContent =
-                `${safeText(c.age)} years old • ${safeText(c.sex)} • ${safeText(c.barangay || c.address)}`;
+                `${safeText(c.age)} years old • ${safeText(c.sex)} • ${safeText(c.barangay)}`;
 
             document.getElementById('recordStatus').textContent =
-                caseStudyData.submitted?.status || 'Submitted';
-
+                safeText(submitted.status || 'Submitted');
 
             document.getElementById('patientSummary').textContent =
-                `${safeText(caseStudyData.patient?.fullName)} • ${safeText(caseStudyData.patient?.relation)}`;
-
+                `${safeText(patient.fullName)} • ${safeText(patient.relation)}`;
 
             const details = [
-
                 ['Full Name', c.fullName],
-
                 ['Age', c.age ? `${c.age} years old` : ''],
-
                 ['Sex', c.sex],
-
+                ['Civil Status', c.civilStatus],
                 ['Date of Birth', c.dateOfBirth],
-
-                ['Address', c.address || c.barangay],
-
-                ['Nearest Kin', c.nearestKin]
-
+                ['Address', c.address],
+                ['Occupation', c.occupation],
+                ['Educational Attainment', c.education],
+                ['Monthly Income', formatCurrency(c.monthlyIncome)],
+                ['Contact Number', c.contactNumber]
             ];
 
-
             document.getElementById('patientDetails').innerHTML =
-                details.map(item => `
-
-            <div>
-
-                <label class="field-label">
-                    ${item[0]}
-                </label>
-
-                <div class="readonly-field">
-                    ${safeText(item[1])}
-                </div>
-
-            </div>
-
-        `).join('');
-
+                details.map(([label, value]) => `
+                    <div>
+                        <label class="field-label">
+                            ${escapeHtml(label)}
+                        </label>
+                        <div class="readonly-field">
+                            ${escapeHtml(value)}
+                        </div>
+                    </div>
+                `).join('');
         }
 
 
-        /* RENDER INTERVIEW */
+        /* ============================================================
+           RENDER INTERVIEW
+        ============================================================ */
 
         function renderInterview() {
 
+            const interview = caseStudyData.interview || {};
+
             document.getElementById('interviewDate').textContent =
-                safeText(caseStudyData.interview?.date);
+                safeText(interview.date);
 
             document.getElementById('caseType').textContent =
-                safeText(caseStudyData.interview?.type);
-
+                safeText(interview.type);
         }
 
 
-        /* RENDER FAMILY */
+        /* ============================================================
+           RENDER FAMILY
+        ============================================================ */
 
         function renderFamily() {
 
-            const family =
-                caseStudyData.family || [];
+            const family = Array.isArray(caseStudyData.family)
+                ? caseStudyData.family
+                : [];
 
-            const tbody =
-                document.getElementById('familyBody');
-
+            const tbody = document.getElementById('familyBody');
 
             tbody.innerHTML = '';
-
 
             if (!family.length) {
 
                 tbody.innerHTML = `
-
-            <tr>
-
-                <td colspan="9"
-                    class="text-center text-slate-400 py-5">
-
-                    No family members recorded.
-
-                </td>
-
-            </tr>
-
-        `;
+                    <tr>
+                        <td colspan="9" class="text-center text-slate-400 py-5">
+                            No family members recorded.
+                        </td>
+                    </tr>
+                `;
 
             } else {
 
                 family.forEach((member, index) => {
 
-                    const isClient =
-                        index === 0;
+                    const relationship = String(
+                        member.relationship || ''
+                    ).toLowerCase();
 
-                    const row =
-                        document.createElement('tr');
+                    const isClient =
+                        index === 0 ||
+                        relationship.includes('client');
+
+                    const row = document.createElement('tr');
 
                     if (isClient) {
                         row.classList.add('client-row');
                     }
 
                     row.innerHTML = `
+                        <td>${index + 1}</td>
 
-                <td>${index + 1}</td>
+                        <td class="font-semibold text-slate-700">
+                            ${escapeHtml(member.name)}
+                        </td>
 
-                <td class="font-semibold text-slate-700">
-                    ${safeText(member.name)}
-                </td>
+                        <td>
+                            ${escapeHtml(member.relationship)}
+                        </td>
 
-                <td>
-                    ${safeText(member.relationship)}
-                </td>
+                        <td>
+                            ${escapeHtml(member.age)}
+                        </td>
 
-                <td>
-                    ${safeText(member.age)}
-                </td>
+                        <td>
+                            ${escapeHtml(member.sex)}
+                        </td>
 
-                <td>
-                    ${safeText(member.sex)}
-                </td>
+                        <td>
+                            ${escapeHtml(
+                                member.civilStatus ||
+                                member.civil_status
+                            )}
+                        </td>
 
-                <td>
-                    ${safeText(member.civilStatus)}
-                </td>
+                        <td>
+                            ${escapeHtml(member.education)}
+                        </td>
 
-                <td>
-                    ${safeText(member.education)}
-                </td>
+                        <td>
+                            ${escapeHtml(member.occupation)}
+                        </td>
 
-                <td>
-                    ${safeText(member.occupation)}
-                </td>
-
-                <td>
-                    ${formatCurrency(member.income)}
-                </td>
-
-            `;
+                        <td>
+                            ${formatCurrency(member.income)}
+                        </td>
+                    `;
 
                     tbody.appendChild(row);
-
                 });
-
             }
-
 
             document.getElementById('familyCount').textContent =
                 `${family.length} household member${family.length === 1 ? '' : 's'}`;
 
-
-            const combinedIncome =
-                family.reduce(
-                    (sum, member) =>
-                        sum + (Number(member.income) || 0),
-                    0
-                );
-
-
+            /* Use the official combined_income value stored in CASE_STUDY. */
             document.getElementById('combinedIncome').textContent =
-                formatCurrency(combinedIncome);
-
+                formatCurrency(
+                    caseStudyData.finances?.combinedIncome
+                );
         }
 
 
-        /* RENDER FINANCES */
+        /* ============================================================
+           RENDER FINANCES
+        ============================================================ */
 
         function renderFinances() {
 
-            const finances =
-                caseStudyData.finances || {};
+            const finances = caseStudyData.finances || {};
 
+            const combinedIncome =
+                Number(finances.combinedIncome) || 0;
 
-            /* INCOME */
+            const monthlyExpenses =
+                Number(finances.monthlyExpenses) || 0;
 
-            const incomeLedger =
-                document.getElementById('incomeLedger');
+            const savings =
+                Number(finances.savings) || 0;
 
-            incomeLedger.innerHTML = '';
+            const netMonthly =
+                combinedIncome - monthlyExpenses;
 
+            document.getElementById('incomeLedger').innerHTML = `
+                <div class="flex items-center justify-between py-2.5 border-b border-slate-100">
+                    <span class="text-[11px] text-slate-600">
+                        Combined Household Income
+                    </span>
+                    <span class="text-[12px] font-semibold text-mswdo-700">
+                        ${formatCurrency(combinedIncome)}
+                    </span>
+                </div>
+            `;
 
-            const incomeSources =
-                finances.incomeSources || [];
+            document.getElementById('expenseLedger').innerHTML = `
+                <div class="flex items-center justify-between py-2.5 border-b border-slate-100">
+                    <span class="text-[11px] text-slate-600">
+                        Total Monthly Expenses
+                    </span>
+                    <span class="text-[12px] font-semibold text-red-600">
+                        ${formatCurrency(monthlyExpenses)}
+                    </span>
+                </div>
 
-
-            incomeSources.forEach(source => {
-
-                const row =
-                    document.createElement('div');
-
-                row.className =
-                    'flex items-center justify-between py-2.5 border-b border-slate-100';
-
-
-                row.innerHTML = `
-
-            <span class="text-[11px] text-slate-600">
-                ${safeText(source.label)}
-            </span>
-
-            <span class="text-[12px] font-semibold text-mswdo-700">
-                ${formatCurrency(source.amount)}
-            </span>
-
-        `;
-
-                incomeLedger.appendChild(row);
-
-            });
-
+                <p class="text-[10px] text-slate-400 italic mt-2">
+                    Expense breakdown is not stored separately in the database.
+                </p>
+            `;
 
             document.getElementById('insurance').textContent =
                 safeText(finances.insurance);
 
             document.getElementById('savings').textContent =
-                safeText(finances.savings);
+                formatCurrency(savings);
 
             document.getElementById('emergencyFund').textContent =
                 safeText(finances.emergencyFund);
 
-
-            /* EXPENSES */
-
-            const expenseLedger =
-                document.getElementById('expenseLedger');
-
-            expenseLedger.innerHTML = '';
-
-
-            const expenses =
-                finances.expenses || [];
-
-
-            expenses.forEach(expense => {
-
-                const row =
-                    document.createElement('div');
-
-                row.className =
-                    'flex items-center justify-between py-2.5 border-b border-slate-100';
-
-
-                row.innerHTML = `
-
-            <span class="text-[11px] text-slate-600">
-                ${safeText(expense.label)}
-            </span>
-
-            <span class="text-[12px] font-semibold text-red-600">
-                ${formatCurrency(expense.amount)}
-            </span>
-
-        `;
-
-                expenseLedger.appendChild(row);
-
-            });
-
-
-            const totalIncome =
-                incomeSources.reduce(
-                    (sum, item) =>
-                        sum + (Number(item.amount) || 0),
-                    0
-                );
-
-
-            const totalExpenses =
-                expenses.reduce(
-                    (sum, item) =>
-                        sum + (Number(item.amount) || 0),
-                    0
-                );
-
-
-            const netMonthly =
-                totalIncome - totalExpenses;
-
-
             document.getElementById('totalIncome').textContent =
-                formatCurrency(totalIncome);
+                formatCurrency(combinedIncome);
 
             document.getElementById('totalExpenses').textContent =
-                formatCurrency(totalExpenses);
+                formatCurrency(monthlyExpenses);
 
             document.getElementById('netMonthly').textContent =
                 formatCurrency(netMonthly);
-
         }
 
 
-        /* RENDER ASSESSMENT */
+        /* ============================================================
+           RENDER ASSESSMENT
+        ============================================================ */
 
         function renderAssessment() {
 
-            document.getElementById('problemPresented').textContent =
-                safeText(
-                    caseStudyData.assessment?.problemPresented
-                );
+            const assessment = caseStudyData.assessment || {};
 
+            document.getElementById('problemPresented').textContent =
+                safeText(assessment.problemPresented);
 
             document.getElementById('homeCondition').textContent =
-                safeText(
-                    caseStudyData.assessment?.homeCondition
-                );
+                safeText(assessment.homeCondition);
 
+            document.getElementById('crisisSeverity').textContent =
+                safeText(assessment.crisisSeverity);
+
+            document.getElementById('crisisExperienced').textContent =
+                safeText(assessment.crisisExperienced);
 
             document.getElementById('indigency').textContent =
                 safeText(caseStudyData.indigency);
-
         }
 
 
-        /* RENDER PREVIOUS ASSISTANCE */
+        /* ============================================================
+           RENDER PREVIOUS ASSISTANCE
+        ============================================================ */
 
         function renderPreviousAssistance() {
 
-            const previous =
-                caseStudyData.previousAssistance || {};
-
-
-            const notice =
-                document.getElementById('previousNotice');
-
+            const previous = caseStudyData.previousAssistance || {};
+            const notice = document.getElementById('previousNotice');
 
             if (previous.hasPrevious) {
 
                 notice.className =
                     'rounded-xl p-3 border flex items-start gap-3 bg-amber-50 border-amber-200';
 
-
                 notice.innerHTML = `
+                    <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-history text-amber-600"></i>
+                    </div>
 
-            <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-
-                <i class="fas fa-history text-amber-600"></i>
-
-            </div>
-
-            <div>
-
-                <p class="text-[12px] font-semibold text-amber-800">
-                    Previous assistance recorded
-                </p>
-
-                <p class="text-[11px] text-amber-700 mt-0.5">
-                    The client has a previous DSWD/MSWDO assistance record.
-                </p>
-
-            </div>
-
-        `;
+                    <div>
+                        <p class="text-[12px] font-semibold text-amber-800">
+                            Previous assistance recorded
+                        </p>
+                        <p class="text-[11px] text-amber-700 mt-0.5">
+                            The client has a previous DSWD/MSWDO assistance record.
+                        </p>
+                    </div>
+                `;
 
             } else {
 
                 notice.className =
                     'rounded-xl p-3 border flex items-start gap-3 bg-mswdo-50 border-mswdo-100';
 
-
                 notice.innerHTML = `
+                    <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-circle-check text-mswdo-600"></i>
+                    </div>
 
-            <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-
-                <i class="fas fa-circle-check text-mswdo-600"></i>
-
-            </div>
-
-            <div>
-
-                <p class="text-[12px] font-semibold text-mswdo-800">
-                    No previous assistance recorded
-                </p>
-
-                <p class="text-[11px] text-mswdo-700 mt-0.5">
-                    No previous DSWD/MSWDO assistance was recorded.
-                </p>
-
-            </div>
-
-        `;
-
+                    <div>
+                        <p class="text-[12px] font-semibold text-mswdo-800">
+                            No previous assistance recorded
+                        </p>
+                        <p class="text-[11px] text-mswdo-700 mt-0.5">
+                            No previous DSWD/MSWDO assistance was recorded.
+                        </p>
+                    </div>
+                `;
             }
-
 
             document.getElementById('previousDetails').textContent =
                 safeText(previous.details);
 
-
             document.getElementById('previousDate').textContent =
                 safeText(previous.date);
-
         }
 
 
-        /* RENDER RECOMMENDATION */
+        /* ============================================================
+           RENDER RECOMMENDATION
+        ============================================================ */
 
         function renderRecommendation() {
 
             document.getElementById('recommendation').textContent =
                 safeText(caseStudyData.recommendation);
-
         }
 
 
-        /* RENDER SUBMISSION */
+        /* ============================================================
+           RENDER SUBMISSION
+        ============================================================ */
 
         function renderSubmission() {
 
-            const submitted =
-                caseStudyData.submitted || {};
-
+            const submitted = caseStudyData.submitted || {};
 
             document.getElementById('submittedStatus').textContent =
                 safeText(submitted.status);
 
-
             document.getElementById('submittedDate').textContent =
                 safeText(submitted.submittedDate);
 
-
             document.getElementById('submittedBy').textContent =
-                safeText(
-                    submitted.submittedBy ||
-                    submitted.preparedBy
-                );
-
+                safeText(submitted.submittedBy);
         }
 
 
+    /* PDF PREVIEW */
 
-        function imageToSquareDataURL(url) {
-
-            return new Promise((resolve, reject) => {
-
-                const img =
-                    new Image();
-
-                img.crossOrigin = 'anonymous';
+    async function previewCaseSummaryPDF() {
 
 
-                img.onload = function () {
-
-                    try {
-
-
-                        const squareSize =
-                            Math.min(
-                                img.naturalWidth,
-                                img.naturalHeight
-                            );
+    const previewWindow =
+    window.open('', '_blank');
 
 
-                        const canvas =
-                            document.createElement('canvas');
+    if (!previewWindow) {
 
+    alert(
+    'Please allow pop-ups for this page to view the Case Summary PDF.'
+    );
 
-                        canvas.width =
-                            squareSize;
+    return;
 
-                        canvas.height =
-                            squareSize;
-
-
-                        const ctx =
-                            canvas.getContext('2d');
+    }
 
 
 
-                        const sourceX =
-                            (img.naturalWidth - squareSize) / 2;
+    previewWindow.document.write(`
 
-                        const sourceY =
-                            (img.naturalHeight - squareSize) / 2;
+    <!DOCTYPE html>
 
+    <html>
 
-                        ctx.drawImage(
+    <head>
 
-                            img,
+        <title>
+            Preparing Case Summary...
+        </title>
 
-                            sourceX,
-                            sourceY,
+        <style>
+            body {
 
-                            squareSize,
-                            squareSize,
+                margin: 0;
 
-                            0,
-                            0,
+                min-height: 100vh;
 
-                            squareSize,
-                            squareSize
+                display: flex;
 
-                        );
+                align-items: center;
 
+                justify-content: center;
 
-                        resolve(
-                            canvas.toDataURL(
-                                'image/jpeg',
-                                0.95
-                            )
-                        );
+                background: #f4f7f5;
 
+                font-family: Arial, sans-serif;
 
-                    } catch (error) {
-
-                        reject(error);
-
-                    }
-
-                };
-
-
-                img.onerror = function () {
-
-                    reject(
-                        new Error(
-                            'Unable to load remote logo.'
-                        )
-                    );
-
-                };
-
-
-                img.src = url;
-
-            });
-
-        }
-
-
-        /* PDF PREVIEW */
-
-        async function previewCaseSummaryPDF() {
-
-
-            const previewWindow =
-                window.open('', '_blank');
-
-
-            if (!previewWindow) {
-
-                alert(
-                    'Please allow pop-ups for this page to view the Case Summary PDF.'
-                );
-
-                return;
+                color: #14532d;
 
             }
 
+            .box {
 
+                text-align: center;
 
-            previewWindow.document.write(`
+                background: white;
 
-        <!DOCTYPE html>
+                border: 1px solid #d7e4da;
 
-        <html>
+                border-radius: 16px;
 
-        <head>
+                padding: 32px 42px;
 
-            <title>
+                box-shadow:
+                    0 10px 30px rgba(20, 83, 45, .08);
+
+            }
+
+            .spin {
+
+                width: 32px;
+
+                height: 32px;
+
+                border: 3px solid #dcfce7;
+
+                border-top-color: #15803d;
+
+                border-radius: 50%;
+
+                margin: 0 auto 16px;
+
+                animation: spin 1s linear infinite;
+
+            }
+
+            @keyframes spin {
+
+                to {
+                    transform: rotate(360deg);
+                }
+
+            }
+
+            p {
+
+                font-size: 12px;
+
+                color: #64748b;
+
+            }
+        </style>
+
+    </head>
+
+    <body>
+
+        <div class="box">
+
+            <div class="spin"></div>
+
+            <strong>
                 Preparing Case Summary...
-            </title>
+            </strong>
 
-            <style>
+            <p>
+                Your official PDF preview is being generated.
+            </p>
 
-                body {
+        </div>
 
-                    margin: 0;
+    </body>
 
-                    min-height: 100vh;
-
-                    display: flex;
-
-                    align-items: center;
-
-                    justify-content: center;
-
-                    background: #f4f7f5;
-
-                    font-family: Arial, sans-serif;
-
-                    color: #14532d;
-
-                }
-
-                .box {
-
-                    text-align: center;
-
-                    background: white;
-
-                    border: 1px solid #d7e4da;
-
-                    border-radius: 16px;
-
-                    padding: 32px 42px;
-
-                    box-shadow:
-                        0 10px 30px
-                        rgba(20,83,45,.08);
-
-                }
-
-                .spin {
-
-                    width: 32px;
-
-                    height: 32px;
-
-                    border: 3px solid #dcfce7;
-
-                    border-top-color: #15803d;
-
-                    border-radius: 50%;
-
-                    margin: 0 auto 16px;
-
-                    animation: spin 1s linear infinite;
-
-                }
-
-                @keyframes spin {
-
-                    to {
-                        transform: rotate(360deg);
-                    }
-
-                }
-
-                p {
-
-                    font-size: 12px;
-
-                    color: #64748b;
-
-                }
-
-            </style>
-
-        </head>
-
-        <body>
-
-            <div class="box">
-
-                <div class="spin"></div>
-
-                <strong>
-                    Preparing Case Summary...
-                </strong>
-
-                <p>
-                    Your official PDF preview is being generated.
-                </p>
-
-            </div>
-
-        </body>
-
-        </html>
+    </html>
 
     `);
 
-            previewWindow.document.close();
+    previewWindow.document.close();
 
 
-            /* BUTTON LOADING STATE */
+    /* BUTTON LOADING STATE */
 
-            const buttons =
-                document.querySelectorAll(
-                    '[onclick="previewCaseSummaryPDF()"]'
-                );
+    const buttons =
+    document.querySelectorAll(
+    '[onclick="previewCaseSummaryPDF()"]'
+    );
 
 
-            buttons.forEach(button => {
+    buttons.forEach(button => {
 
-                button.disabled = true;
+    button.disabled = true;
 
-                button.innerHTML =
-                    '<i class="fas fa-spinner fa-spin mr-2"></i> Preparing...';
+    button.innerHTML =
+    '<i class="fas fa-spinner fa-spin mr-2"></i> Preparing...';
 
-            });
+    });
 
 
-            try {
+    try {
 
-                /* CHECK jsPDF */
+    /* CHECK jsPDF */
 
-                if (
-                    !window.jspdf ||
-                    !window.jspdf.jsPDF
-                ) {
+    if (
+    !window.jspdf ||
+    !window.jspdf.jsPDF
+    ) {
 
-                    throw new Error(
-                        'PDF library is unavailable. Please refresh the page.'
-                    );
+    throw new Error(
+    'PDF library is unavailable. Please refresh the page.'
+    );
 
-                }
+    }
 
 
-                const { jsPDF } =
-                    window.jspdf;
+    const { jsPDF } =
+    window.jspdf;
 
 
-                /* LOAD THE REMOTE LOGOS */
+    /* LOAD THE REMOTE LOGOS */
 
-                const LOGO_LEFT =
-                    await imageToSquareDataURL(
-                        LOGO_LEFT_PATH
-                    );
+    const LOGO_LEFT =
+    await imageToSquareDataURL(
+    LOGO_LEFT_PATH
+    );
 
 
-                const LOGO_RIGHT =
-                    await imageToSquareDataURL(
-                        LOGO_RIGHT_PATH
-                    );
+    const LOGO_RIGHT =
+    await imageToSquareDataURL(
+    LOGO_RIGHT_PATH
+    );
 
 
-                /* CREATE PDF */
+    /* CREATE PDF */
 
-                const doc =
-                    new jsPDF({
+    const doc =
+    new jsPDF({
 
-                        orientation: 'portrait',
+    orientation: 'portrait',
 
-                        unit: 'mm',
+    unit: 'mm',
 
-                        format: 'legal',
+    format: 'legal',
 
-                        compress: true
+    compress: true
 
-                    });
+    });
 
 
-                const pageW =
-                    doc.internal.pageSize.getWidth();
+    const pageW =
+    doc.internal.pageSize.getWidth();
 
 
-                const pageH =
-                    doc.internal.pageSize.getHeight();
+    const pageH =
+    doc.internal.pageSize.getHeight();
 
 
-                const margin = 17;
+    const margin = 17;
 
 
-                const contentW =
-                    pageW - margin * 2;
+    const contentW =
+    pageW - margin * 2;
 
 
-                let y = 12;
+    let y = 12;
 
 
-                /* COLORS */
+    /* COLORS */
 
-                const DARK =
-                    [20, 20, 20];
+    const DARK =
+    [20, 20, 20];
 
 
-                const GRAY =
-                    [95, 95, 95];
+    const GRAY =
+    [95, 95, 95];
 
 
-                const HEADER_FILL =
-                    [232, 240, 234];
+    const HEADER_FILL =
+    [232, 240, 234];
 
 
-                const BORDER =
-                    [135, 145, 138];
+    const BORDER =
+    [135, 145, 138];
 
 
-                const GREEN =
-                    [21, 128, 61];
+    const GREEN =
+    [21, 128, 61];
 
 
-                /* SAFE PAGE SPACE */
+    /* SAFE PAGE SPACE */
 
-                function ensureSpace(height) {
+    function ensureSpace(height) {
 
-                    if (
-                        y + height >
-                        pageH - 18
-                    ) {
+    if (
+    y + height >
+    pageH - 18
+    ) {
 
-                        doc.addPage();
+    doc.addPage();
 
-                        y = 16;
+    y = 16;
 
-                    }
+    }
 
-                }
+    }
 
 
-                /* WRAPPED TEXT */
+    /* WRAPPED TEXT */
 
-                function addWrapped(
-                    text,
-                    x,
-                    width,
-                    fontSize = 10.5,
-                    lineHeight = 5.1,
-                    bold = false
-                ) {
+    function addWrapped(
+    text,
+    x,
+    width,
+    fontSize = 10.5,
+    lineHeight = 5.1,
+    bold = false
+    ) {
 
-                    doc.setFont(
-                        'helvetica',
-                        bold ? 'bold' : 'normal'
-                    );
+    doc.setFont(
+    'helvetica',
+    bold ? 'bold' : 'normal'
+    );
 
 
-                    doc.setFontSize(
-                        fontSize
-                    );
+    doc.setFontSize(
+    fontSize
+    );
 
 
-                    doc.setTextColor(
-                        ...DARK
-                    );
+    doc.setTextColor(
+    ...DARK
+    );
 
 
-                    const lines =
-                        doc.splitTextToSize(
-                            safePdf(text),
-                            width
-                        );
+    const lines =
+    doc.splitTextToSize(
+    safePdf(text),
+    width
+    );
 
 
-                    ensureSpace(
-                        lines.length *
-                        lineHeight +
-                        2
-                    );
+    ensureSpace(
+    lines.length *
+    lineHeight +
+    2
+    );
 
 
-                    doc.text(
-                        lines,
-                        x,
-                        y,
-                        {
-                            baseline: 'top'
-                        }
-                    );
+    doc.text(
+    lines,
+    x,
+    y,
+    {
+    baseline: 'top'
+    }
+    );
 
 
-                    y +=
-                        lines.length *
-                        lineHeight;
+    y +=
+    lines.length *
+    lineHeight;
 
 
-                    return lines.length;
+    return lines.length;
 
-                }
+    }
 
 
-                /* PDF SECTION TITLE */
+    /* PDF SECTION TITLE */
 
-                function sectionTitle(
-                    number,
-                    title
-                ) {
+    function sectionTitle(
+    number,
+    title
+    ) {
 
-                    ensureSpace(12);
+    ensureSpace(12);
 
 
-                    doc.setFont(
-                        'helvetica',
-                        'bold'
-                    );
+    doc.setFont(
+    'helvetica',
+    'bold'
+    );
 
 
-                    doc.setFontSize(
-                        10.5
-                    );
+    doc.setFontSize(
+    10.5
+    );
 
 
-                    doc.setTextColor(
-                        ...DARK
-                    );
+    doc.setTextColor(
+    ...DARK
+    );
 
 
-                    doc.text(
-                        number + '.',
-                        margin,
-                        y
-                    );
+    doc.text(
+    number + '.',
+    margin,
+    y
+    );
 
 
-                    doc.text(
-                        title.toUpperCase(),
-                        margin + 10,
-                        y
-                    );
+    doc.text(
+    title.toUpperCase(),
+    margin + 10,
+    y
+    );
 
 
-                    y += 7;
+    y += 7;
 
-                }
+    }
 
 
-                /* FORMAL LETTERHEAD */
+    /* FORMAL LETTERHEAD */
 
-                try {
+    try {
 
 
-                    const logoSize = 22;
+    const logoSize = 22;
 
 
-                    const headerTop = 8;
+    const headerTop = 8;
 
-                    const headerHeight = 24;
+    const headerHeight = 24;
 
 
 
-                    const logoY =
-                        headerTop +
-                        (
-                            (headerHeight - logoSize) /
-                            2
-                        );
+    const logoY =
+    headerTop +
+    (
+    (headerHeight - logoSize) /
+    2
+    );
 
 
-                    /* LEFT LOGO */
+    /* LEFT LOGO */
 
-                    doc.addImage(
+    doc.addImage(
 
-                        LOGO_LEFT,
+    LOGO_LEFT,
 
-                        'JPEG',
+    'JPEG',
 
-                        margin + 2,
+    margin + 2,
 
-                        logoY,
+    logoY,
 
-                        logoSize,
+    logoSize,
 
-                        logoSize
+    logoSize
 
-                    );
+    );
 
 
-                    /* RIGHT LOGO */
+    /* RIGHT LOGO */
 
-                    doc.addImage(
+    doc.addImage(
 
-                        LOGO_RIGHT,
+    LOGO_RIGHT,
 
-                        'JPEG',
+    'JPEG',
 
-                        pageW -
-                        margin -
-                        2 -
-                        logoSize,
+    pageW -
+    margin -
+    2 -
+    logoSize,
 
-                        logoY,
+    logoY,
 
-                        logoSize,
+    logoSize,
 
-                        logoSize
+    logoSize
 
-                    );
+    );
 
 
-                } catch (logoError) {
+    } catch (logoError) {
 
-                    console.warn(
-                        'Logo could not be added to PDF:',
-                        logoError
-                    );
+    console.warn(
+    'Logo could not be added to PDF:',
+    logoError
+    );
 
-                }
+    }
 
 
-                /* LETTERHEAD TEXT */
+    /* LETTERHEAD TEXT */
 
-                doc.setTextColor(
-                    ...DARK
-                );
+    doc.setTextColor(
+    ...DARK
+    );
 
 
-                doc.setFont(
-                    'helvetica',
-                    'bold'
-                );
+    doc.setFont(
+    'helvetica',
+    'bold'
+    );
 
 
-                doc.setFontSize(
-                    10.5
-                );
+    doc.setFontSize(
+    10.5
+    );
 
 
-                doc.text(
-                    'Republic of the Philippines',
-                    pageW / 2,
-                    11,
-                    {
-                        align: 'center'
-                    }
-                );
+    doc.text(
+    'Republic of the Philippines',
+    pageW / 2,
+    11,
+    {
+    align: 'center'
+    }
+    );
 
 
-                doc.text(
-                    'Province of Negros Occidental',
-                    pageW / 2,
-                    16,
-                    {
-                        align: 'center'
-                    }
-                );
+    doc.text(
+    'Province of Negros Occidental',
+    pageW / 2,
+    16,
+    {
+    align: 'center'
+    }
+    );
 
 
-                doc.text(
-                    'Municipality of San Enrique',
-                    pageW / 2,
-                    21,
-                    {
-                        align: 'center'
-                    }
-                );
+    doc.text(
+    'Municipality of San Enrique',
+    pageW / 2,
+    21,
+    {
+    align: 'center'
+    }
+    );
 
 
-                doc.setFontSize(
-                    11.5
-                );
+    doc.setFontSize(
+    11.5
+    );
 
 
-                doc.text(
-                    'MUNICIPAL SOCIAL WELFARE AND DEVELOPMENT OFFICE',
-                    pageW / 2,
-                    27,
-                    {
-                        align: 'center'
-                    }
-                );
+    doc.text(
+    'MUNICIPAL SOCIAL WELFARE AND DEVELOPMENT OFFICE',
+    pageW / 2,
+    27,
+    {
+    align: 'center'
+    }
+    );
 
 
-                /* DOCUMENT TITLE */
+    /* DOCUMENT TITLE */
 
-                y = 42;
+    y = 42;
 
 
-                doc.setFont(
-                    'helvetica',
-                    'bold'
-                );
+    doc.setFont(
+    'helvetica',
+    'bold'
+    );
 
 
-                doc.setFontSize(
-                    11.5
-                );
+    doc.setFontSize(
+    11.5
+    );
 
 
-                doc.text(
-                    'SOCIAL CASE SUMMARY',
-                    pageW / 2,
-                    y,
-                    {
-                        align: 'center'
-                    }
-                );
+    doc.text(
+    'SOCIAL CASE SUMMARY',
+    pageW / 2,
+    y,
+    {
+    align: 'center'
+    }
+    );
 
 
-                y += 6;
+    y += 6;
 
 
-                doc.setFont(
-                    'helvetica',
-                    'normal'
-                );
+    doc.setFont(
+    'helvetica',
+    'normal'
+    );
 
 
-                doc.setFontSize(
-                    9.5
-                );
+    doc.setFontSize(
+    9.5
+    );
 
 
-                doc.text(
-                    safePdf(
-                        caseStudyData.interview?.date
-                    ),
-                    pageW / 2,
-                    y,
-                    {
-                        align: 'center'
-                    }
-                );
+    doc.text(
+    safePdf(
+    caseStudyData.interview?.date
+    ),
+    pageW / 2,
+    y,
+    {
+    align: 'center'
+    }
+    );
 
 
-                y += 11;
+    y += 11;
 
 
-                /*  I. IDENTIFYING DATA */
+    /* I. IDENTIFYING DATA */
 
-                sectionTitle(
-                    'I',
-                    'IDENTIFYING DATA'
-                );
+    sectionTitle(
+    'I',
+    'IDENTIFYING DATA'
+    );
 
 
-                const c =
-                    caseStudyData.client || {};
+    const c =
+    caseStudyData.client || {};
 
 
-                const identifying = [
+    const identifying = [
 
-                    [
-                        'Name',
-                        safePdf(c.fullName)
-                    ],
+    [
+    'Name',
+    safePdf(c.fullName)
+    ],
 
-                    [
-                        'Age',
-                        safePdf(
-                            c.age
-                                ? c.age + ' YEARS OLD'
-                                : ''
-                        )
-                    ],
+    [
+    'Age',
+    safePdf(
+    c.age
+    ? c.age + ' YEARS OLD'
+    : ''
+    )
+    ],
 
-                    [
-                        'Sex',
-                        safePdf(c.sex)
-                    ],
+    [
+    'Sex',
+    safePdf(c.sex)
+    ],
 
-                    [
-                        'Date of Birth',
-                        safePdf(c.dateOfBirth)
-                    ],
+    [
+    'Date of Birth',
+    safePdf(c.dateOfBirth)
+    ],
 
-                    [
-                        'Address',
-                        safePdf(
-                            c.address ||
-                            c.barangay
-                        )
-                    ],
+    [
+    'Address',
+    safePdf(
+    c.address ||
+    c.barangay
+    )
+    ],
 
-                    [
-                        'Nearest Kin',
-                        safePdf(c.nearestKin)
-                    ]
+    [
+    'Nearest Kin',
+    safePdf(c.nearestKin)
+    ]
 
-                ];
+    ];
 
 
-                identifying.forEach(
-                    ([label, value]) => {
+    identifying.forEach(
+    ([label, value]) => {
 
-                        ensureSpace(6);
+    ensureSpace(6);
 
 
-                        doc.setFont(
-                            'helvetica',
-                            'bold'
-                        );
+    doc.setFont(
+    'helvetica',
+    'bold'
+    );
 
 
-                        doc.setFontSize(
-                            10
-                        );
+    doc.setFontSize(
+    10
+    );
 
 
-                        doc.text(
-                            label,
-                            margin,
-                            y
-                        );
+    doc.text(
+    label,
+    margin,
+    y
+    );
 
 
-                        doc.text(
-                            ':',
-                            margin + 48,
-                            y
-                        );
+    doc.text(
+    ':',
+    margin + 48,
+    y
+    );
 
 
-                        doc.setFont(
-                            'helvetica',
-                            'normal'
-                        );
+    doc.setFont(
+    'helvetica',
+    'normal'
+    );
 
 
-                        const lines =
-                            doc.splitTextToSize(
-                                value,
-                                contentW - 53
-                            );
+    const lines =
+    doc.splitTextToSize(
+    value,
+    contentW - 53
+    );
 
 
-                        doc.text(
-                            lines,
-                            margin + 52,
-                            y
-                        );
+    doc.text(
+    lines,
+    margin + 52,
+    y
+    );
 
 
-                        y += Math.max(
-                            5.1,
-                            lines.length * 4.8
-                        );
+    y += Math.max(
+    5.1,
+    lines.length * 4.8
+    );
 
-                    }
-                );
+    }
+    );
 
 
-                y += 5;
+    y += 5;
 
 
-                /* II. FAMILY COMPOSITION */
+    /* II. FAMILY COMPOSITION */
 
-                sectionTitle(
-                    'II',
-                    'FAMILY COMPOSITION'
-                );
+    sectionTitle(
+    'II',
+    'FAMILY COMPOSITION'
+    );
 
 
-                const family =
-                    caseStudyData.family || [];
+    const family =
+    caseStudyData.family || [];
 
 
-                const rows =
-                    family.map(
-                        (m, i) => [
+    const rows =
+    family.map(
+    (m, i) => [
 
-                            String(i + 1),
+    String(i + 1),
 
-                            safePdf(m.name),
+    safePdf(m.name),
 
-                            safePdf(m.age),
+    safePdf(m.age),
 
-                            safePdf(
-                                m.relationship
-                            ),
+    safePdf(
+    m.relationship
+    ),
 
-                            safePdf(
-                                m.education
-                            ),
+    safePdf(
+    m.education
+    ),
 
-                            safePdf(
-                                m.occupation
-                            )
+    safePdf(
+    m.occupation
+    )
 
-                        ]
-                    );
+    ]
+    );
 
 
-                if (
-                    typeof doc.autoTable !==
-                    'function'
-                ) {
+    if (
+    typeof doc.autoTable !==
+    'function'
+    ) {
 
-                    throw new Error(
-                        'AutoTable plugin is not loaded.'
-                    );
+    throw new Error(
+    'AutoTable plugin is not loaded.'
+    );
 
-                }
+    }
 
 
-                doc.autoTable({
+    doc.autoTable({
 
-                    startY: y,
+    startY: y,
 
-                    margin: {
-                        left: margin,
-                        right: margin
-                    },
+    margin: {
+    left: margin,
+    right: margin
+    },
 
-                    tableWidth: contentW,
+    tableWidth: contentW,
 
-                    head: [[
+    head: [[
 
-                        '',
+    '',
 
-                        'NAME',
+    'NAME',
 
-                        'AGE',
+    'AGE',
 
-                        'RELATION TO CLIENT',
+    'RELATION TO CLIENT',
 
-                        'EDUCATIONAL ATTAINMENT',
+    'EDUCATIONAL ATTAINMENT',
 
-                        'OCCUPATION'
+    'OCCUPATION'
 
-                    ]],
+    ]],
 
-                    body:
-                        rows.length
-                            ? rows
-                            : [
-                                [
-                                    '1',
-                                    '—',
-                                    '—',
-                                    '—',
-                                    '—',
-                                    '—'
-                                ]
-                            ],
+    body:
+    rows.length
+    ? rows
+    : [
+    [
+    '1',
+    '—',
+    '—',
+    '—',
+    '—',
+    '—'
+    ]
+    ],
 
-                    theme: 'grid',
+    theme: 'grid',
 
-                    styles: {
+    styles: {
 
-                        font: 'helvetica',
+    font: 'helvetica',
 
-                        fontSize: 8.1,
+    fontSize: 8.1,
 
-                        textColor: DARK,
+    textColor: DARK,
 
-                        cellPadding: 2.2,
+    cellPadding: 2.2,
 
-                        lineColor: BORDER,
+    lineColor: BORDER,
 
-                        lineWidth: 0.25,
+    lineWidth: 0.25,
 
-                        valign: 'middle'
+    valign: 'middle'
 
-                    },
+    },
 
-                    headStyles: {
+    headStyles: {
 
-                        fillColor:
-                            HEADER_FILL,
+    fillColor:
+    HEADER_FILL,
 
-                        textColor:
-                            DARK,
+    textColor:
+    DARK,
 
-                        fontStyle:
-                            'bold',
+    fontStyle:
+    'bold',
 
-                        fontSize:
-                            7.3,
+    fontSize:
+    7.3,
 
-                        halign:
-                            'center'
+    halign:
+    'center'
 
-                    },
+    },
 
-                    columnStyles: {
+    columnStyles: {
 
-                        0: {
-                            cellWidth: 8,
-                            halign: 'center'
-                        },
+    0: {
+    cellWidth: 8,
+    halign: 'center'
+    },
 
-                        1: {
-                            cellWidth: 42
-                        },
+    1: {
+    cellWidth: 42
+    },
 
-                        2: {
-                            cellWidth: 15
-                        },
+    2: {
+    cellWidth: 15
+    },
 
-                        3: {
-                            cellWidth: 34
-                        },
+    3: {
+    cellWidth: 34
+    },
 
-                        4: {
-                            cellWidth: 43
-                        },
+    4: {
+    cellWidth: 43
+    },
 
-                        5: {
-                            cellWidth: 38
-                        }
+    5: {
+    cellWidth: 38
+    }
 
-                    }
+    }
 
-                });
+    });
 
 
-                y =
-                    doc.lastAutoTable.finalY +
-                    9;
+    y =
+    doc.lastAutoTable.finalY +
+    9;
 
 
-                /* III. PROBLEM PRESENTED */
+    /* III. PROBLEM PRESENTED */
 
-                sectionTitle(
-                    'III',
-                    'PROBLEM PRESENTED'
-                );
+    sectionTitle(
+    'III',
+    'PROBLEM PRESENTED'
+    );
 
 
-                addWrapped(
-                    caseStudyData.assessment
-                        ?.problemPresented,
-                    margin,
-                    contentW,
-                    10.5,
-                    5.1
-                );
+    addWrapped(
+    caseStudyData.assessment
+    ?.problemPresented,
+    margin,
+    contentW,
+    10.5,
+    5.1
+    );
 
 
-                y += 8;
+    y += 8;
 
 
-                /* IV. HOME AND ECONOMIC CONDITION */
+    /* IV. HOME AND ECONOMIC CONDITION */
 
-                sectionTitle(
-                    'IV',
-                    'HOME AND ECONOMIC CONDITION'
-                );
+    sectionTitle(
+    'IV',
+    'HOME AND ECONOMIC CONDITION'
+    );
 
 
-                addWrapped(
-                    caseStudyData.assessment
-                        ?.homeCondition,
-                    margin,
-                    contentW,
-                    10.5,
-                    5.1
-                );
+    addWrapped(
+    caseStudyData.assessment
+    ?.homeCondition,
+    margin,
+    contentW,
+    10.5,
+    5.1
+    );
 
 
-                y += 7;
+    y += 7;
 
 
-                /* V. EVALUATION / RECOMMENDATION */
+    /* V. EVALUATION / RECOMMENDATION */
 
-                sectionTitle(
-                    'V',
-                    'EVALUATION / RECOMMENDATION'
-                );
+    sectionTitle(
+    'V',
+    'EVALUATION / RECOMMENDATION'
+    );
 
 
-                addWrapped(
-                    caseStudyData.recommendation,
-                    margin,
-                    contentW,
-                    10.5,
-                    5.1
-                );
+    addWrapped(
+    caseStudyData.recommendation,
+    margin,
+    contentW,
+    10.5,
+    5.1
+    );
 
 
-                y += 13;
+    y += 13;
 
 
-                /* PREPARED BY */
+    /* PREPARED BY */
 
-                ensureSpace(35);
+    ensureSpace(35);
 
 
-                doc.setFont(
-                    'helvetica',
-                    'normal'
-                );
+    doc.setFont(
+    'helvetica',
+    'normal'
+    );
 
 
-                doc.setFontSize(
-                    10.5
-                );
+    doc.setFontSize(
+    10.5
+    );
 
 
-                doc.text(
-                    'Prepared by:',
-                    margin,
-                    y
-                );
+    doc.text(
+    'Prepared by:',
+    margin,
+    y
+    );
 
 
-                y += 20;
+    y += 20;
 
 
-                doc.setFont(
-                    'helvetica',
-                    'bold'
-                );
+    doc.setFont(
+    'helvetica',
+    'bold'
+    );
 
 
-                doc.text(
+    doc.text(
 
-                    safePdf(
-                        caseStudyData.submitted
-                            ?.preparedBy ||
-                        caseStudyData.submitted
-                            ?.submittedBy
-                    ),
+    safePdf(
+    caseStudyData.submitted
+    ?.preparedBy ||
+    caseStudyData.submitted
+    ?.submittedBy
+    ),
 
-                    margin,
-                    y
+    margin,
+    y
 
-                );
+    );
 
 
-                y += 5;
+    y += 5;
 
 
-                doc.setFont(
-                    'helvetica',
-                    'normal'
-                );
+    doc.setFont(
+    'helvetica',
+    'normal'
+    );
 
 
-                doc.text(
+    doc.text(
 
-                    safePdf(
-                        caseStudyData.submitted
-                            ?.designation ||
-                        'MSWDO'
-                    ),
+    safePdf(
+    caseStudyData.submitted
+    ?.designation ||
+    'MSWDO'
+    ),
 
-                    margin,
-                    y
+    margin,
+    y
 
-                );
+    );
 
 
-                y += 5;
+    y += 5;
 
 
-                if (
-                    caseStudyData.submitted
-                        ?.prcLicense
-                ) {
+    if (
+    caseStudyData.submitted
+    ?.prcLicense
+    ) {
 
-                    doc.text(
+    doc.text(
 
-                        'PRC License # ' +
-                        caseStudyData.submitted
-                            .prcLicense,
+    'PRC License # ' +
+    caseStudyData.submitted
+    .prcLicense,
 
-                        margin,
-                        y
+    margin,
+    y
 
-                    );
+    );
 
-                    y += 5;
+    y += 5;
 
-                }
+    }
 
 
-                if (
-                    caseStudyData.submitted
-                        ?.licenseValidity
-                ) {
+    if (
+    caseStudyData.submitted
+    ?.licenseValidity
+    ) {
 
-                    doc.text(
+    doc.text(
 
-                        'Valid until ' +
-                        caseStudyData.submitted
-                            .licenseValidity,
+    'Valid until ' +
+    caseStudyData.submitted
+    .licenseValidity,
 
-                        margin,
-                        y
+    margin,
+    y
 
-                    );
+    );
 
-                }
+    }
 
 
-                /* FOOTER */
+    /* FOOTER */
 
-                const totalPages =
-                    doc.getNumberOfPages();
+    const totalPages =
+    doc.getNumberOfPages();
 
 
-                for (
-                    let page = 1;
-                    page <= totalPages;
-                    page++
-                ) {
-
-                    doc.setPage(page);
-
-
-                    doc.setFont(
-                        'helvetica',
-                        'normal'
-                    );
-
-
-                    doc.setFontSize(
-                        7
-                    );
-
-
-                    doc.setTextColor(
-                        145,
-                        145,
-                        145
-                    );
-
-
-                    doc.text(
-
-                        'MSWDO San Enrique Information System',
-
-                        margin,
-
-                        pageH - 7
-
-                    );
-
-
-                    doc.text(
-
-                        `Page ${page} of ${totalPages}`,
-
-                        pageW - margin,
-
-                        pageH - 7,
-
-                        {
-                            align: 'right'
-                        }
-
-                    );
-
-                }
-
-
-                /* OPEN PDF PREVIEW */
-
-                const pdfBlob =
-                    doc.output('blob');
-
-
-                const pdfUrl =
-                    URL.createObjectURL(
-                        pdfBlob
-                    );
-
-
-                previewWindow.location.href =
-                    pdfUrl;
-
-
-                /*
-                 * Do NOT call URL.revokeObjectURL()
-                 * immediately because the browser PDF
-                 * viewer is still using the URL.
-                 */
-
-            } catch (error) {
-
-                console.error(
-                    'Case Summary PDF error:',
-                    error
-                );
-
-
-                previewWindow.document.body.innerHTML = `
-
-            <div style="
+    for (
+    let page = 1;
+    page <= totalPages; page++ ) { doc.setPage(page); doc.setFont( 'helvetica' , 'normal' ); doc.setFontSize( 7 );
+        doc.setTextColor( 145, 145, 145 ); doc.text( 'MSWDO San Enrique Information System' , margin, pageH - 7 );
+        doc.text( `Page ${page} of ${totalPages}`, pageW - margin, pageH - 7, { align: 'right' } ); } /* OPEN PDF
+        PREVIEW */ const pdfBlob=doc.output('blob'); const pdfUrl=URL.createObjectURL( pdfBlob );
+        previewWindow.location.href=pdfUrl; /* * Do NOT call URL.revokeObjectURL() * immediately because the browser PDF
+        * viewer is still using the URL. */ } catch (error) { console.error( 'Case Summary PDF error:' , error );
+        previewWindow.document.body.innerHTML=` <div style="
                 font-family:Arial;
                 padding:40px;
                 text-align:center;
                 color:#991b1b;
             ">
 
-                <h3>
-                    Unable to create the Case Summary PDF.
-                </h3>
+        <h3>
+            Unable to create the Case Summary PDF.
+        </h3>
 
-                <p style="
+        <p style="
                     color:#64748b;
                 ">
-                    Please refresh the page and try again.
-                </p>
+            Please refresh the page and try again.
+        </p>
 
-                <p style="
+        <p style="
                     font-size:11px;
                     color:#94a3b8;
                 ">
-                    ${safePdf(
-                    error.message ||
-                    'Unknown error'
-                )}
-                </p>
+            ${safePdf(
+            error.message ||
+            'Unknown error'
+            )}
+        </p>
 
-            </div>
+        </div>
 
         `;
 
-            } finally {
+        } finally {
 
-                buttons.forEach(button => {
+        buttons.forEach(button => {
 
-                    button.disabled = false;
+        button.disabled = false;
 
-                    button.innerHTML =
-                        '<i class="fas fa-file-pdf mr-2"></i> View Case Summary';
+        button.innerHTML =
+        '<i class="fas fa-file-pdf mr-2"></i> View Case Summary';
 
-                });
+        });
 
-            }
+        }
 
         }
 
@@ -3156,29 +3101,29 @@
         /* INITIALIZE PAGE */
 
         document.addEventListener(
-            'DOMContentLoaded',
-            () => {
+        'DOMContentLoaded',
+        () => {
 
-                renderClient();
+        renderClient();
 
-                renderInterview();
+        renderInterview();
 
-                renderFamily();
+        renderFamily();
 
-                renderFinances();
+        renderFinances();
 
-                renderAssessment();
+        renderAssessment();
 
-                renderPreviousAssistance();
+        renderPreviousAssistance();
 
-                renderRecommendation();
+        renderRecommendation();
 
-                renderSubmission();
+        renderSubmission();
 
-            }
+        }
         );
 
-    </script>
+        </script>
 
 </body>
 

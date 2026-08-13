@@ -1,3 +1,274 @@
+<?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+require 'auth.php';
+requireRole(['Admin', 'Social Worker', 'Staff']);
+require 'db_connect.php';
+
+$client_id = filter_input(INPUT_GET, 'client_id', FILTER_VALIDATE_INT);
+if (!$client_id || $client_id <= 0) {
+    header('Location: clientslist.php');
+    exit;
+}
+
+/* Fetch the registered client. */
+$stmt = $pdo->prepare("
+    SELECT c.*, b.barangay_name
+    FROM CLIENT c
+    LEFT JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+    WHERE c.client_id = :client_id
+    LIMIT 1
+");
+$stmt->execute([':client_id' => $client_id]);
+$client = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$client) {
+    header('Location: clientslist.php');
+    exit;
+}
+
+/* Fetch the original family composition saved during client registration. */
+$famStmt = $pdo->prepare("
+    SELECT family_composition_json
+    FROM CASE_STUDY
+    WHERE client_id = :client_id
+      AND problem_presented = 'Initial registration'
+    ORDER BY created_at ASC
+    LIMIT 1
+");
+$famStmt->execute([':client_id' => $client_id]);
+$famRow = $famStmt->fetch(PDO::FETCH_ASSOC);
+$registrationFamily = [];
+
+if ($famRow && !empty($famRow['family_composition_json'])) {
+    $decoded = json_decode($famRow['family_composition_json'], true);
+    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+        $registrationFamily = $decoded;
+    }
+}
+
+/* Detect previous approved/released assistance. */
+$prevStmt = $pdo->prepare("
+    SELECT
+        a.availment_id,
+        a.av_amount,
+        a.av_date_applied,
+        a.av_status,
+        p.program_name
+    FROM AVAILMENT a
+    LEFT JOIN PROGRAM p ON p.program_id = a.program_id
+    WHERE a.client_id = :client_id
+      AND a.av_status IN ('Approved', 'Released')
+    ORDER BY a.av_date_applied DESC
+");
+$prevStmt->execute([':client_id' => $client_id]);
+$prevAvailments = $prevStmt->fetchAll(PDO::FETCH_ASSOC);
+$has_prev_dswd_assistance = !empty($prevAvailments);
+
+$prev_assistance_details_auto = '';
+$prev_assistance_date_auto = '';
+if ($has_prev_dswd_assistance) {
+    $parts = [];
+    foreach ($prevAvailments as $av) {
+        $program = $av['program_name'] ?? 'Assistance';
+        $amount = number_format((float)($av['av_amount'] ?? 0), 2);
+        $date = !empty($av['av_date_applied']) ? date('F j, Y', strtotime($av['av_date_applied'])) : '—';
+        $parts[] = $program . ' — ₱' . $amount . ' — ' . $date;
+    }
+    $prev_assistance_details_auto = implode("\n", $parts);
+    $prev_assistance_date_auto = $prevAvailments[0]['av_date_applied'] ?? '';
+}
+
+/* Build a normalized family snapshot for this case-study form. */
+$clientFullName = trim(
+    ($client['cl_firstname'] ?? '') . ' ' .
+    ($client['cl_middlename'] ?? '') . ' ' .
+    ($client['cl_lastname'] ?? '') . ' ' .
+    ($client['cl_suffix'] ?? '')
+);
+
+$clientFamilyRow = [
+    'name' => $clientFullName,
+    'relationship' => 'Client (Self)',
+    'age' => $client['cl_age'] ?? null,
+    'sex' => $client['cl_sex'] ?? '',
+    'civil_status' => $client['cl_civilstatus'] ?? '',
+    'education' => $client['cl_educ_attain'] ?? '',
+    'occupation' => $client['cl_occupation'] ?? '',
+    'income' => (float)($client['cl_monthly_income'] ?? 0),
+];
+
+/* Avoid duplicating the client if the registration JSON already contains it. */
+$familyRows = [$clientFamilyRow];
+foreach ($registrationFamily as $member) {
+    $memberName = trim((string)($member['name'] ?? ''));
+    if ($memberName === '' || strcasecmp($memberName, $clientFullName) !== 0) {
+        $familyRows[] = [
+            'name' => $memberName,
+            'relationship' => $member['relationship'] ?? $member['relation'] ?? '',
+            'age' => $member['age'] ?? '',
+            'sex' => $member['sex'] ?? '',
+            'civil_status' => $member['civil_status'] ?? $member['civilStatus'] ?? '',
+            'education' => $member['education'] ?? '',
+            'occupation' => $member['occupation'] ?? '',
+            'income' => (float)($member['income'] ?? 0),
+        ];
+    }
+}
+
+/* The form stores the household total as CASE_STUDY.combined_income. */
+$combinedIncome = 0.0;
+foreach ($familyRows as $member) {
+    $combinedIncome += (float)($member['income'] ?? 0);
+}
+
+$full_name = htmlspecialchars($clientFullName, ENT_QUOTES, 'UTF-8');
+$barangay = htmlspecialchars($client['barangay_name'] ?? 'Unknown Barangay', ENT_QUOTES, 'UTF-8');
+$age = htmlspecialchars((string)($client['cl_age'] ?? '—'), ENT_QUOTES, 'UTF-8');
+$sex = htmlspecialchars((string)($client['cl_sex'] ?? ''), ENT_QUOTES, 'UTF-8');
+$civilStat = htmlspecialchars((string)($client['cl_civilstatus'] ?? ''), ENT_QUOTES, 'UTF-8');
+$subtitle = "ID-{$client_id} · {$barangay} · {$age} yrs, {$sex} · {$civilStat}";
+
+/* SAVE CASE STUDY */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $user_id = (int)($_SESSION['user_id'] ?? 0);
+    if ($user_id <= 0) {
+        die('Unable to identify the logged-in user.');
+    }
+
+    $interview_date = trim($_POST['interview_date'] ?? '');
+    $type_of_case_study = trim($_POST['type_of_case_study'] ?? '') ?: null;
+    $patient_name = trim($_POST['patient_name'] ?? '') ?: null;
+    $patient_relationship = trim($_POST['patient_relationship'] ?? '') ?: null;
+
+    $combined_income = (float)($_POST['combined_income'] ?? $combinedIncome);
+    $monthly_expenses = (float)($_POST['monthly_expenses'] ?? 0);
+    $emergency_fund_available = ((int)($_POST['emergency_fund_available'] ?? 0) === 1) ? 1 : 0;
+
+    $crisis_severity = trim($_POST['crisis_severity'] ?? '') ?: null;
+    $crisis_experienced = trim($_POST['crisis_experienced'] ?? '') ?: null;
+
+    $problem_presented = trim($_POST['problem_presented'] ?? '');
+    $home_condition = trim($_POST['home_condition'] ?? '') ?: null;
+    $indigency_assessment = trim($_POST['indigency_assessment'] ?? '') ?: null;
+    $recommendation = trim($_POST['recommendation'] ?? '') ?: null;
+
+    $previous_dswd_assistance = ((int)($_POST['previous_dswd_assistance'] ?? 0) === 1) ? 1 : 0;
+    $previous_assistance_details = trim($_POST['previous_assistance_details'] ?? '') ?: null;
+    $previous_assistance_date = trim($_POST['previous_assistance_date'] ?? '') ?: null;
+    $insurance_coverage = trim($_POST['insurance_coverage'] ?? '') ?: null;
+    $savings = (float)($_POST['savings'] ?? 0);
+
+    if ($interview_date === '') {
+        die('Interview date is required.');
+    }
+    if ($problem_presented === '') {
+        die('Problem presented is required.');
+    }
+
+    $family_json = json_encode(
+        $familyRows,
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    if ($family_json === false) {
+        die('Unable to encode family composition.');
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $insert = $pdo->prepare("
+            INSERT INTO CASE_STUDY (
+                client_id,
+                user_id,
+                interview_date,
+                type_of_case_study,
+                patient_name,
+                patient_relationship,
+                family_composition_json,
+                combined_income,
+                monthly_expenses,
+                emergency_fund_available,
+                crisis_severity,
+                crisis_experienced,
+                problem_presented,
+                home_condition,
+                indigency_assessment,
+                recommendation,
+                previous_dswd_assistance,
+                previous_assistance_details,
+                previous_assistance_date,
+                insurance_coverage,
+                savings
+            ) VALUES (
+                :client_id,
+                :user_id,
+                :interview_date,
+                :type_of_case_study,
+                :patient_name,
+                :patient_relationship,
+                :family_composition_json,
+                :combined_income,
+                :monthly_expenses,
+                :emergency_fund_available,
+                :crisis_severity,
+                :crisis_experienced,
+                :problem_presented,
+                :home_condition,
+                :indigency_assessment,
+                :recommendation,
+                :previous_dswd_assistance,
+                :previous_assistance_details,
+                :previous_assistance_date,
+                :insurance_coverage,
+                :savings
+            )
+        ");
+
+        $insert->execute([
+            ':client_id' => $client_id,
+            ':user_id' => $user_id,
+            ':interview_date' => $interview_date,
+            ':type_of_case_study' => $type_of_case_study,
+            ':patient_name' => $patient_name,
+            ':patient_relationship' => $patient_relationship,
+            ':family_composition_json' => $family_json,
+            ':combined_income' => $combined_income,
+            ':monthly_expenses' => $monthly_expenses,
+            ':emergency_fund_available' => $emergency_fund_available,
+            ':crisis_severity' => $crisis_severity,
+            ':crisis_experienced' => $crisis_experienced,
+            ':problem_presented' => $problem_presented,
+            ':home_condition' => $home_condition,
+            ':indigency_assessment' => $indigency_assessment,
+            ':recommendation' => $recommendation,
+            ':previous_dswd_assistance' => $previous_dswd_assistance,
+            ':previous_assistance_details' => $previous_assistance_details,
+            ':previous_assistance_date' => $previous_assistance_date,
+            ':insurance_coverage' => $insurance_coverage,
+            ':savings' => $savings,
+        ]);
+
+        $case_study_id = (int)$pdo->lastInsertId();
+        $pdo->commit();
+
+        header('Location: casestudy_view.php?id=' . $case_study_id);
+        exit;
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('CASE_STUDY INSERT ERROR: ' . $e->getMessage());
+        die('Unable to save the Case Study. ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'));
+    }
+}
+
+$familyJsonForJs = json_encode(
+    $familyRows,
+    JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+);
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -908,14 +1179,14 @@
                         <h1 class="text-xl font-serif text-mswdo-800">Case Study / Social Case Summary</h1>
                     </div>
 
-                    <form id="caseStudyForm">
+                    <form id="caseStudyForm" method="POST" action="casestudy.php?client_id=<?= (int)$client_id ?>">
 
                     <!-- Client banner -->
                     <div
                         class="animate-fade-up-1 bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-4 mb-5">
                         <div class="flex-1">
-                            <p class="text-[14px] font-semibold text-mswdo-800">Client Information</p>
-                            <p class="text-[11px] text-slate-400">Enter the case details below. The final summary will use only the values you provide.</p>
+                            <p class="text-[14px] font-semibold text-mswdo-800"><?= $full_name ?></p>
+                            <p class="text-[11px] text-slate-400"><?= htmlspecialchars($subtitle, ENT_QUOTES, 'UTF-8') ?></p>
                         </div>
                     </div>
 
@@ -1240,6 +1511,22 @@
                                     oninput="countChars('homeText','homeCount',800)"></textarea>
                                 <div class="char-counter" id="homeCount">0 / 800 characters</div>
                             </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="field-label">Crisis Severity</label>
+                                    <select class="field" name="crisis_severity">
+                                        <option value="">Select severity</option>
+                                        <option value="Recently diagnosed (≤3 months)">Recently diagnosed (≤3 months)</option>
+                                        <option value="3 months to 1 year">3 months to 1 year</option>
+                                        <option value="Chronic/lifelong">Chronic/lifelong</option>
+                                        <option value="Not applicable">Not applicable</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="field-label">Crisis Experienced</label>
+                                    <textarea class="field" rows="3" name="crisis_experienced" maxlength="1000" placeholder="Describe the crisis experienced, if applicable."></textarea>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1353,7 +1640,7 @@
                             Cancel
                         </a>
                         <button type="button" onclick="showCaseSummary()"
-                            class="text-[13px] font-semibold text-white bg-mswdo-700 rounded-xl px-6 py-2.5 hover:bg-mswdo-800 transition-all">
+                            class="text-[13px] font-semibold text-white bg-green-700 rounded-xl px-6 py-2.5 hover:bg-green-800 transition-all">
                             View Case Summary Preview
                         </button>
                     </div>
@@ -1369,11 +1656,11 @@
                     <div class="formal-summary-actions no-print" id="caseSummaryActions">
                         <span id="caseSummaryStatus" class="summary-status">Reviewing current form values</span>
                         <button type="button" onclick="saveCaseStudyFromSummary()"
-                            class="text-[12px] font-semibold text-white bg-mswdo-700 rounded-lg px-4 py-2.5 hover:bg-mswdo-800 transition-all">
+                            class="text-[12px] font-semibold text-white bg-green-700 rounded-lg px-4 py-2.5 hover:bg-mswdo-800 transition-all">
                             <i class="fas fa-save mr-2"></i>Save Case Study
                         </button>
                         <button type="button" onclick="previewCaseSummaryPDF()"
-                            class="text-[12px] font-semibold text-white bg-mswdo-700 rounded-lg px-4 py-2.5 hover:bg-mswdo-800 transition-all">
+                            class="text-[12px] font-semibold text-white bg-green-700 rounded-lg px-4 py-2.5 hover:bg-mswdo-800 transition-all">
                             <i class="fas fa-file-pdf mr-2"></i>View Case Summary
                         </button>
                     </div>
@@ -1459,7 +1746,7 @@
 
                     <div id="caseSummaryBottomActions" class="formal-bottom-actions no-print">
                         <button type="button" onclick="editCaseStudy()"
-                            class="text-[12px] font-semibold text-mswdo-800 bg-white border border-mswdo-200 rounded-lg px-5 py-2.5 hover:border-mswdo-400 hover:text-mswdo-800 transition-all">
+                            class="text-[12px] font-semibold text-mswdo-800 bg-white border border-mswdo-200 rounded-lg px-5 py-2.5 hover:border-green-400 hover:text-green-800 transition-all">
                             <i class="fas fa-pen mr-2"></i>Edit Case Study
                         </button>
                     </div>
@@ -1574,36 +1861,17 @@
         }
 
 
-        // Standalone HTML demo: save locally instead of submitting to PHP/database.
-        // This remains the existing save/data structure; the save action now lives
-        // in the Case Summary viewer.
+        // Database-backed save: the real POST is handled by casestudy.php.
         function saveCaseStudyLocal(event) {
             if (event) event.preventDefault();
-
             const form = document.getElementById('caseStudyForm');
             if (!form.checkValidity()) {
                 form.reportValidity();
                 return false;
             }
-
-            // Keep all existing form fields/data structure, and add the calculated
-            // totals that the original standalone save logic already stored.
-            const data = Object.fromEntries(new FormData(form).entries());
-            data.savedAt = new Date().toISOString();
-            data.totalIncome = document.getElementById('totalIncomeSum').textContent;
-            data.totalExpenses = document.getElementById('totalExpenses').textContent;
-            data.netMonthly = document.getElementById('netMonthly').textContent;
-
-            localStorage.setItem('mswdo_case_study_demo', JSON.stringify(data));
-
-            // Keep the formal summary open after saving.
-            if (document.getElementById('caseSummaryView')?.style.display !== 'none') {
-                const status = document.getElementById('caseSummaryStatus');
-                if (status) status.textContent = 'Case study saved successfully.';
-            }
-
-            showToast('Case Study saved locally on this browser!');
-            return true;
+            calcNet();
+            form.submit();
+            return false;
         }
 
         function saveCaseStudyFromSummary() {
@@ -1719,10 +1987,8 @@
             setFormalText('formalPRC', 'PRC License # 0011198');
             setFormalText('formalLicenseValidity', 'Valid until August 2025');
 
-            const saved = localStorage.getItem('mswdo_case_study_demo');
-            document.getElementById('caseSummaryStatus').textContent = saved
-                ? 'Saved case study — review, edit, or print the formatted summary.'
-                : 'Formatted summary — review before saving.';
+            document.getElementById('caseSummaryStatus').textContent =
+                'Reviewing the current case-study values. Click Save Case Study to store them in the database.';
         }
 
         async function showCaseSummary() {
@@ -2996,12 +3262,6 @@
 
         }
 
-        function saveCaseStudyFromSummary() {
-            saveCaseStudyLocal();
-            renderFormalCaseSummary();
-            document.getElementById('caseSummaryStatus').textContent = 'Case study saved successfully.';
-        }
-
         function cancelForm(event) {
             if (event) event.preventDefault();
             if (confirm('Clear this case study form?')) {
@@ -3028,36 +3288,59 @@
             return false;
         }
 
-        function loadSavedCaseStudy() {
-            const saved = localStorage.getItem('mswdo_case_study_demo');
-            if (!saved) return;
-            try {
-                const data = JSON.parse(saved);
-                Object.keys(data).forEach(key => {
-                    const field = document.querySelector(`[name="${key}"]`);
-                    if (field && key !== 'savedAt' && key !== 'totalIncome' && key !== 'totalExpenses' && key !== 'netMonthly') {
-                        field.value = data[key];
-                    }
-                });
-                if (data.indigency_assessment) {
-                    const map = {
-                        'Indigent':'sel-indigent','Near Poor':'sel-nearpoor',
-                        'Not Indigent':'sel-notindigent','Not Assessed':'sel-notassessed'
-                    };
-                    const el = [...document.querySelectorAll('#indigSelector .indig-opt')].find(x => x.textContent.includes(data.indigency_assessment));
-                    if (el) setIndig(el, data.indigency_assessment, map[data.indigency_assessment]);
-                }
-                countChars('problemText','problemCount',1000);
-                countChars('homeText','homeCount',800);
-                countChars('recoText','recoCount',1200);
-                calcNet();
-            } catch (e) {
-                console.warn('Could not load local demo data.', e);
+        function renderRegistrationFamily() {
+            const body = document.getElementById('famBody');
+            if (!body) return;
+
+            const family = <?= $familyJsonForJs ?> || [];
+            body.innerHTML = '';
+
+            if (!family.length) {
+                body.innerHTML = '<tr><td colspan="9" class="px-3 py-4 text-center text-[11px] text-slate-400 italic">No family members have been entered.</td></tr>';
+                return;
             }
+
+            family.forEach((m, index) => {
+                const tr = document.createElement('tr');
+                if (index === 0) tr.className = 'fam-row client-row';
+                else tr.className = 'fam-row';
+
+                const vals = [
+                    index + 1,
+                    m.name || '—',
+                    m.relationship || m.relation || '—',
+                    m.age ?? '—',
+                    m.sex || '—',
+                    m.civil_status || m.civilStatus || '—',
+                    m.education || '—',
+                    m.occupation || '—',
+                    Number(m.income || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                ];
+
+                vals.forEach((value, i) => {
+                    const td = document.createElement('td');
+                    td.className = 'px-3 py-2.5';
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+
+                body.appendChild(tr);
+            });
+
+            const total = family.reduce((sum, m) => sum + (Number(m.income) || 0), 0);
+            const sec3 = document.getElementById('sec3CombinedIncome');
+            if (sec3) sec3.value = total;
+            const totalIncome = document.getElementById('totalIncome');
+            if (totalIncome) totalIncome.textContent = '₱' + total.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            calcNet();
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            renderRegistrationFamily();
             income();
+            countChars('problemText', 'problemCount', 1000);
+            countChars('homeText', 'homeCount', 800);
+            countChars('recoText', 'recoCount', 1200);
         });
     </script>
 </body>

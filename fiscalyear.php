@@ -2,6 +2,367 @@
 require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
+
+function fiscalYearJsonResponse(bool $success, string $message = '', array $extra = []): void
+{
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(
+        array_merge(['success' => $success, 'message' => $message], $extra),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fy_action'])) {
+    $action = trim($_POST['fy_action']);
+    $actorUserId = (int)($_SESSION['user_id'] ?? 0);
+
+    try {
+        if ($action === 'save_budgets') {
+            $fyId = (int)($_POST['fiscal_year_id'] ?? 0);
+            $budgets = json_decode($_POST['budgets'] ?? '[]', true);
+
+            if ($fyId <= 0 || !is_array($budgets)) {
+                fiscalYearJsonResponse(false, 'Invalid fiscal year budget data.');
+            }
+
+            $fyStmt = $pdo->prepare("SELECT fiscal_year_id, fy_year, fy_status FROM fiscal_year WHERE fiscal_year_id = ? FOR UPDATE");
+            $fyStmt->execute([$fyId]);
+            $fy = $fyStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$fy) {
+                fiscalYearJsonResponse(false, 'Fiscal year not found.');
+            }
+
+            if ($fy['fy_status'] === 'Archived') {
+                fiscalYearJsonResponse(false, 'Archived fiscal years are read-only and cannot be edited.');
+            }
+
+            $pdo->beginTransaction();
+
+            $updateFyBudget = $pdo->prepare("UPDATE fiscal_year_budget SET annual_budget = ? WHERE fiscal_year_id = ? AND program_id = ?");
+            $updateProgram = $pdo->prepare("UPDATE program SET prog_annual_budget = ?, prog_remaining_budget = ? WHERE program_id = ?");
+
+            foreach ($budgets as $item) {
+                $programId = (int)($item['program_id'] ?? 0);
+                $budget = round((float)($item['budget'] ?? 0), 2);
+
+                if ($programId <= 0 || $budget < 0) {
+                    throw new RuntimeException('One or more budget entries are invalid.');
+                }
+
+                $updateFyBudget->execute([$budget, $fyId, $programId]);
+
+                if ($updateFyBudget->rowCount() === 0) {
+                    $check = $pdo->prepare("SELECT COUNT(*) FROM fiscal_year_budget WHERE fiscal_year_id = ? AND program_id = ?");
+                    $check->execute([$fyId, $programId]);
+                    if ((int)$check->fetchColumn() === 0) {
+                        $insert = $pdo->prepare("INSERT INTO fiscal_year_budget (fiscal_year_id, program_id, annual_budget) VALUES (?, ?, ?)");
+                        $insert->execute([$fyId, $programId, $budget]);
+                    }
+                }
+
+                /* Keep the live Budget Management page synchronized only for the active FY. */
+                if ($fy['fy_status'] === 'Active') {
+                    $spentStmt = $pdo->prepare("SELECT
+                        COALESCE((SELECT SUM(av_amount) FROM availment
+                            WHERE program_id = ? AND av_status = 'Released'
+                              AND av_date_released IS NOT NULL
+                              AND YEAR(av_date_released) = ?), 0)
+                        +
+                        COALESCE((SELECT SUM(pp_budget) FROM project_proposal
+                            WHERE program_id = ? AND pp_status = 'Released'
+                              AND pp_date_released IS NOT NULL
+                              AND YEAR(pp_date_released) = ?), 0)");
+                    $spentStmt->execute([$programId, (int)$fy['fy_year'], $programId, (int)$fy['fy_year']]);
+                    $spent = (float)$spentStmt->fetchColumn();
+                    $remaining = max(0, $budget - $spent);
+                    $updateProgram->execute([$budget, $remaining, $programId]);
+                }
+            }
+
+            $pdo->commit();
+            fiscalYearJsonResponse(true, 'Fiscal year budgets saved successfully.');
+        }
+
+        if ($action === 'initialize_fy') {
+            $year = (int)($_POST['year'] ?? 0);
+            $start = trim($_POST['start'] ?? '');
+            $end = trim($_POST['end'] ?? '');
+            $budgets = json_decode($_POST['budgets'] ?? '[]', true);
+
+            $currentCalendarYear = (int)date('Y');
+            if ($year < $currentCalendarYear + 1 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $start) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $end)) {
+                fiscalYearJsonResponse(false, 'Invalid fiscal year or dates.');
+            }
+            if ($start >= $end) {
+                fiscalYearJsonResponse(false, 'End date must be after start date.');
+            }
+            if (!is_array($budgets) || count($budgets) === 0) {
+                fiscalYearJsonResponse(false, 'No program budgets were supplied.');
+            }
+
+            $exists = $pdo->prepare("SELECT fiscal_year_id FROM fiscal_year WHERE fy_year = ? LIMIT 1");
+            $exists->execute([$year]);
+            if ($exists->fetchColumn()) {
+                fiscalYearJsonResponse(false, "FY {$year} already exists.");
+            }
+
+            $pdo->beginTransaction();
+
+            /* Future FY is Planning. The current active FY is NOT archived prematurely. */
+            $insertFy = $pdo->prepare("INSERT INTO fiscal_year (fy_year, fy_start_date, fy_end_date, fy_status, created_by) VALUES (?, ?, ?, 'Planning', ?)");
+            $insertFy->execute([$year, $start, $end, $actorUserId > 0 ? $actorUserId : null]);
+            $fyId = (int)$pdo->lastInsertId();
+
+            $insertBudget = $pdo->prepare("INSERT INTO fiscal_year_budget (fiscal_year_id, program_id, annual_budget) VALUES (?, ?, ?)");
+            $totalBudget = 0;
+            $fundedPrograms = 0;
+
+            foreach ($budgets as $item) {
+                $programId = (int)($item['program_id'] ?? 0);
+                $budget = round((float)($item['budget'] ?? 0), 2);
+                if ($programId <= 0 || $budget < 0) {
+                    throw new RuntimeException('One or more new fiscal-year budgets are invalid.');
+                }
+                $insertBudget->execute([$fyId, $programId, $budget]);
+                $totalBudget += $budget;
+                if ($budget > 0) $fundedPrograms++;
+            }
+
+            $pdo->commit();
+
+            fiscalYearJsonResponse(true, "FY {$year} initialized as Planning.", [
+                'fiscal_year_id' => $fyId,
+                'year' => $year,
+                'total_budget' => $totalBudget,
+                'funded_programs' => $fundedPrograms,
+                'status' => 'Planning'
+            ]);
+        }
+
+
+        if ($action === 'activate_fy') {
+            $fyId = (int)($_POST['fiscal_year_id'] ?? 0);
+
+            if ($fyId <= 0) {
+                fiscalYearJsonResponse(false, 'Invalid fiscal year.');
+            }
+
+            $pdo->beginTransaction();
+
+            $fyStmt = $pdo->prepare("
+                SELECT fiscal_year_id, fy_year, fy_start_date, fy_end_date, fy_status
+                FROM fiscal_year
+                WHERE fiscal_year_id = ?
+                FOR UPDATE
+            ");
+            $fyStmt->execute([$fyId]);
+            $targetFY = $fyStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$targetFY) {
+                throw new RuntimeException('Fiscal year not found.');
+            }
+
+            if ($targetFY['fy_status'] !== 'Planning') {
+                throw new RuntimeException('Only a Planning fiscal year can be activated.');
+            }
+
+            $today = date('Y-m-d');
+
+            if ($today < $targetFY['fy_start_date']) {
+                throw new RuntimeException(
+                    'FY ' . $targetFY['fy_year'] .
+                    ' cannot be activated yet. It starts on ' .
+                    $targetFY['fy_start_date'] . '.'
+                );
+            }
+
+            /*
+             * There must be exactly one active FY after activation.
+             * The current Active FY is archived only when the new FY
+             * is actually activated.
+             */
+            $pdo->exec("
+                UPDATE fiscal_year
+                SET fy_status = 'Archived'
+                WHERE fy_status = 'Active'
+            ");
+
+            $activate = $pdo->prepare("
+                UPDATE fiscal_year
+                SET fy_status = 'Active'
+                WHERE fiscal_year_id = ?
+            ");
+            $activate->execute([$fyId]);
+
+            /*
+             * Synchronize the newly active FY budgets to PROGRAM so
+             * Budget Management uses the newly active annual allocations.
+             *
+             * Spending is calculated only from RELEASED transactions
+             * inside the activated fiscal-year dates.
+             */
+            $budgetStmt = $pdo->prepare("
+                SELECT
+                    fb.program_id,
+                    fb.annual_budget,
+                    COALESCE((
+                        SELECT SUM(a.av_amount)
+                        FROM availment a
+                        WHERE a.program_id = fb.program_id
+                          AND a.av_status = 'Released'
+                          AND a.av_date_released IS NOT NULL
+                          AND a.av_date_released >= ?
+                          AND a.av_date_released < DATE_ADD(?, INTERVAL 1 DAY)
+                    ), 0)
+                    +
+                    COALESCE((
+                        SELECT SUM(pp.pp_budget)
+                        FROM project_proposal pp
+                        WHERE pp.program_id = fb.program_id
+                          AND pp.pp_status = 'Released'
+                          AND pp.pp_date_released IS NOT NULL
+                          AND pp.pp_date_released >= ?
+                          AND pp.pp_date_released < DATE_ADD(?, INTERVAL 1 DAY)
+                    ), 0) AS spent
+                FROM fiscal_year_budget fb
+                WHERE fb.fiscal_year_id = ?
+            ");
+
+            $budgetStmt->execute([
+                $targetFY['fy_start_date'],
+                $targetFY['fy_end_date'],
+                $targetFY['fy_start_date'],
+                $targetFY['fy_end_date'],
+                $fyId
+            ]);
+
+            $updateProgram = $pdo->prepare("
+                UPDATE program
+                SET
+                    prog_annual_budget = ?,
+                    prog_remaining_budget = ?,
+                    prog_current_period = 1,
+                    prog_early_end_count = 0,
+                    prog_period_started_at = ?
+                WHERE program_id = ?
+            ");
+
+            foreach ($budgetStmt->fetchAll(PDO::FETCH_ASSOC) as $budgetRow) {
+                $annualBudget = round((float)$budgetRow['annual_budget'], 2);
+                $spent = round((float)$budgetRow['spent'], 2);
+                $remaining = max(0, $annualBudget - $spent);
+
+                $updateProgram->execute([
+                    $annualBudget,
+                    $remaining,
+                    $targetFY['fy_start_date'] . ' 00:00:00',
+                    (int)$budgetRow['program_id']
+                ]);
+            }
+
+            $pdo->commit();
+
+            fiscalYearJsonResponse(
+                true,
+                "FY {$targetFY['fy_year']} is now Active. The previous active fiscal year was archived.",
+                [
+                    'fiscal_year_id' => $fyId,
+                    'year' => (int)$targetFY['fy_year'],
+                    'status' => 'Active'
+                ]
+            );
+        }
+
+        fiscalYearJsonResponse(false, 'Unknown fiscal-year action.');
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        fiscalYearJsonResponse(false, $e->getMessage());
+    }
+}
+
+/* Load all FY/program budget rows. Spending is calculated from actual released transactions. */
+$fiscalYearStmt = $pdo->query(" 
+    SELECT
+        fy.fiscal_year_id,
+        fy.fy_year,
+        fy.fy_start_date,
+        fy.fy_end_date,
+        fy.fy_status,
+        fb.fy_budget_id,
+        p.program_id,
+        p.program_name,
+        p.prog_funding_source,
+        p.prog_period,
+        fb.annual_budget,
+        COALESCE((
+            SELECT SUM(a.av_amount)
+            FROM availment a
+            WHERE a.program_id = p.program_id
+              AND a.av_status = 'Released'
+              AND a.av_date_released IS NOT NULL
+              AND a.av_date_released >= fy.fy_start_date
+              AND a.av_date_released < DATE_ADD(fy.fy_end_date, INTERVAL 1 DAY)
+        ), 0)
+        + COALESCE((
+            SELECT SUM(pp.pp_budget)
+            FROM project_proposal pp
+            WHERE pp.program_id = p.program_id
+              AND pp.pp_status = 'Released'
+              AND pp.pp_date_released IS NOT NULL
+              AND pp.pp_date_released >= fy.fy_start_date
+              AND pp.pp_date_released < DATE_ADD(fy.fy_end_date, INTERVAL 1 DAY)
+        ), 0) AS spent
+    FROM fiscal_year_budget fb
+    INNER JOIN fiscal_year fy ON fy.fiscal_year_id = fb.fiscal_year_id
+    INNER JOIN program p ON p.program_id = fb.program_id
+    ORDER BY fy.fy_year DESC, p.program_id ASC
+");
+
+$fiscalYearRows = $fiscalYearStmt->fetchAll(PDO::FETCH_ASSOC);
+$fiscalYearsPhp = [];
+
+foreach ($fiscalYearRows as $row) {
+    $fyId = (int)$row['fiscal_year_id'];
+    if (!isset($fiscalYearsPhp[$fyId])) {
+        $fiscalYearsPhp[$fyId] = [
+            'id' => $fyId,
+            'year' => (int)$row['fy_year'],
+            'start' => $row['fy_start_date'],
+            'end' => $row['fy_end_date'],
+            'status' => $row['fy_status'],
+            'totalBudget' => 0.0,
+            'totalSpent' => 0.0,
+            'programs' => []
+        ];
+    }
+
+    $budget = (float)$row['annual_budget'];
+    $spent = (float)$row['spent'];
+
+    $fiscalYearsPhp[$fyId]['programs'][] = [
+        'programId' => (int)$row['program_id'],
+        'program' => $row['program_name'],
+        'source' => $row['prog_funding_source'] ?: 'LGU',
+        'period' => $row['prog_period'],
+        'budget' => $budget,
+        'spent' => $spent
+    ];
+    $fiscalYearsPhp[$fyId]['totalBudget'] += $budget;
+    $fiscalYearsPhp[$fyId]['totalSpent'] += $spent;
+}
+
+$fiscalYearsPhp = array_values($fiscalYearsPhp);
+$activeFyIndex = 0;
+foreach ($fiscalYearsPhp as $i => $fy) {
+    if ($fy['status'] === 'Active') {
+        $activeFyIndex = $i;
+        break;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -496,37 +857,34 @@ require 'db_connect.php';
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Active Fiscal Year</p>
                             <h2 class="text-xl md:text-2xl font-bold text-green-700" id="activeFYLabel">FY 2026</h2>
-                            <p class="text-[12px] text-slate-500 mt-1">January 1, 2026 – December 31, 2026</p>
+                            <p class="text-[12px] text-slate-500 mt-1" id="activeFYPeriod">—</p>
                         </div>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full md:w-auto">
                             <div class="text-center">
                                 <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total Budget</p>
-                                <p class="text-lg md:text-xl font-bold text-green-600" id="activeTotalBudget">₱6,280,000
-                                </p>
+                                <p class="text-lg md:text-xl font-bold text-green-600" id="activeTotalBudget">₱0.00</p>
                             </div>
                             <div class="text-center">
                                 <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total Spent</p>
-                                <p class="text-lg md:text-xl font-bold text-amber-600" id="activeTotalSpent">₱2,580,000
-                                </p>
+                                <p class="text-lg md:text-xl font-bold text-amber-600" id="activeTotalSpent">₱0.00</p>
                             </div>
                             <div class="text-center">
                                 <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                                <p class="text-lg md:text-xl font-bold text-blue-600" id="activeTotalRemaining">
-                                    ₱3,700,000</p>
+                                <p class="text-lg md:text-xl font-bold text-blue-600" id="activeTotalRemaining">₱0.00</p>
                             </div>
                             <div class="text-center">
                                 <p class="text-[10px] text-slate-400 uppercase tracking-wider">Utilization</p>
-                                <p class="text-lg md:text-xl font-bold text-green-600" id="activeUtilization">41%</p>
+                                <p class="text-lg md:text-xl font-bold text-green-600" id="activeUtilization">0%</p>
                             </div>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
                         <div class="bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div class="h-2 rounded-full bg-green-500" style="width:41%"></div>
+                            <div id="activeUtilizationBar" class="h-2 rounded-full bg-green-500" style="width:0%"></div>
                         </div>
                         <div class="flex justify-between text-[10px] text-slate-400 mt-1">
                             <span>0%</span>
-                            <span>41% utilized</span>
+                            <span id="activeUtilizationLabel">0% utilized</span>
                             <span>100%</span>
                         </div>
                     </div>
@@ -549,8 +907,7 @@ require 'db_connect.php';
                 <div
                     class="flex flex-wrap items-center justify-between gap-2 px-4 md:px-5 py-4 border-b border-slate-100 no-print">
                     <div class="flex items-center gap-2">
-                        <h2 class="text-[13px] font-semibold text-green-600" id="selectedFYTitle">FY 2026 Budget
-                            Breakdown</h2>
+                        <h2 class="text-[13px] font-semibold text-green-600" id="selectedFYTitle">Fiscal Year Budget Breakdown</h2>
                         <span
                             class="bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Active</span>
                     </div>
@@ -571,13 +928,15 @@ require 'db_connect.php';
                                         class="fas fa-file-excel mr-2 text-green-600"></i> XLSX (Download)</span>
                             </div>
                         </div>
+                        <button id="editSelectedFYButton" onclick="openEditBudgetModal()"
+                            class="hidden text-[11px] font-semibold text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1 hover:bg-green-100 transition-all items-center gap-1">
+                            <i class="fas fa-pen-to-square"></i> Edit Budgets
+                        </button>
                     </div>
                 </div>
                 <!-- Print-only title -->
                 <div class="hidden print:block" style="display:none;">
-                    <h1 id="printFYTitle" style="text-align:center;font-size:14pt;font-weight:700;margin-bottom:4px;">FY
-                        2026
-                        Budget Report</h1>
+                    <h1 id="printFYTitle" style="text-align:center;font-size:14pt;font-weight:700;margin-bottom:4px;">Fiscal Year Budget Report</h1>
                     <p class="subtitle" style="text-align:center;font-size:11pt;margin-bottom:16px;">
                         <span id="printFYPeriod"></span> | Status: <span id="printFYStatus"></span>
                     </p>
@@ -671,9 +1030,9 @@ require 'db_connect.php';
                         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
                             <p class="text-[11px] text-amber-700 flex items-start gap-2">
                                 <i class="fas fa-triangle-exclamation text-amber-500 mt-0.5"></i>
-                                <span>This will automatically archive the current fiscal year (<span
-                                        id="currentFYLabel">2026</span>). All budgets will be closed and a new
-                                    budget cycle will begin.</span>
+                                <span>FY <span id="currentFYLabel">2026</span> will remain active. The new fiscal year will be created as
+                                    <strong>Planning</strong>, so its budgets can be reviewed and edited before the new
+                                    fiscal year officially begins.</span>
                             </p>
                         </div>
                         <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
@@ -816,8 +1175,7 @@ require 'db_connect.php';
                     <i class="fas fa-check-circle text-4xl text-green-600"></i>
                 </div>
                 <h2 class="text-[20px] font-bold text-green-700 mb-2">All Done!</h2>
-                <p class="text-[13px] text-slate-600 mb-4">The new fiscal year has been initialized successfully. The
-                    previous year has been archived and the new budget cycle is now active.</p>
+                <p class="text-[13px] text-slate-600 mb-4">The new fiscal year has been saved successfully as a planning cycle. The current active fiscal year remains active until it is officially changed.</p>
                 <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left text-[12px] space-y-2">
                     <p><strong>New Fiscal Year:</strong> <span id="successFY">2027</span></p>
                     <p><strong>Total Budget:</strong> <span id="successTotalBudget">₱0.00</span></p>
@@ -832,7 +1190,7 @@ require 'db_connect.php';
         </div>
     </div>
 
-    <!-- ══════════════════════════ EDIT BUDGET MODAL (only for active FY) ══════════════════════════ -->
+    <!-- ══════════════════════════ EDIT BUDGET MODAL (Active or Planning FY) ══════════════════════════ -->
     <div id="editBudgetModal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
         <div
             class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-modal-in">
@@ -848,8 +1206,9 @@ require 'db_connect.php';
                 <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
                     <p class="text-[12px] text-amber-700 flex items-start gap-2">
                         <i class="fas fa-exclamation-triangle text-amber-500 mt-0.5"></i>
-                        <span><strong>Important:</strong> Changes to program budgets will affect financial reports and
-                            utilization calculations. Please review carefully before saving.</span>
+                        <span><strong>Important:</strong> Planning fiscal years can be edited before activation. Changes to an
+                            Active fiscal year affect current budget figures and utilization calculations. Archived
+                            fiscal years are read-only.</span>
                     </p>
                 </div>
                 <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -931,73 +1290,14 @@ require 'db_connect.php';
             if (!btn && dropdown) dropdown.classList.remove('open');
         });
 
-        // ── Sample Data ──
-        const fiscalYears = [{
-            id: 1,
-            year: 2024,
-            start: '2024-01-01',
-            end: '2024-12-31',
-            status: 'Archived',
-            totalBudget: 5800000,
-            totalSpent: 5200000,
-            programs: [
-                { program: 'AICS FBML', source: 'LGU + DSWD', budget: 1800000, spent: 1700000 },
-                { program: 'AICS Educational', source: 'LGU + DSWD', budget: 200000, spent: 180000 },
-                { program: '4Ps', source: 'DSWD', budget: 30000, spent: 28000 },
-                { program: 'SLP', source: 'LGU', budget: 450000, spent: 400000 },
-                { program: 'SFP', source: 'DSWD', budget: 800000, spent: 750000 },
-                { program: 'Day Care', source: 'DSWD', budget: 350000, spent: 320000 },
-                { program: 'Senior Citizen', source: 'LGU', budget: 800000, spent: 720000 },
-                { program: 'PWD', source: 'Provincial', budget: 200000, spent: 180000 },
-                { program: 'Solo Parent', source: 'LGU', budget: 300000, spent: 280000 },
-                { program: 'Women and Children', source: 'LGU', budget: 100000, spent: 90000 }
-            ]
-        }, {
-            id: 2,
-            year: 2025,
-            start: '2025-01-01',
-            end: '2025-12-31',
-            status: 'Archived',
-            totalBudget: 6200000,
-            totalSpent: 5800000,
-            programs: [
-                { program: 'AICS FBML', source: 'LGU + DSWD', budget: 1900000, spent: 1850000 },
-                { program: 'AICS Educational', source: 'LGU + DSWD', budget: 220000, spent: 210000 },
-                { program: '4Ps', source: 'DSWD', budget: 30000, spent: 30000 },
-                { program: 'SLP', source: 'LGU', budget: 450000, spent: 430000 },
-                { program: 'SFP', source: 'DSWD', budget: 800000, spent: 780000 },
-                { program: 'Day Care', source: 'DSWD', budget: 350000, spent: 340000 },
-                { program: 'Senior Citizen', source: 'LGU', budget: 850000, spent: 820000 },
-                { program: 'PWD', source: 'Provincial', budget: 220000, spent: 210000 },
-                { program: 'Solo Parent', source: 'LGU', budget: 320000, spent: 300000 },
-                { program: 'Women and Children', source: 'LGU', budget: 110000, spent: 105000 }
-            ]
-        }, {
-            id: 3,
-            year: 2026,
-            start: '2026-01-01',
-            end: '2026-12-31',
-            status: 'Active',
-            totalBudget: 6280000,
-            totalSpent: 2580000,
-            programs: [
-                { program: 'AICS FBML', source: 'LGU + DSWD', budget: 1800000, spent: 1260000 },
-                { program: 'AICS Educational', source: 'LGU + DSWD', budget: 200000, spent: 120000 },
-                { program: '4Ps', source: 'DSWD', budget: 30000, spent: 18500 },
-                { program: 'SLP', source: 'LGU', budget: 450000, spent: 150000 },
-                { program: 'SFP', source: 'DSWD', budget: 800000, spent: 195000 },
-                { program: 'Day Care', source: 'DSWD', budget: 350000, spent: 200000 },
-                { program: 'Senior Citizen', source: 'LGU', budget: 1500000, spent: 520000 },
-                { program: 'PWD', source: 'Provincial', budget: 200000, spent: 130000 },
-                { program: 'Solo Parent', source: 'LGU', budget: 300000, spent: 72000 },
-                { program: 'Women and Children', source: 'LGU', budget: 100000, spent: 28000 }
-            ]
-        },];
+        // ── Database data supplied by PHP ──
+        const fiscalYears = <?= json_encode($fiscalYearsPhp, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
-        let selectedFY = 2;
-        let currentYear = 2026;
+        let selectedFY = <?= (int)$activeFyIndex ?>;
+        let currentYear = fiscalYears[selectedFY] ? fiscalYears[selectedFY].year : new Date().getFullYear();
         let stepData = {};
         let step2Budgets = {};
+
 
         // ── Render FY Cards ──
         function renderFYCards() {
@@ -1009,7 +1309,35 @@ require 'db_connect.php';
                 const isActive = fy.status === 'Active';
                 const isSelected = index === selectedFY;
                 const pct = fy.totalBudget > 0 ? Math.round((fy.totalSpent / fy.totalBudget) * 100) : 0;
-                const statusColor = isActive ? 'badge-active' : 'badge-archived';
+                const isPlanning = fy.status === 'Planning';
+                const isArchived = fy.status === 'Archived';
+                const statusColor = isActive
+                    ? 'badge-active'
+                    : isPlanning
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'badge-archived';
+
+                const startDate = new Date(fy.start + 'T00:00:00');
+                const todayDate = new Date();
+                todayDate.setHours(0, 0, 0, 0);
+                const canActivate = isPlanning && todayDate >= startDate;
+
+                const activationButton = isPlanning
+                    ? `
+                        <button
+                            type="button"
+                            onclick="event.stopPropagation(); activateFY(${index})"
+                            ${canActivate ? '' : 'disabled'}
+                            class="mt-3 w-full text-[10px] font-semibold rounded-lg px-2.5 py-1.5 border transition-all
+                                ${canActivate
+                                    ? 'text-green-700 bg-green-50 border-green-200 hover:bg-green-100'
+                                    : 'text-slate-400 bg-slate-50 border-slate-200 cursor-not-allowed'}">
+                            <i class="fas fa-power-off mr-1"></i>
+                            ${canActivate ? 'Activate Fiscal Year' : `Starts ${fy.start}`}
+                        </button>
+                    `
+                    : '';
+
                 container.innerHTML += `
                     <div onclick="selectFY(${index})" class="fy-card ${isSelected ? 'active-fy' : ''} bg-white border-2 ${isSelected ? 'border-green-500' : 'border-slate-200'} rounded-xl p-3 md:p-4">
                         <div class="flex items-center justify-between mb-2">
@@ -1019,7 +1347,7 @@ require 'db_connect.php';
                         <p class="text-[9px] md:text-[10px] text-slate-400">${fy.start} – ${fy.end}</p>
                         <div class="mt-3 flex justify-between text-[11px]">
                             <span class="text-slate-500">Total Budget</span>
-                            <span class="font-semibold text-green-600">₱${fy.totalBudget.toLocaleString()}</span>
+                            <span class="font-semibold text-green-600">₱${fy.totalBudget.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
                         </div>
                         <div class="flex justify-between text-[11px]">
                             <span class="text-slate-500">Utilization</span>
@@ -1029,9 +1357,66 @@ require 'db_connect.php';
                             <div class="h-1.5 rounded-full ${pct > 80 ? 'bg-red-500' : pct > 60 ? 'bg-amber-400' : 'bg-green-500'}" style="width:${Math.min(pct, 100)}%"></div>
                         </div>
                         ${isActive ? '<div class="mt-2 text-[10px] text-green-600 font-semibold flex items-center gap-1"><i class="fas fa-circle text-[6px]"></i> Current FY</div>' : ''}
+                        ${isPlanning ? activationButton : ''}
                     </div>
                 `;
             });
+        }
+
+        // ── Activate Planning Fiscal Year ──
+        async function activateFY(index) {
+            const fy = fiscalYears[index];
+
+            if (!fy || fy.status !== 'Planning') {
+                showToast('Only a Planning fiscal year can be activated.', 'error');
+                return;
+            }
+
+            const startDate = new Date(fy.start + 'T00:00:00');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (today < startDate) {
+                showToast(`FY ${fy.year} cannot be activated until ${fy.start}.`, 'error');
+                return;
+            }
+
+            const confirmed = confirm(
+                `Activate FY ${fy.year}?\n\n` +
+                `FY ${fy.year} will become Active and the current Active fiscal year will be Archived.\n\n` +
+                `The FY ${fy.year} program budgets will become the live budgets used by Budget Management.`
+            );
+
+            if (!confirmed) return;
+
+            try {
+                const body = new URLSearchParams();
+                body.set('fy_action', 'activate_fy');
+                body.set('fiscal_year_id', String(fy.id));
+
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    body: body.toString()
+                });
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.message || 'Unable to activate fiscal year.');
+                }
+
+                showToast(result.message || `FY ${fy.year} is now Active.`);
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 700);
+
+            } catch (error) {
+                showToast(error.message || 'Unable to activate fiscal year.', 'error');
+            }
         }
 
         // ── Select FY ──
@@ -1050,9 +1435,25 @@ require 'db_connect.php';
             if (badge) {
                 badge.textContent = fy.status;
                 badge.className =
-                    `text-[10px] font-semibold px-2 py-0.5 rounded-full ${fy.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`;
+                    `text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        fy.status === 'Active'
+                            ? 'bg-green-100 text-green-700'
+                            : fy.status === 'Planning'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-slate-100 text-slate-600'
+                    }`;
             }
             document.getElementById('editFYLabel').textContent = `FY ${fy.year}`;
+
+            const editButton = document.getElementById('editSelectedFYButton');
+            if (editButton) {
+                const editable = fy.status === 'Active' || fy.status === 'Planning';
+                editButton.classList.toggle('hidden', !editable);
+                editButton.classList.toggle('flex', editable);
+                editButton.title = fy.status === 'Planning'
+                    ? `Edit FY ${fy.year} planning budget`
+                    : `Edit FY ${fy.year} active budget`;
+            }
         }
 
         function updatePrintInfo() {
@@ -1098,11 +1499,17 @@ require 'db_connect.php';
                 const totalSpent = activeFY.totalSpent;
                 const remaining = totalBudget - totalSpent;
                 const pct = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
-                document.getElementById('activeTotalBudget').textContent = '₱' + totalBudget.toLocaleString();
-                document.getElementById('activeTotalSpent').textContent = '₱' + totalSpent.toLocaleString();
-                document.getElementById('activeTotalRemaining').textContent = '₱' + remaining.toLocaleString();
+                document.getElementById('activeTotalBudget').textContent = '₱' + totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('activeTotalSpent').textContent = '₱' + totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('activeTotalRemaining').textContent = '₱' + remaining.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 document.getElementById('activeUtilization').textContent = pct + '%';
                 document.getElementById('activeFYLabel').textContent = 'FY ' + activeFY.year;
+                const periodEl = document.getElementById('activeFYPeriod');
+                if (periodEl) periodEl.textContent = `${activeFY.start} – ${activeFY.end}`;
+                const barEl = document.getElementById('activeUtilizationBar');
+                if (barEl) barEl.style.width = Math.min(pct, 100) + '%';
+                const labelEl = document.getElementById('activeUtilizationLabel');
+                if (labelEl) labelEl.textContent = pct + '% utilized';
             }
             updatePrintInfo();
         }
@@ -1184,9 +1591,10 @@ require 'db_connect.php';
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[12px]">₱</span>
                 <input type="text" class="field pl-7 text-[13px] py-2 w-full step2-budget" 
                        data-index="${index}" 
+                       data-program-id="${p.programId}"
                        data-program="${p.program}"
                        data-source="${p.source}"
-                       value="0.00" 
+                       value="${formatCurrency(prevBudget)}" 
                        placeholder="0.00"
                        onfocus="this.select()"
                        onblur="formatStep2BudgetOnBlur(this)" />
@@ -1251,6 +1659,7 @@ require 'db_connect.php';
                 const value = parseFloat(raw) || 0;
 
                 step2Budgets[index] = {
+                    programId: parseInt(input.dataset.programId || '0'),
                     program: program,
                     source: source,
                     budget: value
@@ -1341,58 +1750,66 @@ require 'db_connect.php';
             }
         });
 
-        // ── Finalize FY ──
-        function finalizeFY() {
-            const current = fiscalYears.find(f => f.status === 'Active');
-            if (current) current.status = 'Archived';
+        // ── Finalize / Initialize FY (database-backed) ──
+        async function finalizeFY() {
+            const verify = document.getElementById('verifyBudgetCheckbox');
+            if (!verify || !verify.checked) {
+                showToast('Please verify the budget amounts first.', 'error');
+                return;
+            }
 
-            // Build programs array from step2Budgets
-            const programs = Object.values(step2Budgets).map(item => ({
-                program: item.program,
-                source: item.source,
-                budget: item.budget,
-                spent: 0
+            const budgets = Object.values(step2Budgets).map(item => ({
+                program_id: Number(item.programId),
+                budget: Number(item.budget || 0)
             }));
 
-            const totalBudget = programs.reduce((sum, p) => sum + p.budget, 0);
+            const totalBudget = budgets.reduce((sum, item) => sum + item.budget, 0);
+            const button = document.getElementById('finalizeButton');
+            if (button) button.disabled = true;
 
-            const newFY = {
-                id: fiscalYears.length + 1,
-                year: parseInt(stepData.year),
-                start: stepData.start,
-                end: stepData.end,
-                status: 'Active',
-                totalBudget: totalBudget,
-                totalSpent: 0,
-                programs: programs
-            };
+            try {
+                const body = new URLSearchParams();
+                body.set('fy_action', 'initialize_fy');
+                body.set('year', stepData.year);
+                body.set('start', stepData.start);
+                body.set('end', stepData.end);
+                body.set('budgets', JSON.stringify(budgets));
 
-            fiscalYears.push(newFY);
-            currentYear = parseInt(stepData.year);
-            selectedFY = fiscalYears.length - 1;
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: body.toString()
+                });
+                const result = await response.json();
 
-            closeNewFYModal();
+                if (!result.success) {
+                    throw new Error(result.message || 'Unable to initialize fiscal year.');
+                }
 
-            // Count programs with budget > 0
-            const fundedPrograms = programs.filter(p => p.budget > 0).length;
+                closeNewFYModal();
 
-            document.getElementById('successFY').textContent = stepData.year;
-            document.getElementById('successTotalBudget').textContent = '₱' + totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            document.getElementById('successProgramCount').textContent = fundedPrograms + ' of ' + programs.length;
-            document.getElementById('successDate').textContent = new Date().toLocaleDateString('en-PH', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
+                document.getElementById('successFY').textContent = stepData.year;
+                document.getElementById('successTotalBudget').textContent = '₱' + totalBudget.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+                document.getElementById('successProgramCount').textContent = budgets.filter(x => x.budget > 0).length + ' of ' + budgets.length;
+                document.getElementById('successDate').textContent = new Date().toLocaleDateString('en-PH', {
+                    year: 'numeric', month: 'long', day: 'numeric'
+                });
 
-            document.getElementById('successModal').classList.remove('hidden');
-            document.getElementById('successModal').style.display = 'flex';
+                document.getElementById('successModal').classList.remove('hidden');
+                document.getElementById('successModal').style.display = 'flex';
 
-            renderFYCards();
-            renderBudgetTable();
-            updateSelectedFYTitle();
+                showToast(`FY ${stepData.year} saved successfully as Planning.`);
 
-            showToast(`FY ${stepData.year} initialized successfully! All done.`);
+                // Reload from MySQL so the new FY immediately appears in history.
+                setTimeout(() => window.location.reload(), 700);
+            } catch (error) {
+                console.error('Fiscal year initialization error:', error);
+                showToast(error.message || 'Unable to initialize fiscal year.', 'error');
+                if (button) button.disabled = false;
+            }
         }
 
         function closeSuccessModal() {
@@ -1410,13 +1827,22 @@ require 'db_connect.php';
 
         // ── Open Edit Budget Modal ──
         function openEditBudgetModal() {
-            const activeFY = fiscalYears.find(f => f.status === 'Active');
-            if (!activeFY) {
-                showToast('No active fiscal year to edit.', 'error');
+            const fy = fiscalYears[selectedFY];
+
+            if (!fy) {
+                showToast('Fiscal year not found.', 'error');
                 return;
             }
-            const fy = activeFY;
-            selectedFY = fiscalYears.indexOf(fy);
+
+            if (fy.status === 'Archived') {
+                showToast('Archived fiscal years are read-only.', 'error');
+                return;
+            }
+
+            if (fy.status !== 'Active' && fy.status !== 'Planning') {
+                showToast('Only Active or Planning fiscal years can be edited.', 'error');
+                return;
+            }
 
             const container = document.getElementById('budgetEditRows');
             container.innerHTML = '';
@@ -1469,6 +1895,7 @@ require 'db_connect.php';
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-[12px]">₱</span>
                         <input type="text" class="field pl-7 text-[13px] py-2 budget-input w-full" 
                                data-index="${index}" 
+                               data-program-id="${p.programId}"
                                data-prev-budget="${prevBudget}"
                                value="${formatCurrency(p.budget)}" 
                                placeholder="0.00"
@@ -1593,27 +2020,48 @@ require 'db_connect.php';
             }
         });
 
-        // ── Save Budget Edits ──
-        function saveBudgetEdits() {
+        // ── Save Budget Edits (database-backed) ──
+        async function saveBudgetEdits() {
             const fy = fiscalYears.find(f => f.status === 'Active');
-            if (!fy) { showToast('No active FY found.', 'error'); return; }
-            const inputs = document.querySelectorAll('.budget-input');
-            let totalBudget = 0;
-            inputs.forEach(input => {
-                const index = parseInt(input.dataset.index);
-                const raw = input.value.replace(/[^0-9.]/g, '');
-                const value = parseFloat(raw) || 0;
-                fy.programs[index].budget = value;
-                totalBudget += value;
-            });
-            fy.totalBudget = totalBudget;
-            fy.programs.forEach(p => p.spent = 0);
-            fy.totalSpent = 0;
+            if (!fy) {
+                showToast('No active FY found.', 'error');
+                return;
+            }
 
-            closeEditBudgetModal();
-            renderBudgetTable();
-            renderFYCards();
-            showToast('Budgets saved successfully!');
+            const budgets = [];
+            document.querySelectorAll('.budget-input').forEach(input => {
+                budgets.push({
+                    program_id: Number(input.dataset.programId),
+                    budget: Number(input.value.replace(/[^0-9.]/g, '')) || 0
+                });
+            });
+
+            try {
+                const body = new URLSearchParams();
+                body.set('fy_action', 'save_budgets');
+                body.set('fiscal_year_id', String(fy.id));
+                body.set('budgets', JSON.stringify(budgets));
+
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: body.toString()
+                });
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.message || 'Unable to save budgets.');
+                }
+
+                closeEditBudgetModal();
+                showToast(`FY ${fy.year} budgets saved successfully.`);
+
+                // Re-read all figures from MySQL, including actual released spending.
+                setTimeout(() => window.location.reload(), 500);
+            } catch (error) {
+                console.error('Budget save error:', error);
+                showToast(error.message || 'Unable to save budgets.', 'error');
+            }
         }
 
         // ── Export Functions ──
