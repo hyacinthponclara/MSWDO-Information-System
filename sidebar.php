@@ -6,57 +6,44 @@ $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-<script>
-    tailwind.config = {
-        theme: {
-            extend: {
-                fontFamily: {
-                    sans: ['DM Sans', 'sans-serif'],
-                    serif: ['DM Serif Display', 'serif'],
-                },
-                colors: {
-                    navy: {
-                        DEFAULT: '#0B2545',
-                        50: '#E8EDF5',
-                        100: '#C5D1E6',
-                        200: '#9AAECE',
-                        300: '#6F8BB5',
-                        400: '#3A5F93',
-                        500: '#163566',
-                        600: '#0B2545',
-                        700: '#091D38',
-                        800: '#06142A',
-                        900: '#030A15',
-                    },
-                    gold: {
-                        DEFAULT: '#C49A2A',
-                        50: '#FBF5E6',
-                        100: '#F5E4B3',
-                        200: '#EDD07A',
-                        300: '#E4BC3F',
-                        400: '#C49A2A',
-                        500: '#9E7A1F',
-                        600: '#795C16',
-                    },
-                    slate2: '#F4F7FC',
-                },
-                keyframes: {
-                    fadeUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-                    pulse2: { '0%,100%': { opacity: '1' }, '50%': { opacity: '.5' } },
-                },
-                animation: {
-                    'fade-up': 'fadeUp 0.4s ease both',
-                    'fade-up-1': 'fadeUp 0.4s ease 0.05s both',
-                    'fade-up-2': 'fadeUp 0.4s ease 0.1s both',
-                    'fade-up-3': 'fadeUp 0.4s ease 0.15s both',
-                    'fade-up-4': 'fadeUp 0.4s ease 0.2s both',
-                    'fade-up-5': 'fadeUp 0.4s ease 0.25s both',
-                    'pulse2': 'pulse2 2s ease-in-out infinite',
-                }
-            }
-        }
+
+<style type="text/tailwindcss">
+    @theme {
+        /* Custom MSWDO Dark Green */
+        --color-mswdo-green: #0B3D2E;
+        --color-mswdo-green-dark: #073326;
+        --color-mswdo-green-light: #145A43;
+
+        /* Green palette */
+        --color-green-50: #f0fdf4;
+        --color-green-100: #dcfce7;
+        --color-green-200: #bbf7d0;
+        --color-green-300: #86efac;
+        --color-green-400: #4ade80;
+        --color-green-500: #22c55e;
+        --color-green-600: #16a34a;
+        --color-green-700: #15803d;
+        --color-green-800: #166534;
+        --color-green-900: #14532d;
+
+        /* Gold */
+        --color-gold: #C49A2A;
+        --color-gold-50: #FBF5E6;
+        --color-gold-100: #F5E4B3;
+        --color-gold-200: #EDD07A;
+        --color-gold-300: #E4BC3F;
+        --color-gold-400: #C49A2A;
+        --color-gold-500: #9E7A1F;
+        --color-gold-600: #795C16;
+
+        /* Other colors */
+        --color-slate2: #F4F7FC;
+
+        /* Fonts */
+        --font-sans: 'DM Sans', sans-serif;
+        --font-serif: 'DM Serif Display', serif;
     }
-</script>
+</style>
 
 <style>
     #sidebar summary {
@@ -69,13 +56,12 @@ $current_page = basename($_SERVER['PHP_SELF']);
     }
 </style>
 
-<aside id="sidebar" class="fixed top-0 left-0 w-64 h-screen flex flex-col overflow-y-auto z-50"
-    style="background: #0B2545;">
+<aside id="sidebar" class="fixed top-0 left-0 w-64 h-screen flex flex-col overflow-y-auto z-50 bg-mswdo-green">
 
     <!-- Logo -->
     <div class="px-5 pt-5 pb-4 border-b border-white/10">
         <div
-            class="w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center text-navy-600 text-lg font-serif font-bold mb-3">
+            class="w-9 h-9 rounded-full bg-gold-400 flex items-center justify-center text-green-600 text-lg font-serif font-bold mb-3">
             M</div>
         <p class="font-serif text-white text-sm leading-snug">MSWDO San Enrique</p>
         <p class="text-white/40 text-[10px] mt-0.5 tracking-wide">Information System</p>
@@ -111,42 +97,72 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-search text-sm"></i> Case List
         </a>
 
-        <summary
-            class="flex items-center justify-between px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">
-            <span>Programs</span>
-            <i class="fas fa-chevron-down text-[8px] transition-transform duration-200 group-open:rotate-180"></i>
-        </summary>
-        <details class="group" open>
-            <a href="funds_aics.php"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-capsules text-sm"></i> AICS</a>
-            <a href="funds_4ps.php"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-home text-sm"></i> 4Ps</a>
-            <a href="funds_slp.php"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-briefcase text-sm"></i> SLP</a>
-            <a href="funds_sfp.php"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-utensils text-sm"></i> SFP</a>
-            <a href="funds_daycare.php"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-school text-sm"></i> Day Care</a>
-            <a href="funds_senior.php"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-user-friends text-sm"></i> Senior Citizen</a>
-            <a href="funds_pwd.php"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-wheelchair text-sm"></i> PWD</a>
-            <a href="funds_soloparents.php"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
-                    class="fas fa-user text-sm"></i> Solo Parent</a>
-            </a>
-            <a href="funds_wac.php"
-                class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
-                <i class="fas fa-lock text-sm"></i> Women &amp; Child
-            </a>
 
+        <!-- Programs -->
+        <details class="group">
+            <summary
+                class="flex items-center justify-between px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium cursor-pointer select-none">
+
+                <span>Programs</span>
+
+                <i class="fas fa-chevron-down text-[8px] transition-transform duration-200 group-open:rotate-180"></i>
+            </summary>
+
+            <div class="mt-1">
+                <a href="funds_aics.php"
+                    class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                    <i class="fas fa-capsules text-sm"></i>
+                    AICS
+                </a>
+
+                <a href="funds_4ps.php"
+                    class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                    <i class="fas fa-home text-sm"></i>
+                    4Ps
+                </a>
+
+                <a href="funds_slp.php"
+                    class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                    <i class="fas fa-briefcase text-sm"></i>
+                    SLP
+                </a>
+
+                <a href="funds_sfp.php"
+                    class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                    <i class="fas fa-utensils text-sm"></i>
+                    SFP
+                </a>
+
+                <a href="funds_daycare.php"
+                    class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                    <i class="fas fa-school text-sm"></i>
+                    Day Care
+                </a>
+
+                <a href="funds_senior.php"
+                    class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                    <i class="fas fa-user-friends text-sm"></i>
+                    Senior Citizen
+                </a>
+
+                <a href="funds_pwd.php"
+                    class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                    <i class="fas fa-wheelchair text-sm"></i>
+                    PWD
+                </a>
+
+                <a href="funds_soloparents.php"
+                    class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                    <i class="fas fa-user text-sm"></i>
+                    Solo Parent
+                </a>
+
+                <a href="funds_wac.php"
+                    class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">
+                    <i class="fas fa-lock text-sm"></i>
+                    Women &amp; Child
+                </a>
+            </div>
         </details>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Reports</p>
@@ -162,7 +178,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
         <a href="fiscalyear.php"
             class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent"><i
                 class="fas fa-money-bill text-sm"></i> Fiscal Year</a>
-
         </nav>
 
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Administration</p>
