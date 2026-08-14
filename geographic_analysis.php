@@ -2,6 +2,160 @@
 require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
+
+$brgyStmt = $pdo->prepare("SELECT barangay_id, barangay_name FROM barangay ORDER BY barangay_name");
+$brgyStmt->execute();
+$barangayRows = $brgyStmt->fetchAll(PDO::FETCH_ASSOC);
+$barangayNamesList = array_column($barangayRows, 'barangay_name');
+
+$dataSql = "
+    SELECT 'aics_financial' AS prog_key, b.barangay_name, c.client_id,
+           CONCAT(c.cl_firstname, ' ', c.cl_lastname) AS full_name, c.cl_age,
+           c.cl_is_pwd, c.cl_is_senior, c.cl_is_soloparent, c.cl_is_4ps,
+           a.av_amount, a.av_status
+    FROM aics_financial af
+    JOIN availment a ON a.availment_id = af.availment_id
+    JOIN client c ON c.client_id = a.client_id
+    JOIN barangay b ON b.barangay_id = c.brgy_id
+    WHERE a.av_status IN ('Approved', 'Released')
+
+    UNION ALL
+
+    SELECT 'aics_burial', b.barangay_name, c.client_id,
+           CONCAT(c.cl_firstname, ' ', c.cl_lastname), c.cl_age,
+           c.cl_is_pwd, c.cl_is_senior, c.cl_is_soloparent, c.cl_is_4ps,
+           a.av_amount, a.av_status
+    FROM aics_burial ab
+    JOIN availment a ON a.availment_id = ab.availment_id
+    JOIN client c ON c.client_id = a.client_id
+    JOIN barangay b ON b.barangay_id = c.brgy_id
+    WHERE a.av_status IN ('Approved', 'Released')
+
+    UNION ALL
+
+    SELECT 'aics_medical', b.barangay_name, c.client_id,
+           CONCAT(c.cl_firstname, ' ', c.cl_lastname), c.cl_age,
+           c.cl_is_pwd, c.cl_is_senior, c.cl_is_soloparent, c.cl_is_4ps,
+           a.av_amount, a.av_status
+    FROM aics_medical am
+    JOIN availment a ON a.availment_id = am.availment_id
+    JOIN client c ON c.client_id = a.client_id
+    JOIN barangay b ON b.barangay_id = c.brgy_id
+    WHERE a.av_status IN ('Approved', 'Released')
+
+    UNION ALL
+
+    SELECT 'aics_livelihood', b.barangay_name, c.client_id,
+           CONCAT(c.cl_firstname, ' ', c.cl_lastname), c.cl_age,
+           c.cl_is_pwd, c.cl_is_senior, c.cl_is_soloparent, c.cl_is_4ps,
+           a.av_amount, a.av_status
+    FROM aics_livelihood al
+    JOIN availment a ON a.availment_id = al.availment_id
+    JOIN client c ON c.client_id = a.client_id
+    JOIN barangay b ON b.barangay_id = c.brgy_id
+    WHERE a.av_status IN ('Approved', 'Released')
+
+    UNION ALL
+
+    SELECT 'aics_educational', b.barangay_name, c.client_id,
+           CONCAT(c.cl_firstname, ' ', c.cl_lastname), c.cl_age,
+           c.cl_is_pwd, c.cl_is_senior, c.cl_is_soloparent, c.cl_is_4ps,
+           a.av_amount, a.av_status
+    FROM availment a
+    JOIN client c ON c.client_id = a.client_id
+    JOIN barangay b ON b.barangay_id = c.brgy_id
+    WHERE a.program_id = 2 AND a.av_status IN ('Approved', 'Released')
+
+    UNION ALL
+
+    SELECT 'women_child', b.barangay_name, c.client_id,
+           CONCAT(c.cl_firstname, ' ', c.cl_lastname), c.cl_age,
+           c.cl_is_pwd, c.cl_is_senior, c.cl_is_soloparent, c.cl_is_4ps,
+           COALESCE(a.av_amount, 0), COALESCE(a.av_status, wc.wc_status)
+    FROM woman_and_children wc
+    JOIN client c ON c.client_id = wc.client_id
+    JOIN barangay b ON b.barangay_id = c.brgy_id
+    LEFT JOIN availment a ON a.availment_id = wc.availment_id
+";
+$dataStmt = $pdo->prepare($dataSql);
+$dataStmt->execute();
+$beneficiaryRows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$leafPrograms = ['aics_financial', 'aics_burial', 'aics_medical', 'aics_livelihood', 'aics_educational', 'women_child'];
+
+function aggregate_program_rows(array $rows, array $barangayNamesList): array {
+    $out = [];
+    foreach ($barangayNamesList as $bn) {
+        $out[$bn] = [
+            'count' => 0, 'amount' => 0.0, 'pwd' => 0, 'senior' => 0, 'solo' => 0, 'fourPs' => 0,
+            'beneficiaries' => [],
+            '_clients' => [], '_pwd' => [], '_senior' => [], '_solo' => [], '_fourPs' => [],
+        ];
+    }
+
+    foreach ($rows as $r) {
+        $bn = $r['barangay_name'];
+        if (!isset($out[$bn])) continue;
+
+        $cid = $r['client_id'];
+        $amt = (float) $r['av_amount'];
+
+        $out[$bn]['amount'] += $amt;
+        $out[$bn]['beneficiaries'][] = [
+            'name' => $r['full_name'],
+            'age' => $r['cl_age'] !== null ? (int) $r['cl_age'] : null,
+            'amount' => $amt,
+            'remarks' => $r['av_status'],
+        ];
+
+        $out[$bn]['_clients'][$cid] = true;
+        if ($r['cl_is_pwd']) $out[$bn]['_pwd'][$cid] = true;
+        if ($r['cl_is_senior']) $out[$bn]['_senior'][$cid] = true;
+        if ($r['cl_is_soloparent']) $out[$bn]['_solo'][$cid] = true;
+        if ($r['cl_is_4ps']) $out[$bn]['_fourPs'][$cid] = true;
+    }
+
+    foreach ($barangayNamesList as $bn) {
+        $out[$bn]['count'] = count($out[$bn]['_clients']);
+        $out[$bn]['pwd'] = count($out[$bn]['_pwd']);
+        $out[$bn]['senior'] = count($out[$bn]['_senior']);
+        $out[$bn]['solo'] = count($out[$bn]['_solo']);
+        $out[$bn]['fourPs'] = count($out[$bn]['_fourPs']);
+        unset($out[$bn]['_clients'], $out[$bn]['_pwd'], $out[$bn]['_senior'], $out[$bn]['_solo'], $out[$bn]['_fourPs']);
+    }
+
+    return $out;
+}
+
+$rowsByProgKey = [];
+foreach ($beneficiaryRows as $r) {
+    $rowsByProgKey[$r['prog_key']][] = $r;
+}
+
+$programData = [];
+foreach ($leafPrograms as $pk) {
+    $programData[$pk] = aggregate_program_rows($rowsByProgKey[$pk] ?? [], $barangayNamesList);
+}
+
+$aicsSubtypes = ['aics_financial', 'aics_burial', 'aics_medical', 'aics_livelihood', 'aics_educational'];
+$aicsAllRows = [];
+foreach ($aicsSubtypes as $sub) {
+    $aicsAllRows = array_merge($aicsAllRows, $rowsByProgKey[$sub] ?? []);
+}
+$programData['aics_all'] = aggregate_program_rows($aicsAllRows, $barangayNamesList);
+foreach ($barangayNamesList as $bn) {
+    $programData['aics_all'][$bn]['beneficiaries'] = []; // mixed subtypes; no single drilldown list
+}
+
+// combined = distinct clients across AICS (all subtypes) + Women & Children, same reasoning.
+$combinedRows = array_merge($aicsAllRows, $rowsByProgKey['women_child'] ?? []);
+$programData['combined'] = aggregate_program_rows($combinedRows, $barangayNamesList);
+foreach ($barangayNamesList as $bn) {
+    $programData['combined'][$bn]['beneficiaries'] = [];
+}
+
+$barangayNamesJson = json_encode($barangayNamesList, JSON_UNESCAPED_UNICODE);
+$programDataJson = json_encode($programData, JSON_UNESCAPED_UNICODE);
 ?>
 
 <!DOCTYPE html>
@@ -1007,109 +1161,11 @@ require 'db_connect.php';
         }
 
         // =============================================
-        // SAMPLE DATA - REALISTIC PHILIPPINE MSWDO DATA
+        // LIVE DATA — populated server-side from the database (see top of file)
         // =============================================
-        const barangayNames = [
-            'Bagonawa', 'Baliwagan', 'Batuan', 'Guintorilan', 'Nayon',
-            'Poblacion', 'Sibucao', 'Tabao Baybay', 'Tabao Rizal', 'Tibsoc'
-        ];
+        const barangayNames = <?php echo $barangayNamesJson; ?>;
 
-        // Sample beneficiary names for drilldown
-        const sampleNames = [
-            'Maria Santos', 'Juan dela Cruz', 'Elena Reyes', 'Pedro Gonzales', 'Ana Villanueva',
-            'Roberto Flores', 'Carmen Mendoza', 'Jose Ramirez', 'Sofia Torres', 'Miguel Herrera',
-            'Luisa Aquino', 'Francisco Rivera', 'Teresa Domingo', 'Antonio Bautista', 'Rosa Fernandez',
-            'Manuel Castro', 'Gloria Padilla', 'Ricardo Salazar', 'Patricia Ortega', 'Eduardo Velasco',
-            'Josephine Lopez', 'Ramon Marquez', 'Imelda Navarro', 'Alfredo Rosario', 'Corazon Santos',
-            'Benjamin Cruz', 'Leticia Aguilar', 'Fernando Guerrero', 'Victoria Estrada', 'Carlos Mercado'
-        ];
-
-        const sampleRemarks = ['Approved', 'Released', 'For Review', 'Pending', 'Completed'];
-
-        // Generate sample data for all programs
-        function generateSampleData() {
-            const programs = {
-                aics_financial: { baseCount: [45, 32, 28, 35, 15, 55, 38, 22, 30, 25], amountRange: [2000, 10000] },
-                aics_burial: { baseCount: [8, 5, 6, 4, 2, 10, 7, 3, 5, 4], amountRange: [5000, 25000] },
-                aics_medical: { baseCount: [30, 25, 20, 28, 12, 40, 32, 18, 25, 20], amountRange: [1000, 15000] },
-                aics_livelihood: { baseCount: [5, 3, 4, 3, 1, 7, 4, 2, 3, 2], amountRange: [5000, 20000] },
-                aics_educational: { baseCount: [15, 12, 10, 14, 6, 20, 16, 8, 12, 9], amountRange: [1000, 8000] },
-                women_child: { baseCount: [6, 4, 5, 4, 2, 8, 5, 3, 4, 3], amountRange: [2000, 15000] },
-            };
-
-            let nameIndex = 0;
-            const result = {};
-
-            for (const [key, config] of Object.entries(programs)) {
-                result[key] = {};
-                barangayNames.forEach((b, i) => {
-                    const count = config.baseCount[i] + Math.floor(Math.random() * 5);
-                    let amount = 0;
-                    const beneficiaries = [];
-
-                    for (let j = 0; j < count; j++) {
-                        const amt = config.amountRange[0] + Math.floor(Math.random() * (config.amountRange[1] - config
-                            .amountRange[0]));
-                        amount += amt;
-                        beneficiaries.push({
-                            name: sampleNames[nameIndex % sampleNames.length],
-                            age: 18 + Math.floor(Math.random() * 60),
-                            amount: amt,
-                            remarks: sampleRemarks[Math.floor(Math.random() * sampleRemarks.length)],
-                        });
-                        nameIndex++;
-                    }
-
-                    result[key][b] = {
-                        count,
-                        amount,
-                        pwd: Math.floor(count * (0.08 + Math.random() * 0.12)),
-                        senior: Math.floor(count * (0.12 + Math.random() * 0.18)),
-                        solo: Math.floor(count * (0.04 + Math.random() * 0.08)),
-                        fourPs: Math.floor(count * (0.1 + Math.random() * 0.2)),
-                        beneficiaries,
-                    };
-                });
-            }
-
-            // Build aics_all (combined AICS subtypes)
-            result.aics_all = {};
-            barangayNames.forEach(b => {
-                const subtypes = ['aics_financial', 'aics_burial', 'aics_medical', 'aics_livelihood',
-                    'aics_educational'
-                ];
-                const finData = result.aics_financial[b];
-                result.aics_all[b] = {
-                    count: subtypes.reduce((sum, sub) => sum + result[sub][b].count, 0),
-                    amount: subtypes.reduce((sum, sub) => sum + result[sub][b].amount, 0),
-                    pwd: finData.pwd,
-                    senior: finData.senior,
-                    solo: finData.solo,
-                    fourPs: finData.fourPs,
-                    beneficiaries: [],
-                };
-            });
-
-            // Build combined (AICS All + Women & Children)
-            result.combined = {};
-            barangayNames.forEach(b => {
-                const aicsAll = result.aics_all[b];
-                const women = result.women_child[b];
-                result.combined[b] = {
-                    count: aicsAll.count + women.count,
-                    amount: aicsAll.amount + women.amount,
-                    pwd: aicsAll.pwd,
-                    senior: aicsAll.senior,
-                    solo: aicsAll.solo,
-                    fourPs: aicsAll.fourPs,
-                    beneficiaries: [],
-                };
-            });
-
-            return result;
-        }
-
-        const programData = generateSampleData();
+        const programData = <?php echo $programDataJson; ?>;
 
         // BARANGAY BOUNDARIES (San Enrique, Negros Occ.)
         const barangayGeoJSON = {
@@ -2501,7 +2557,7 @@ require 'db_connect.php';
         });
 
         console.log(' MSWDO Geographic Analysis Dashboard Ready');
-        console.log(' Sample data loaded for 10 barangays');
+        console.log(' Live data loaded from database');
         console.log(' Map initialized with choropleth visualization');
         console.log(' Mobile responsive layout active');
         console.log(' Export functions: Excel (summary + all programs), PDF/Word (current program only)');

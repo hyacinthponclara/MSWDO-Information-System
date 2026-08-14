@@ -217,6 +217,128 @@ foreach ($monthlySpending as $month => $amount) {
     'percentage' => round($percentage)
   ];
 }
+
+// Recent Activity feed — pulls from client registrations, availment
+// approvals/releases, budget log entries, and project proposal
+// submissions/approvals/releases, merged and sorted by timestamp.
+$recentActivityStmt = $pdo->query("
+    SELECT activity_type, activity_time, title, subtitle, amount
+    FROM (
+        SELECT
+            'registration' AS activity_type,
+            c.cl_date_registered AS activity_time,
+            CONCAT(c.cl_firstname, ' ', c.cl_lastname) AS title,
+            NULL AS subtitle,
+            NULL AS amount
+        FROM CLIENT c
+
+        UNION ALL
+
+        SELECT
+            'availment_released' AS activity_type,
+            a.av_date_released AS activity_time,
+            p.program_name AS title,
+            CONCAT(cl.cl_firstname, ' ', cl.cl_lastname) AS subtitle,
+            a.av_amount AS amount
+        FROM AVAILMENT a
+        INNER JOIN PROGRAM p ON p.program_id = a.program_id
+        INNER JOIN CLIENT cl ON cl.client_id = a.client_id
+        WHERE a.av_status = 'Released' AND a.av_date_released IS NOT NULL
+
+        UNION ALL
+
+        SELECT
+            'availment_approved' AS activity_type,
+            a.av_date_approved AS activity_time,
+            p.program_name AS title,
+            CONCAT(cl.cl_firstname, ' ', cl.cl_lastname) AS subtitle,
+            a.av_amount AS amount
+        FROM AVAILMENT a
+        INNER JOIN PROGRAM p ON p.program_id = a.program_id
+        INNER JOIN CLIENT cl ON cl.client_id = a.client_id
+        WHERE a.av_date_approved IS NOT NULL
+
+        UNION ALL
+
+        SELECT
+            'budget' AS activity_type,
+            bl.created_at AS activity_time,
+            CONCAT(bl.action_type, ' · ', p.program_name) AS title,
+            bl.source AS subtitle,
+            bl.amount AS amount
+        FROM BUDGET_LOG bl
+        INNER JOIN PROGRAM p ON p.program_id = bl.program_id
+
+        UNION ALL
+
+        SELECT
+            'proposal_submitted' AS activity_type,
+            pp.pp_date_submitted AS activity_time,
+            pp.pp_title AS title,
+            p.program_name AS subtitle,
+            pp.pp_budget AS amount
+        FROM PROJECT_PROPOSAL pp
+        INNER JOIN PROGRAM p ON p.program_id = pp.program_id
+
+        UNION ALL
+
+        SELECT
+            'proposal_released' AS activity_type,
+            pp.pp_date_released AS activity_time,
+            pp.pp_title AS title,
+            p.program_name AS subtitle,
+            pp.pp_budget AS amount
+        FROM PROJECT_PROPOSAL pp
+        INNER JOIN PROGRAM p ON p.program_id = pp.program_id
+        WHERE pp.pp_date_released IS NOT NULL
+    ) AS recent_activity
+    WHERE activity_time IS NOT NULL
+    ORDER BY activity_time DESC
+    LIMIT 8
+");
+
+$recentActivity = $recentActivityStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Icon + color per activity type, and a friendly "time ago" string.
+$activityStyles = [
+  'registration' => ['icon' => 'fa-user-plus', 'bg' => 'bg-forest-100', 'text' => 'text-forest-600'],
+  'availment_released' => ['icon' => 'fa-hand-holding-heart', 'bg' => 'bg-emerald-100', 'text' => 'text-emerald-600'],
+  'availment_approved' => ['icon' => 'fa-clock', 'bg' => 'bg-amber-100', 'text' => 'text-amber-600'],
+  'budget' => ['icon' => 'fa-coins', 'bg' => 'bg-blue-100', 'text' => 'text-blue-600'],
+  'proposal_submitted' => ['icon' => 'fa-file-signature', 'bg' => 'bg-purple-100', 'text' => 'text-purple-600'],
+  'proposal_released' => ['icon' => 'fa-paper-plane', 'bg' => 'bg-rose-100', 'text' => 'text-rose-600'],
+];
+
+$activityLabels = [
+  'registration' => 'registered',
+  'availment_released' => 'released',
+  'availment_approved' => 'approved',
+  'budget' => null,
+  'proposal_submitted' => 'submitted',
+  'proposal_released' => 'released',
+];
+
+function timeAgo(string $datetime): string
+{
+  $diff = time() - strtotime($datetime);
+
+  if ($diff < 60) {
+    return 'just now';
+  }
+  if ($diff < 3600) {
+    $mins = (int) floor($diff / 60);
+    return $mins . ' min' . ($mins === 1 ? '' : 's') . ' ago';
+  }
+  if ($diff < 86400) {
+    $hrs = (int) floor($diff / 3600);
+    return $hrs . ' hr' . ($hrs === 1 ? '' : 's') . ' ago';
+  }
+  $days = (int) floor($diff / 86400);
+  if ($days < 7) {
+    return $days . ' day' . ($days === 1 ? '' : 's') . ' ago';
+  }
+  return date('M j', strtotime($datetime));
+}
 ?>
 
 <!DOCTYPE html>
@@ -671,86 +793,51 @@ foreach ($monthlySpending as $month => $amount) {
             <a href="#" class="text-[11px] text-forest-500 font-medium">All →</a>
           </div>
           <div class="divide-y divide-slate-100 flex-1 overflow-y-auto scroll-thin">
-            <div class="activity-row flex items-start gap-2 px-4 py-3">
-              <div
-                class="w-6 h-6 rounded-full bg-forest-100 text-forest-600 flex items-center justify-center text-[10px] flex-shrink-0">
-                <i class="fas fa-user-plus"></i>
+
+            <?php if (empty($recentActivity)): ?>
+
+              <div class="py-8 text-center text-slate-400">
+                <i class="fa-solid fa-clock-rotate-left text-2xl mb-2"></i>
+                <p class="text-sm">No recent activity yet.</p>
               </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[12px] leading-snug text-slate-700">Maria Santos registered</p>
-                <p class="text-[10px] text-slate-400">2 mins ago</p>
-              </div>
-            </div>
-            <div class="activity-row flex items-start gap-2 px-4 py-3">
-              <div
-                class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px] flex-shrink-0">
-                <i class="fas fa-hand-holding-heart"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[12px] leading-snug text-slate-700">AICS FBML approved · ₱3,500</p>
-                <p class="text-[10px] text-slate-400">15 mins ago</p>
-              </div>
-            </div>
-            <div class="activity-row flex items-start gap-2 px-4 py-3">
-              <div
-                class="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-[10px] flex-shrink-0">
-                <i class="fas fa-wheelchair"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[12px] leading-snug text-slate-700">PWD ID issued · Rodrigo Lim</p>
-                <p class="text-[10px] text-slate-400">1 hour ago</p>
-              </div>
-            </div>
-            <div class="activity-row flex items-start gap-2 px-4 py-3">
-              <div
-                class="w-6 h-6 rounded-full bg-lime-100 text-lime-600 flex items-center justify-center text-[10px] flex-shrink-0">
-                <i class="fas fa-user-shield"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[12px] leading-snug text-slate-700">Solo Parent · Luz Bautista</p>
-                <p class="text-[10px] text-slate-400">2 hrs ago</p>
-              </div>
-            </div>
-            <div class="activity-row flex items-start gap-2 px-4 py-3">
-              <div
-                class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] flex-shrink-0">
-                <i class="fas fa-coins"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[12px] leading-snug text-slate-700">Budget adjusted for SLP · ₱15,000</p>
-                <p class="text-[10px] text-slate-400">3 hrs ago</p>
-              </div>
-            </div>
-            <div class="activity-row flex items-start gap-2 px-4 py-3">
-              <div
-                class="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-[10px] flex-shrink-0">
-                <i class="fas fa-file-signature"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[12px] leading-snug text-slate-700">New program proposal submitted</p>
-                <p class="text-[10px] text-slate-400">5 hrs ago</p>
-              </div>
-            </div>
-            <div class="activity-row flex items-start gap-2 px-4 py-3">
-              <div
-                class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] flex-shrink-0">
-                <i class="fas fa-user-edit"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[12px] leading-snug text-slate-700">Beneficiary records updated · 12 clients</p>
-                <p class="text-[10px] text-slate-400">6 hrs ago</p>
-              </div>
-            </div>
-            <div class="activity-row flex items-start gap-2 px-4 py-3">
-              <div
-                class="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-[10px] flex-shrink-0">
-                <i class="fas fa-paper-plane"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-[12px] leading-snug text-slate-700">Approval request sent to Mayor</p>
-                <p class="text-[10px] text-slate-400">8 hrs ago</p>
-              </div>
-            </div>
+
+            <?php else: ?>
+
+              <?php foreach ($recentActivity as $activity): ?>
+                <?php
+                $style = $activityStyles[$activity['activity_type']]
+                  ?? ['icon' => 'fa-circle-info', 'bg' => 'bg-slate-100', 'text' => 'text-slate-500'];
+
+                $label = $activityLabels[$activity['activity_type']] ?? null;
+
+                $line = htmlspecialchars($activity['title']);
+
+                if ($label !== null) {
+                  $line .= ' ' . $label;
+                }
+
+                if (!empty($activity['subtitle'])) {
+                  $line .= ' · ' . htmlspecialchars($activity['subtitle']);
+                }
+
+                if ($activity['amount'] !== null) {
+                  $line .= ' · ₱' . number_format((float) $activity['amount'], 2);
+                }
+                ?>
+                <div class="activity-row flex items-start gap-2 px-4 py-3">
+                  <div
+                    class="w-6 h-6 rounded-full <?= $style['bg'] ?> <?= $style['text'] ?> flex items-center justify-center text-[10px] flex-shrink-0">
+                    <i class="fas <?= $style['icon'] ?>"></i>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[12px] leading-snug text-slate-700"><?= $line ?></p>
+                    <p class="text-[10px] text-slate-400"><?= timeAgo($activity['activity_time']) ?></p>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+
+            <?php endif; ?>
+
           </div>
         </div>
       </div>

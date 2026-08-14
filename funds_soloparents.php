@@ -5,10 +5,10 @@ require 'db_connect.php';
 require 'budget_helpers.php';
 
 // -- BUDGET SUMMARY CARD (same formula as every other budget page) --
-$fundBudget = getProgramBudget($pdo, ['Solo Parents']);
+$fundBudget = getProgramBudget($pdo, ['Solo Parent Program']);
 
 // -- FUND REQUESTS TABLE (live from PROJECT_PROPOSAL) --
-$fundRequestsPhp = getFundRequests($pdo, 'Solo Parents');
+$fundRequestsPhp = getFundRequests($pdo, 'Solo Parent Program');
 ?>
 
 <!DOCTYPE html>
@@ -410,6 +410,26 @@ $fundRequestsPhp = getFundRequests($pdo, 'Solo Parents');
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
+        }
+
+        function statusClass(status) {
+            if (status === 'Released') {
+                return 'bg-emerald-100 text-emerald-700';
+            }
+
+            if (status === 'Approved') {
+                return 'bg-amber-100 text-amber-700';
+            }
+
+            if (status === 'Denied') {
+                return 'bg-red-100 text-red-700';
+            }
+
+            return 'bg-slate-100 text-slate-600';
+        }
+
+        function statusLabel(status) {
+            return status || 'Approved';
         }
 
         function renderTable(data) {

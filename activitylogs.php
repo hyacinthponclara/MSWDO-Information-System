@@ -2,6 +2,283 @@
 require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
+
+
+$activityLog = [];
+
+// 1. Client registrations
+$stmt = $pdo->query("
+    SELECT
+        c.client_id,
+        c.cl_date_registered AS ts,
+        CONCAT(c.cl_firstname, ' ', c.cl_lastname) AS client_name,
+        u.user_firstname,
+        u.user_lastname,
+        u.user_role
+    FROM CLIENT c
+    LEFT JOIN MSWDO_USER u ON u.user_id = c.user_id
+");
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $activityLog[] = [
+        'date' => $row['ts'],
+        'user' => trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: 'Unknown',
+        'role' => $row['user_role'] ?? 'Staff',
+        'activity' => $row['client_name'] . ' registered',
+        'module' => 'Client Records',
+        'action' => 'Create',
+        'description' => 'A new beneficiary record was registered in the system.',
+        'reference' => 'Client ID #' . $row['client_id'],
+        'icon' => 'fa-user-plus',
+        'iconBg' => 'bg-forest-100',
+        'iconColor' => 'text-forest-600',
+    ];
+}
+
+// 2. Availment approvals + releases
+$stmt = $pdo->query("
+    SELECT
+        a.av_date_approved,
+        a.av_date_released,
+        a.av_amount,
+        a.av_status,
+        p.program_name,
+        CONCAT(cl.cl_firstname, ' ', cl.cl_lastname) AS client_name,
+        u.user_firstname,
+        u.user_lastname,
+        u.user_role
+    FROM AVAILMENT a
+    INNER JOIN PROGRAM p ON p.program_id = a.program_id
+    INNER JOIN CLIENT cl ON cl.client_id = a.client_id
+    LEFT JOIN MSWDO_USER u ON u.user_id = a.user_id
+");
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $actor = trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: 'Unknown';
+    $role = $row['user_role'] ?? 'Staff';
+    $amount = '₱' . number_format((float) $row['av_amount'], 2);
+
+    if (!empty($row['av_date_approved'])) {
+        $activityLog[] = [
+            'date' => $row['av_date_approved'],
+            'user' => $actor,
+            'role' => $role,
+            'activity' => $row['program_name'] . ' assistance approved · ' . $amount,
+            'module' => 'AICS',
+            'action' => 'Approve',
+            'description' => 'An AICS assistance request was approved for ' . $row['client_name'] . '.',
+            'reference' => $row['program_name'] . ' · ' . $row['client_name'],
+            'icon' => 'fa-clock',
+            'iconBg' => 'bg-amber-100',
+            'iconColor' => 'text-amber-600',
+        ];
+    }
+
+    if (!empty($row['av_date_released']) && $row['av_status'] === 'Released') {
+        $activityLog[] = [
+            'date' => $row['av_date_released'],
+            'user' => $actor,
+            'role' => $role,
+            'activity' => $row['program_name'] . ' assistance released · ' . $amount,
+            'module' => 'AICS',
+            'action' => 'Release',
+            'description' => 'AICS assistance was released to ' . $row['client_name'] . '.',
+            'reference' => $row['program_name'] . ' · ' . $row['client_name'],
+            'icon' => 'fa-hand-holding-heart',
+            'iconBg' => 'bg-emerald-100',
+            'iconColor' => 'text-emerald-600',
+        ];
+    }
+}
+
+// 3. Budget log (augments, transfers, early period endings)
+$stmt = $pdo->query("
+    SELECT
+        bl.created_at,
+        bl.action_type,
+        bl.amount,
+        bl.source,
+        bl.reason,
+        bl.reference_no,
+        p.program_name,
+        u.user_firstname,
+        u.user_lastname,
+        u.user_role
+    FROM BUDGET_LOG bl
+    INNER JOIN PROGRAM p ON p.program_id = bl.program_id
+    LEFT JOIN MSWDO_USER u ON u.user_id = bl.user_id
+");
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $amount = '₱' . number_format((float) $row['amount'], 2);
+
+    $activityLog[] = [
+        'date' => $row['created_at'],
+        'user' => trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: 'Unknown',
+        'role' => $row['user_role'] ?? 'Admin',
+        'activity' => $row['action_type'] . ' · ' . $row['program_name'] . ' · ' . $amount,
+        'module' => 'Budget',
+        'action' => 'Update',
+        'description' => trim(($row['source'] ?? '') . ($row['reason'] ? ' — ' . $row['reason'] : '')) ?: 'Budget allocation was adjusted.',
+        'reference' => $row['reference_no'] ?: ('Budget FY ' . date('Y', strtotime($row['created_at'])) . ' · ' . $row['program_name']),
+        'icon' => 'fa-coins',
+        'iconBg' => 'bg-blue-100',
+        'iconColor' => 'text-blue-600',
+    ];
+}
+
+// 4. Project proposals (submitted, approved, released)
+$stmt = $pdo->query("
+    SELECT
+        pp.pp_title,
+        pp.pp_budget,
+        pp.pp_date_submitted,
+        pp.pp_date_approved,
+        pp.pp_date_released,
+        pp.pp_status,
+        pp.proposal_id,
+        p.program_name,
+        u.user_firstname,
+        u.user_lastname,
+        u.user_role
+    FROM PROJECT_PROPOSAL pp
+    INNER JOIN PROGRAM p ON p.program_id = pp.program_id
+    LEFT JOIN MSWDO_USER u ON u.user_id = pp.user_id
+");
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $actor = trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: 'Unknown';
+    $role = $row['user_role'] ?? 'Staff';
+    $amount = '₱' . number_format((float) $row['pp_budget'], 2);
+    $ref = 'Proposal #PP-' . $row['proposal_id'];
+
+    if (!empty($row['pp_date_submitted'])) {
+        $activityLog[] = [
+            'date' => $row['pp_date_submitted'],
+            'user' => $actor,
+            'role' => $role,
+            'activity' => 'New project proposal submitted · ' . $row['pp_title'],
+            'module' => 'Reports',
+            'action' => 'Submit',
+            'description' => 'A new project proposal for ' . $row['program_name'] . ' was submitted for review.',
+            'reference' => $ref,
+            'icon' => 'fa-file-signature',
+            'iconBg' => 'bg-purple-100',
+            'iconColor' => 'text-purple-600',
+        ];
+    }
+
+    if (!empty($row['pp_date_approved'])) {
+        $activityLog[] = [
+            'date' => $row['pp_date_approved'],
+            'user' => $actor,
+            'role' => $role,
+            'activity' => 'Project proposal approved · ' . $row['pp_title'] . ' · ' . $amount,
+            'module' => 'Reports',
+            'action' => 'Approve',
+            'description' => 'The project proposal "' . $row['pp_title'] . '" was approved.',
+            'reference' => $ref,
+            'icon' => 'fa-clock',
+            'iconBg' => 'bg-amber-100',
+            'iconColor' => 'text-amber-600',
+        ];
+    }
+
+    if (!empty($row['pp_date_released']) && $row['pp_status'] === 'Released') {
+        $activityLog[] = [
+            'date' => $row['pp_date_released'],
+            'user' => $actor,
+            'role' => $role,
+            'activity' => 'Project proposal budget released · ' . $row['pp_title'] . ' · ' . $amount,
+            'module' => 'Reports',
+            'action' => 'Release',
+            'description' => 'Budget was released for the project proposal "' . $row['pp_title'] . '".',
+            'reference' => $ref,
+            'icon' => 'fa-paper-plane',
+            'iconBg' => 'bg-rose-100',
+            'iconColor' => 'text-rose-600',
+        ];
+    }
+}
+
+// 5. Women and Child Protection cases
+$stmt = $pdo->query("
+    SELECT
+        wc.wc_case_number,
+        wc.wc_case_type,
+        wc.wc_status,
+        wc.wc_date_created,
+        CONCAT(cl.cl_firstname, ' ', cl.cl_lastname) AS client_name,
+        u.user_firstname,
+        u.user_lastname,
+        u.user_role
+    FROM WOMAN_AND_CHILDREN wc
+    LEFT JOIN CLIENT cl ON cl.client_id = wc.client_id
+    LEFT JOIN MSWDO_USER u ON u.user_id = wc.user_id
+");
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $activityLog[] = [
+        'date' => $row['wc_date_created'],
+        'user' => trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: 'Unknown',
+        'role' => $row['user_role'] ?? 'Staff',
+        'activity' => $row['wc_case_type'] . ' case filed · ' . ($row['client_name'] ?: 'Unnamed client'),
+        'module' => 'Client Records',
+        'action' => 'Create',
+        'description' => 'A Women and Child Protection case was filed (status: ' . $row['wc_status'] . ').',
+        'reference' => $row['wc_case_number'],
+        'icon' => 'fa-people-roof',
+        'iconBg' => 'bg-lime-100',
+        'iconColor' => 'text-lime-600',
+    ];
+}
+
+// 6. New user accounts
+$stmt = $pdo->query("
+    SELECT user_id, username, user_firstname, user_lastname, user_role, user_date_joined
+    FROM MSWDO_USER
+");
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $activityLog[] = [
+        'date' => $row['user_date_joined'],
+        'user' => 'Admin',
+        'role' => 'Admin',
+        'activity' => 'User account created · ' . $row['user_firstname'] . ' ' . $row['user_lastname'],
+        'module' => 'User Management',
+        'action' => 'Create',
+        'description' => 'A new ' . $row['user_role'] . ' account (' . $row['username'] . ') was created.',
+        'reference' => 'User Account #USR-' . $row['user_id'],
+        'icon' => 'fa-user-plus',
+        'iconBg' => 'bg-forest-100',
+        'iconColor' => 'text-forest-600',
+    ];
+}
+
+// 7. Most recent login per user (only the latest is tracked — no login history table)
+$stmt = $pdo->query("
+    SELECT user_id, user_firstname, user_lastname, user_role, user_last_login
+    FROM MSWDO_USER
+    WHERE user_last_login IS NOT NULL
+");
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $activityLog[] = [
+        'date' => $row['user_last_login'],
+        'user' => trim($row['user_firstname'] . ' ' . $row['user_lastname']),
+        'role' => $row['user_role'],
+        'activity' => 'System login',
+        'module' => 'System',
+        'action' => 'Login',
+        'description' => 'A user successfully logged into the MSWDO Information System.',
+        'reference' => 'User Account #USR-' . $row['user_id'],
+        'icon' => 'fa-right-to-bracket',
+        'iconBg' => 'bg-sky-100',
+        'iconColor' => 'text-sky-600',
+    ];
+}
+
+// Merge, sort newest first, assign stable ids, normalize to ISO 8601 for JS Date parsing.
+usort($activityLog, fn($a, $b) => strtotime($b['date']) <=> strtotime($a['date']));
+
+foreach ($activityLog as $i => &$entry) {
+    $entry['id'] = $i + 1;
+    $entry['date'] = date('Y-m-d\TH:i:s', strtotime($entry['date']));
+}
+unset($entry);
 ?>
 
 <!DOCTYPE html>
@@ -480,6 +757,10 @@ require 'db_connect.php';
                             Approve
                         </option>
 
+                        <option value="Release">
+                            Release
+                        </option>
+
                         <option value="Login">
                             Login
                         </option>
@@ -954,191 +1235,10 @@ require 'db_connect.php';
         });
 
 
-        /* SAMPLE ACTIVITY DATA */
+        /* ACTIVITY DATA — sourced from CLIENT, AVAILMENT, BUDGET_LOG,
+           PROJECT_PROPOSAL, WOMAN_AND_CHILDREN, and MSWDO_USER via PHP above */
 
-        const activityData = [
-
-            {
-                id: 1,
-                date: '2026-08-09T09:42:00',
-                user: 'Admin',
-                role: 'Administrator',
-                activity: 'Maria Santos registered',
-                module: 'Client Records',
-                action: 'Create',
-                description: 'A new beneficiary record was registered in the system.',
-                reference: 'Client Record #CR-2026-0012',
-                icon: 'fa-user-plus',
-                iconBg: 'bg-forest-100',
-                iconColor: 'text-forest-600'
-            },
-
-            {
-                id: 2,
-                date: '2026-08-09T09:15:00',
-                user: 'Staff',
-                role: 'Staff',
-                activity: 'AICS assistance approved · ₱3,500',
-                module: 'AICS',
-                action: 'Approve',
-                description: 'An AICS financial assistance request was approved.',
-                reference: 'AICS-2026-0048',
-                icon: 'fa-hand-holding-heart',
-                iconBg: 'bg-emerald-100',
-                iconColor: 'text-emerald-600'
-            },
-
-            {
-                id: 3,
-                date: '2026-08-09T08:35:00',
-                user: 'Staff',
-                role: 'Staff',
-                activity: 'Client record updated · Rodrigo Lim',
-                module: 'Client Records',
-                action: 'Update',
-                description: 'Beneficiary information was updated by the assigned user.',
-                reference: 'Client Record #CR-2026-0010',
-                icon: 'fa-user-edit',
-                iconBg: 'bg-indigo-100',
-                iconColor: 'text-indigo-600'
-            },
-
-            {
-                id: 4,
-                date: '2026-08-08T16:20:00',
-                user: 'Admin',
-                role: 'Administrator',
-                activity: 'Budget adjusted for SLP · ₱15,000',
-                module: 'Budget',
-                action: 'Update',
-                description: 'The available budget allocation for the program was adjusted.',
-                reference: 'Budget FY 2026 · SLP',
-                icon: 'fa-coins',
-                iconBg: 'bg-blue-100',
-                iconColor: 'text-blue-600'
-            },
-
-            {
-                id: 5,
-                date: '2026-08-08T14:10:00',
-                user: 'Staff',
-                role: 'Staff',
-                activity: 'New program proposal submitted',
-                module: 'Reports',
-                action: 'Submit',
-                description: 'A new program proposal was submitted for review.',
-                reference: 'Proposal #PP-2026-003',
-                icon: 'fa-file-signature',
-                iconBg: 'bg-purple-100',
-                iconColor: 'text-purple-600'
-            },
-
-            {
-                id: 6,
-                date: '2026-08-08T11:30:00',
-                user: 'Admin',
-                role: 'Administrator',
-                activity: 'Beneficiary records updated · 12 clients',
-                module: 'Client Records',
-                action: 'Update',
-                description: 'Multiple beneficiary records were updated.',
-                reference: 'Batch Update #BU-2026-006',
-                icon: 'fa-user-edit',
-                iconBg: 'bg-indigo-100',
-                iconColor: 'text-indigo-600'
-            },
-
-            {
-                id: 7,
-                date: '2026-08-07T15:45:00',
-                user: 'Staff',
-                role: 'Staff',
-                activity: 'Approval request submitted',
-                module: 'AICS',
-                action: 'Submit',
-                description: 'An assistance request was submitted for approval.',
-                reference: 'AICS-2026-0044',
-                icon: 'fa-paper-plane',
-                iconBg: 'bg-rose-100',
-                iconColor: 'text-rose-600'
-            },
-
-            {
-                id: 8,
-                date: '2026-08-07T13:20:00',
-                user: 'Admin',
-                role: 'Administrator',
-                activity: 'User account created',
-                module: 'User Management',
-                action: 'Create',
-                description: 'A new system user account was created.',
-                reference: 'User Account #USR-2026-009',
-                icon: 'fa-user-plus',
-                iconBg: 'bg-forest-100',
-                iconColor: 'text-forest-600'
-            },
-
-            {
-                id: 9,
-                date: '2026-08-06T10:15:00',
-                user: 'Staff',
-                role: 'Staff',
-                activity: 'System login',
-                module: 'System',
-                action: 'Login',
-                description: 'A user successfully logged into the MSWDO Information System.',
-                reference: 'Session #SES-2026-112',
-                icon: 'fa-right-to-bracket',
-                iconBg: 'bg-sky-100',
-                iconColor: 'text-sky-600'
-            },
-
-            {
-                id: 10,
-                date: '2026-08-05T14:30:00',
-                user: 'Admin',
-                role: 'Administrator',
-                activity: 'AICS assistance approved · ₱5,000',
-                module: 'AICS',
-                action: 'Approve',
-                description: 'An AICS assistance request was approved.',
-                reference: 'AICS-2026-0038',
-                icon: 'fa-hand-holding-heart',
-                iconBg: 'bg-emerald-100',
-                iconColor: 'text-emerald-600'
-            },
-
-            {
-                id: 11,
-                date: '2026-08-04T09:50:00',
-                user: 'Staff',
-                role: 'Staff',
-                activity: 'Client record created',
-                module: 'Client Records',
-                action: 'Create',
-                description: 'A new client record was added to the system.',
-                reference: 'Client Record #CR-2026-0007',
-                icon: 'fa-user-plus',
-                iconBg: 'bg-forest-100',
-                iconColor: 'text-forest-600'
-            },
-
-            {
-                id: 12,
-                date: '2026-08-03T15:05:00',
-                user: 'Admin',
-                role: 'Administrator',
-                activity: 'User account updated',
-                module: 'User Management',
-                action: 'Update',
-                description: 'User account information was updated.',
-                reference: 'User Account #USR-2026-005',
-                icon: 'fa-user-gear',
-                iconBg: 'bg-amber-100',
-                iconColor: 'text-amber-600'
-            }
-
-        ];
+        const activityData = <?= json_encode($activityLog) ?>;
 
 
         /* FILTER VARIABLES */
@@ -1279,7 +1379,7 @@ require 'db_connect.php';
 
                     const matchesUser =
                         user === 'all' ||
-                        activity.user === user;
+                        activity.role === user;
 
 
                     const matchesModule =

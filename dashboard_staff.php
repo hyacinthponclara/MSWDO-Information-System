@@ -2,6 +2,65 @@
 require 'auth.php';
 requireRole(['Staff']); 
 require 'db_connect.php';
+require 'budget_helpers.php';
+
+// Clients served today = distinct clients touched by an availment action today
+// (applied, approved, or released today).
+$clientsServedToday = $pdo->query("
+    SELECT COUNT(DISTINCT client_id)
+    FROM AVAILMENT
+    WHERE CURDATE() IN (av_date_applied, av_date_approved, av_date_released)
+")->fetchColumn();
+
+// Availments applied within the current calendar week (Mon-Sun).
+$availmentsThisWeek = $pdo->query("
+    SELECT COUNT(*)
+    FROM AVAILMENT
+    WHERE YEARWEEK(av_date_applied, 1) = YEARWEEK(CURDATE(), 1)
+")->fetchColumn();
+
+$allProgramBudget = getAllProgramBudgets($pdo);
+
+// Icons used by the budget summary. NOTE: keys must match program_name
+// exactly as stored in PROGRAM, otherwise it silently falls back to fa-folder.
+$programIcons = [
+    'AICS FBML' => 'fa-hand-holding-heart',
+    'AICS Educational' => 'fa-graduation-cap',
+    '4Ps' => 'fa-home',
+    'SLP' => 'fa-seedling',
+    'SFP' => 'fa-utensils',
+    'Day Care Center Program' => 'fa-child',
+    'Senior Citizen Program' => 'fa-user-friends',
+    'PWD Program' => 'fa-wheelchair',
+    'Solo Parent Program' => 'fa-user-shield',
+    'Women and Child Protection' => 'fa-people-roof',
+];
+
+$dashboardPrograms = [];
+
+foreach ($allProgramBudget as $program) {
+
+    $beneficiaryStmt = $pdo->prepare("
+        SELECT COUNT(DISTINCT client_id)
+        FROM AVAILMENT
+        WHERE program_id = ?
+          AND av_status IN ('Approved', 'Released')
+    ");
+
+    $beneficiaryStmt->execute([$program['program_id']]);
+
+    $beneficiaries = (int) $beneficiaryStmt->fetchColumn();
+
+    $dashboardPrograms[] = [
+        'name' => $program['program_name'],
+        'cycle' => $program['prog_period'],
+        'icon' => $programIcons[$program['program_name']] ?? 'fa-folder',
+        'pct' => (float) $program['pct_used'],
+        'spent' => (float) $program['spent'],
+        'remaining' => (float) $program['remaining'],
+        'beneficiaries' => $beneficiaries
+    ];
+}
 ?>
 
 
@@ -242,7 +301,7 @@ require 'db_connect.php';
                     </p>
 
                     <p class="text-2xl md:text-3xl font-semibold text-forest-600 leading-none">
-                        1,284
+                        <?= number_format((int) $clientsServedToday) ?>
                     </p>
 
                     <div class="absolute right-3 top-3 text-2xl opacity-20 text-forest-500">
@@ -261,7 +320,7 @@ require 'db_connect.php';
                     </p>
 
                     <p class="text-2xl md:text-3xl font-semibold text-forest-600 leading-none">
-                        347
+                        <?= number_format((int) $availmentsThisWeek) ?>
                     </p>
 
                     <div class="absolute right-3 top-3 text-2xl opacity-20 text-forest-500">
@@ -320,7 +379,7 @@ require 'db_connect.php';
                         </h2>
 
                         <p class="text-[11px] text-slate-400">
-                            FY 2026 · All 9 Programs
+                            FY <?= date('Y') ?> · All <?= count($dashboardPrograms) ?> Programs
                         </p>
                     </div>
 
@@ -392,99 +451,8 @@ require 'db_connect.php';
             });
         }
 
-        // Budget data
-        const programs = [
-            {
-                name: 'AICS FBML',
-                cycle: 'Quarterly',
-                icon: 'fa-hand-holding-heart',
-                pct: 88,
-                spent: 211600,
-                remaining: 28400,
-                beneficiaries: 128
-            },
-            {
-                name: 'AICS Educational',
-                cycle: 'Quarterly',
-                icon: 'fa-graduation-cap',
-                pct: 65,
-                spent: 130000,
-                remaining: 70000,
-                beneficiaries: 96
-            },
-            {
-                name: '4Ps',
-                cycle: 'Annually',
-                icon: 'fa-home',
-                pct: 42,
-                spent: 252000,
-                remaining: 348000,
-                beneficiaries: 47
-            },
-            {
-                name: 'SLP',
-                cycle: 'Annually',
-                icon: 'fa-seedling',
-                pct: 92,
-                spent: 138000,
-                remaining: 12000,
-                beneficiaries: 22
-            },
-            {
-                name: 'SFP',
-                cycle: 'Quarterly',
-                icon: 'fa-utensils',
-                pct: 35,
-                spent: 70000,
-                remaining: 130000,
-                beneficiaries: 65
-            },
-            {
-                name: 'Day Care',
-                cycle: 'Annually',
-                icon: 'fa-child',
-                pct: 55,
-                spent: 110000,
-                remaining: 90000,
-                beneficiaries: 40
-            },
-            {
-                name: 'Senior Citizen',
-                cycle: 'Annually',
-                icon: 'fa-user-friends',
-                pct: 71,
-                spent: 213000,
-                remaining: 87000,
-                beneficiaries: 74
-            },
-            {
-                name: 'PWD',
-                cycle: 'Half-year',
-                icon: 'fa-wheelchair',
-                pct: 28,
-                spent: 56000,
-                remaining: 144000,
-                beneficiaries: 58
-            },
-            {
-                name: 'Solo Parents',
-                cycle: 'Quarterly',
-                icon: 'fa-user-shield',
-                pct: 68,
-                spent: 102000,
-                remaining: 48000,
-                beneficiaries: 34
-            },
-            {
-                name: 'Women and Children',
-                cycle: 'Annually',
-                icon: 'fa-people-roof',
-                pct: 47,
-                spent: 94000,
-                remaining: 106000,
-                beneficiaries: 51
-            }
-        ];
+        // Budget data (from PROGRAM / AVAILMENT via budget_helpers.php)
+        const programs = <?= json_encode($dashboardPrograms) ?>;
 
         const peso = n => '₱' + n.toLocaleString('en-PH');
 
