@@ -15,8 +15,8 @@ $stmt = $pdo->query("
         u.user_firstname,
         u.user_lastname,
         u.user_role
-    FROM CLIENT c
-    LEFT JOIN MSWDO_USER u ON u.user_id = c.user_id
+    FROM client c
+    LEFT JOIN mswdo_user u ON u.user_id = c.user_id
 ");
 foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $activityLog[] = [
@@ -46,10 +46,10 @@ $stmt = $pdo->query("
         u.user_firstname,
         u.user_lastname,
         u.user_role
-    FROM AVAILMENT a
-    INNER JOIN PROGRAM p ON p.program_id = a.program_id
-    INNER JOIN CLIENT cl ON cl.client_id = a.client_id
-    LEFT JOIN MSWDO_USER u ON u.user_id = a.user_id
+    FROM availment a
+    INNER JOIN program   p ON p.program_id = a.program_id
+    INNER JOIN client cl ON cl.client_id = a.client_id
+    LEFT JOIN mswdo_user u ON u.user_id = a.user_id
 ");
 foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $actor = trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: 'Unknown';
@@ -102,9 +102,9 @@ $stmt = $pdo->query("
         u.user_firstname,
         u.user_lastname,
         u.user_role
-    FROM BUDGET_LOG bl
-    INNER JOIN PROGRAM p ON p.program_id = bl.program_id
-    LEFT JOIN MSWDO_USER u ON u.user_id = bl.user_id
+    FROM budget_log bl
+    INNER JOIN program p ON p.program_id = bl.program_id
+    LEFT JOIN mswdo_user u ON u.user_id = bl.user_id
 ");
 foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $amount = '₱' . number_format((float) $row['amount'], 2);
@@ -138,9 +138,9 @@ $stmt = $pdo->query("
         u.user_firstname,
         u.user_lastname,
         u.user_role
-    FROM PROJECT_PROPOSAL pp
-    INNER JOIN PROGRAM p ON p.program_id = pp.program_id
-    LEFT JOIN MSWDO_USER u ON u.user_id = pp.user_id
+    FROM project_proposal pp
+    INNER JOIN program p ON p.program_id = pp.program_id
+    LEFT JOIN mswdo_user u ON u.user_id = pp.user_id
 ");
 foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $actor = trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: 'Unknown';
@@ -208,9 +208,9 @@ $stmt = $pdo->query("
         u.user_firstname,
         u.user_lastname,
         u.user_role
-    FROM WOMAN_AND_CHILDREN wc
-    LEFT JOIN CLIENT cl ON cl.client_id = wc.client_id
-    LEFT JOIN MSWDO_USER u ON u.user_id = wc.user_id
+    FROM woman_and_children wc
+    LEFT JOIN client cl ON cl.client_id = wc.client_id
+    LEFT JOIN mswdo_user u ON u.user_id = wc.user_id
 ");
 foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $activityLog[] = [
@@ -231,7 +231,7 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
 // 6. New user accounts
 $stmt = $pdo->query("
     SELECT user_id, username, user_firstname, user_lastname, user_role, user_date_joined
-    FROM MSWDO_USER
+    FROM mswdo_user
 ");
 foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $activityLog[] = [
@@ -252,7 +252,7 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
 // 7. Most recent login per user (only the latest is tracked — no login history table)
 $stmt = $pdo->query("
     SELECT user_id, user_firstname, user_lastname, user_role, user_last_login
-    FROM MSWDO_USER
+    FROM mswdo_user
     WHERE user_last_login IS NOT NULL
 ");
 foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {

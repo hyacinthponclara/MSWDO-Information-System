@@ -13,22 +13,6 @@ if ($userId <= 0) {
     exit;
 }
 
-/*
-|--------------------------------------------------------------------------
-| Account Details actions
-|--------------------------------------------------------------------------
-| Users can update their own:
-| - first name
-| - middle name
-| - last name
-| - email
-| - contact number
-| - password
-|
-| Role, position, employment status, office, municipality, and province
-| are read-only here and are managed by Admin through User Management.
-|--------------------------------------------------------------------------
-*/
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -49,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $stmt = $pdo->prepare("
-                UPDATE MSWDO_USER
+                UPDATE mswdo_user
                 SET
                     user_firstname = ?,
                     user_middlename = ?,
@@ -93,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare("
                 SELECT user_id
-                FROM MSWDO_USER
+                FROM mswdo_user
                 WHERE user_email = ?
                   AND user_id <> ?
                 LIMIT 1
@@ -109,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $stmt = $pdo->prepare("
-                UPDATE MSWDO_USER
+                UPDATE mswdo_user
                 SET
                     user_email = ?,
                     user_contactnum = ?
@@ -150,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare("
                 SELECT user_password
-                FROM MSWDO_USER
+                FROM mswdo_user
                 WHERE user_id = ?
                 LIMIT 1
             ");
@@ -173,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
 
             $stmt = $pdo->prepare("
-                UPDATE MSWDO_USER
+                UPDATE mswdo_user
                 SET user_password = ?
                 WHERE user_id = ?
             ");
@@ -213,12 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| Load the currently logged-in user's information
-|--------------------------------------------------------------------------
-*/
-
 $stmt = $pdo->prepare("
     SELECT
         user_id,
@@ -237,7 +215,7 @@ $stmt = $pdo->prepare("
         user_isactive,
         user_date_joined,
         user_last_login
-    FROM MSWDO_USER
+    FROM mswdo_user
     WHERE user_id = ?
     LIMIT 1
 ");
@@ -301,13 +279,10 @@ $contact = $user['user_contactnum'] ?: '—';
 
   <title>My Account - MSWDO San Enrique</title>
 
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link

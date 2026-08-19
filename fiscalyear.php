@@ -15,11 +15,11 @@ function fiscalYearJsonResponse(bool $success, string $message = '', array $extr
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fy_action'])) {
     $action = trim($_POST['fy_action']);
-    $actorUserId = (int)($_SESSION['user_id'] ?? 0);
+    $actorUserId = (int) ($_SESSION['user_id'] ?? 0);
 
     try {
         if ($action === 'save_budgets') {
-            $fyId = (int)($_POST['fiscal_year_id'] ?? 0);
+            $fyId = (int) ($_POST['fiscal_year_id'] ?? 0);
             $budgets = json_decode($_POST['budgets'] ?? '[]', true);
 
             if ($fyId <= 0 || !is_array($budgets)) {
@@ -44,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fy_action'])) {
             $updateProgram = $pdo->prepare("UPDATE program SET prog_annual_budget = ?, prog_remaining_budget = ? WHERE program_id = ?");
 
             foreach ($budgets as $item) {
-                $programId = (int)($item['program_id'] ?? 0);
-                $budget = round((float)($item['budget'] ?? 0), 2);
+                $programId = (int) ($item['program_id'] ?? 0);
+                $budget = round((float) ($item['budget'] ?? 0), 2);
 
                 if ($programId <= 0 || $budget < 0) {
                     throw new RuntimeException('One or more budget entries are invalid.');
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fy_action'])) {
                 if ($updateFyBudget->rowCount() === 0) {
                     $check = $pdo->prepare("SELECT COUNT(*) FROM fiscal_year_budget WHERE fiscal_year_id = ? AND program_id = ?");
                     $check->execute([$fyId, $programId]);
-                    if ((int)$check->fetchColumn() === 0) {
+                    if ((int) $check->fetchColumn() === 0) {
                         $insert = $pdo->prepare("INSERT INTO fiscal_year_budget (fiscal_year_id, program_id, annual_budget) VALUES (?, ?, ?)");
                         $insert->execute([$fyId, $programId, $budget]);
                     }
@@ -74,8 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fy_action'])) {
                             WHERE program_id = ? AND pp_status = 'Released'
                               AND pp_date_released IS NOT NULL
                               AND YEAR(pp_date_released) = ?), 0)");
-                    $spentStmt->execute([$programId, (int)$fy['fy_year'], $programId, (int)$fy['fy_year']]);
-                    $spent = (float)$spentStmt->fetchColumn();
+                    $spentStmt->execute([$programId, (int) $fy['fy_year'], $programId, (int) $fy['fy_year']]);
+                    $spent = (float) $spentStmt->fetchColumn();
                     $remaining = max(0, $budget - $spent);
                     $updateProgram->execute([$budget, $remaining, $programId]);
                 }
@@ -86,12 +86,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fy_action'])) {
         }
 
         if ($action === 'initialize_fy') {
-            $year = (int)($_POST['year'] ?? 0);
+            $year = (int) ($_POST['year'] ?? 0);
             $start = trim($_POST['start'] ?? '');
             $end = trim($_POST['end'] ?? '');
             $budgets = json_decode($_POST['budgets'] ?? '[]', true);
 
-            $currentCalendarYear = (int)date('Y');
+            $currentCalendarYear = (int) date('Y');
             if ($year < $currentCalendarYear + 1 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $start) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $end)) {
                 fiscalYearJsonResponse(false, 'Invalid fiscal year or dates.');
             }
@@ -113,21 +113,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fy_action'])) {
             /* Future FY is Planning. The current active FY is NOT archived prematurely. */
             $insertFy = $pdo->prepare("INSERT INTO fiscal_year (fy_year, fy_start_date, fy_end_date, fy_status, created_by) VALUES (?, ?, ?, 'Planning', ?)");
             $insertFy->execute([$year, $start, $end, $actorUserId > 0 ? $actorUserId : null]);
-            $fyId = (int)$pdo->lastInsertId();
+            $fyId = (int) $pdo->lastInsertId();
 
             $insertBudget = $pdo->prepare("INSERT INTO fiscal_year_budget (fiscal_year_id, program_id, annual_budget) VALUES (?, ?, ?)");
             $totalBudget = 0;
             $fundedPrograms = 0;
 
             foreach ($budgets as $item) {
-                $programId = (int)($item['program_id'] ?? 0);
-                $budget = round((float)($item['budget'] ?? 0), 2);
+                $programId = (int) ($item['program_id'] ?? 0);
+                $budget = round((float) ($item['budget'] ?? 0), 2);
                 if ($programId <= 0 || $budget < 0) {
                     throw new RuntimeException('One or more new fiscal-year budgets are invalid.');
                 }
                 $insertBudget->execute([$fyId, $programId, $budget]);
                 $totalBudget += $budget;
-                if ($budget > 0) $fundedPrograms++;
+                if ($budget > 0)
+                    $fundedPrograms++;
             }
 
             $pdo->commit();
@@ -143,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fy_action'])) {
 
 
         if ($action === 'activate_fy') {
-            $fyId = (int)($_POST['fiscal_year_id'] ?? 0);
+            $fyId = (int) ($_POST['fiscal_year_id'] ?? 0);
 
             if ($fyId <= 0) {
                 fiscalYearJsonResponse(false, 'Invalid fiscal year.');
@@ -250,15 +251,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fy_action'])) {
             ");
 
             foreach ($budgetStmt->fetchAll(PDO::FETCH_ASSOC) as $budgetRow) {
-                $annualBudget = round((float)$budgetRow['annual_budget'], 2);
-                $spent = round((float)$budgetRow['spent'], 2);
+                $annualBudget = round((float) $budgetRow['annual_budget'], 2);
+                $spent = round((float) $budgetRow['spent'], 2);
                 $remaining = max(0, $annualBudget - $spent);
 
                 $updateProgram->execute([
                     $annualBudget,
                     $remaining,
                     $targetFY['fy_start_date'] . ' 00:00:00',
-                    (int)$budgetRow['program_id']
+                    (int) $budgetRow['program_id']
                 ]);
             }
 
@@ -269,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fy_action'])) {
                 "FY {$targetFY['fy_year']} is now Active. The previous active fiscal year was archived.",
                 [
                     'fiscal_year_id' => $fyId,
-                    'year' => (int)$targetFY['fy_year'],
+                    'year' => (int) $targetFY['fy_year'],
                     'status' => 'Active'
                 ]
             );
@@ -326,11 +327,11 @@ $fiscalYearRows = $fiscalYearStmt->fetchAll(PDO::FETCH_ASSOC);
 $fiscalYearsPhp = [];
 
 foreach ($fiscalYearRows as $row) {
-    $fyId = (int)$row['fiscal_year_id'];
+    $fyId = (int) $row['fiscal_year_id'];
     if (!isset($fiscalYearsPhp[$fyId])) {
         $fiscalYearsPhp[$fyId] = [
             'id' => $fyId,
-            'year' => (int)$row['fy_year'],
+            'year' => (int) $row['fy_year'],
             'start' => $row['fy_start_date'],
             'end' => $row['fy_end_date'],
             'status' => $row['fy_status'],
@@ -340,11 +341,11 @@ foreach ($fiscalYearRows as $row) {
         ];
     }
 
-    $budget = (float)$row['annual_budget'];
-    $spent = (float)$row['spent'];
+    $budget = (float) $row['annual_budget'];
+    $spent = (float) $row['spent'];
 
     $fiscalYearsPhp[$fyId]['programs'][] = [
-        'programId' => (int)$row['program_id'],
+        'programId' => (int) $row['program_id'],
         'program' => $row['program_name'],
         'source' => $row['prog_funding_source'] ?: 'LGU',
         'period' => $row['prog_period'],
@@ -851,7 +852,7 @@ foreach ($fiscalYearsPhp as $i => $fy) {
                 <div class="bg-white rounded-2xl border-2 border-green-500 p-4 md:p-5 relative overflow-hidden">
                     <div
                         class="absolute top-0 right-0 bg-green-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg">
-                         ACTIVE
+                        ACTIVE
                     </div>
                     <div class="flex flex-wrap items-center justify-between gap-4">
                         <div>
@@ -870,7 +871,8 @@ foreach ($fiscalYearsPhp as $i => $fy) {
                             </div>
                             <div class="text-center">
                                 <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                                <p class="text-lg md:text-xl font-bold text-blue-600" id="activeTotalRemaining">₱0.00</p>
+                                <p class="text-lg md:text-xl font-bold text-blue-600" id="activeTotalRemaining">₱0.00
+                                </p>
                             </div>
                             <div class="text-center">
                                 <p class="text-[10px] text-slate-400 uppercase tracking-wider">Utilization</p>
@@ -907,7 +909,8 @@ foreach ($fiscalYearsPhp as $i => $fy) {
                 <div
                     class="flex flex-wrap items-center justify-between gap-2 px-4 md:px-5 py-4 border-b border-slate-100 no-print">
                     <div class="flex items-center gap-2">
-                        <h2 class="text-[13px] font-semibold text-green-600" id="selectedFYTitle">Fiscal Year Budget Breakdown</h2>
+                        <h2 class="text-[13px] font-semibold text-green-600" id="selectedFYTitle">Fiscal Year Budget
+                            Breakdown</h2>
                         <span
                             class="bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">Active</span>
                     </div>
@@ -936,7 +939,8 @@ foreach ($fiscalYearsPhp as $i => $fy) {
                 </div>
                 <!-- Print-only title -->
                 <div class="hidden print:block" style="display:none;">
-                    <h1 id="printFYTitle" style="text-align:center;font-size:14pt;font-weight:700;margin-bottom:4px;">Fiscal Year Budget Report</h1>
+                    <h1 id="printFYTitle" style="text-align:center;font-size:14pt;font-weight:700;margin-bottom:4px;">
+                        Fiscal Year Budget Report</h1>
                     <p class="subtitle" style="text-align:center;font-size:11pt;margin-bottom:16px;">
                         <span id="printFYPeriod"></span> | Status: <span id="printFYStatus"></span>
                     </p>
@@ -1030,7 +1034,8 @@ foreach ($fiscalYearsPhp as $i => $fy) {
                         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
                             <p class="text-[11px] text-amber-700 flex items-start gap-2">
                                 <i class="fas fa-triangle-exclamation text-amber-500 mt-0.5"></i>
-                                <span>FY <span id="currentFYLabel">2026</span> will remain active. The new fiscal year will be created as
+                                <span>FY <span id="currentFYLabel">2026</span> will remain active. The new fiscal year
+                                    will be created as
                                     <strong>Planning</strong>, so its budgets can be reviewed and edited before the new
                                     fiscal year officially begins.</span>
                             </p>
@@ -1175,7 +1180,8 @@ foreach ($fiscalYearsPhp as $i => $fy) {
                     <i class="fas fa-check-circle text-4xl text-green-600"></i>
                 </div>
                 <h2 class="text-[20px] font-bold text-green-700 mb-2">All Done!</h2>
-                <p class="text-[13px] text-slate-600 mb-4">The new fiscal year has been saved successfully as a planning cycle. The current active fiscal year remains active until it is officially changed.</p>
+                <p class="text-[13px] text-slate-600 mb-4">The new fiscal year has been saved successfully as a planning
+                    cycle. The current active fiscal year remains active until it is officially changed.</p>
                 <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left text-[12px] space-y-2">
                     <p><strong>New Fiscal Year:</strong> <span id="successFY">2027</span></p>
                     <p><strong>Total Budget:</strong> <span id="successTotalBudget">₱0.00</span></p>
@@ -1206,7 +1212,8 @@ foreach ($fiscalYearsPhp as $i => $fy) {
                 <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
                     <p class="text-[12px] text-amber-700 flex items-start gap-2">
                         <i class="fas fa-exclamation-triangle text-amber-500 mt-0.5"></i>
-                        <span><strong>Important:</strong> Planning fiscal years can be edited before activation. Changes to an
+                        <span><strong>Important:</strong> Planning fiscal years can be edited before activation. Changes
+                            to an
                             Active fiscal year affect current budget figures and utilization calculations. Archived
                             fiscal years are read-only.</span>
                     </p>
@@ -1293,7 +1300,7 @@ foreach ($fiscalYearsPhp as $i => $fy) {
         // ── Database data supplied by PHP ──
         const fiscalYears = <?= json_encode($fiscalYearsPhp, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
-        let selectedFY = <?= (int)$activeFyIndex ?>;
+        let selectedFY = <?= (int) $activeFyIndex ?>;
         let currentYear = fiscalYears[selectedFY] ? fiscalYears[selectedFY].year : new Date().getFullYear();
         let stepData = {};
         let step2Budgets = {};
@@ -1330,8 +1337,8 @@ foreach ($fiscalYearsPhp as $i => $fy) {
                             ${canActivate ? '' : 'disabled'}
                             class="mt-3 w-full text-[10px] font-semibold rounded-lg px-2.5 py-1.5 border transition-all
                                 ${canActivate
-                                    ? 'text-green-700 bg-green-50 border-green-200 hover:bg-green-100'
-                                    : 'text-slate-400 bg-slate-50 border-slate-200 cursor-not-allowed'}">
+                        ? 'text-green-700 bg-green-50 border-green-200 hover:bg-green-100'
+                        : 'text-slate-400 bg-slate-50 border-slate-200 cursor-not-allowed'}">
                             <i class="fas fa-power-off mr-1"></i>
                             ${canActivate ? 'Activate Fiscal Year' : `Starts ${fy.start}`}
                         </button>
@@ -1347,7 +1354,7 @@ foreach ($fiscalYearsPhp as $i => $fy) {
                         <p class="text-[9px] md:text-[10px] text-slate-400">${fy.start} – ${fy.end}</p>
                         <div class="mt-3 flex justify-between text-[11px]">
                             <span class="text-slate-500">Total Budget</span>
-                            <span class="font-semibold text-green-600">₱${fy.totalBudget.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+                            <span class="font-semibold text-green-600">₱${fy.totalBudget.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div class="flex justify-between text-[11px]">
                             <span class="text-slate-500">Utilization</span>
@@ -1435,12 +1442,11 @@ foreach ($fiscalYearsPhp as $i => $fy) {
             if (badge) {
                 badge.textContent = fy.status;
                 badge.className =
-                    `text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                        fy.status === 'Active'
-                            ? 'bg-green-100 text-green-700'
-                            : fy.status === 'Planning'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-slate-100 text-slate-600'
+                    `text-[10px] font-semibold px-2 py-0.5 rounded-full ${fy.status === 'Active'
+                        ? 'bg-green-100 text-green-700'
+                        : fy.status === 'Planning'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-slate-100 text-slate-600'
                     }`;
             }
             document.getElementById('editFYLabel').textContent = `FY ${fy.year}`;

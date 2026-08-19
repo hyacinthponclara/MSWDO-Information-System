@@ -8,14 +8,14 @@ require 'budget_helpers.php';
 // (applied, approved, or released today).
 $clientsServedToday = $pdo->query("
     SELECT COUNT(DISTINCT client_id)
-    FROM AVAILMENT
+    FROM availment
     WHERE CURDATE() IN (av_date_applied, av_date_approved, av_date_released)
 ")->fetchColumn();
 
 // Availments applied within the current calendar week (Mon-Sun).
 $availmentsThisWeek = $pdo->query("
     SELECT COUNT(*)
-    FROM AVAILMENT
+    FROM availment
     WHERE YEARWEEK(av_date_applied, 1) = YEARWEEK(CURDATE(), 1)
 ")->fetchColumn();
 
@@ -42,7 +42,7 @@ foreach ($allProgramBudget as $program) {
 
     $beneficiaryStmt = $pdo->prepare("
         SELECT COUNT(DISTINCT client_id)
-        FROM AVAILMENT
+        FROM availment
         WHERE program_id = ?
           AND av_status IN ('Approved', 'Released')
     ");

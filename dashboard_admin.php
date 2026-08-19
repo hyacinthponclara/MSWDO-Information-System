@@ -1,4 +1,9 @@
 <?php
+
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+
 require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
@@ -49,7 +54,7 @@ foreach ($allProgramBudget as $program) {
 
   $beneficiaryStmt = $pdo->prepare("
         SELECT COUNT(DISTINCT client_id)
-        FROM AVAILMENT
+        FROM availment
         WHERE program_id = ?
           AND av_status IN ('Approved', 'Released')
     ");
@@ -91,10 +96,10 @@ $approved = $pdo->query("
             CONCAT(c.cl_firstname, ' ', c.cl_lastname) AS client_name,
             p.program_name,
             NULL AS title
-        FROM AVAILMENT a
-        INNER JOIN CLIENT c
+        FROM availment a
+        INNER JOIN client c
             ON c.client_id = a.client_id
-        INNER JOIN PROGRAM p
+        INNER JOIN program p
             ON p.program_id = a.program_id
         WHERE a.av_status = 'Approved'
 
@@ -108,10 +113,10 @@ $approved = $pdo->query("
             CONCAT(u.user_firstname, ' ', u.user_lastname) AS client_name,
             p.program_name,
             pp.pp_title AS title
-        FROM PROJECT_PROPOSAL pp
-        INNER JOIN PROGRAM p
+        FROM project_proposal pp
+        INNER JOIN program p
             ON p.program_id = pp.program_id
-        LEFT JOIN MSWDO_USER u
+        LEFT JOIN mswdo_user u
             ON u.user_id = pp.user_id
         WHERE pp.pp_status = 'Approved'
     ) AS approved_requests
@@ -153,7 +158,7 @@ $monthlySpendingStmt = $pdo->prepare("
         SELECT
             MONTH(av_date_released) AS month_number,
             av_amount AS amount
-        FROM AVAILMENT
+        FROM availment
         WHERE av_status = 'Released'
           AND av_date_released IS NOT NULL
           AND YEAR(av_date_released) = YEAR(CURDATE())
@@ -164,7 +169,7 @@ $monthlySpendingStmt = $pdo->prepare("
         SELECT
             MONTH(pp_date_released) AS month_number,
             pp_budget AS amount
-        FROM PROJECT_PROPOSAL
+        FROM project_proposal
         WHERE pp_status = 'Released'
           AND pp_date_released IS NOT NULL
           AND YEAR(pp_date_released) = YEAR(CURDATE())
@@ -230,7 +235,7 @@ $recentActivityStmt = $pdo->query("
             CONCAT(c.cl_firstname, ' ', c.cl_lastname) AS title,
             NULL AS subtitle,
             NULL AS amount
-        FROM CLIENT c
+        FROM client c
 
         UNION ALL
 
@@ -240,9 +245,9 @@ $recentActivityStmt = $pdo->query("
             p.program_name AS title,
             CONCAT(cl.cl_firstname, ' ', cl.cl_lastname) AS subtitle,
             a.av_amount AS amount
-        FROM AVAILMENT a
-        INNER JOIN PROGRAM p ON p.program_id = a.program_id
-        INNER JOIN CLIENT cl ON cl.client_id = a.client_id
+        FROM availment a
+        INNER JOIN program p ON p.program_id = a.program_id
+        INNER JOIN client cl ON cl.client_id = a.client_id
         WHERE a.av_status = 'Released' AND a.av_date_released IS NOT NULL
 
         UNION ALL
@@ -253,9 +258,9 @@ $recentActivityStmt = $pdo->query("
             p.program_name AS title,
             CONCAT(cl.cl_firstname, ' ', cl.cl_lastname) AS subtitle,
             a.av_amount AS amount
-        FROM AVAILMENT a
-        INNER JOIN PROGRAM p ON p.program_id = a.program_id
-        INNER JOIN CLIENT cl ON cl.client_id = a.client_id
+        FROM availment a
+        INNER JOIN program p ON p.program_id = a.program_id
+        INNER JOIN client cl ON cl.client_id = a.client_id
         WHERE a.av_date_approved IS NOT NULL
 
         UNION ALL
@@ -266,8 +271,8 @@ $recentActivityStmt = $pdo->query("
             CONCAT(bl.action_type, ' · ', p.program_name) AS title,
             bl.source AS subtitle,
             bl.amount AS amount
-        FROM BUDGET_LOG bl
-        INNER JOIN PROGRAM p ON p.program_id = bl.program_id
+        FROM budget_log bl
+        INNER JOIN program p ON p.program_id = bl.program_id
 
         UNION ALL
 
@@ -277,8 +282,8 @@ $recentActivityStmt = $pdo->query("
             pp.pp_title AS title,
             p.program_name AS subtitle,
             pp.pp_budget AS amount
-        FROM PROJECT_PROPOSAL pp
-        INNER JOIN PROGRAM p ON p.program_id = pp.program_id
+        FROM project_proposal pp
+        INNER JOIN program p ON p.program_id = pp.program_id
 
         UNION ALL
 
@@ -288,8 +293,8 @@ $recentActivityStmt = $pdo->query("
             pp.pp_title AS title,
             p.program_name AS subtitle,
             pp.pp_budget AS amount
-        FROM PROJECT_PROPOSAL pp
-        INNER JOIN PROGRAM p ON p.program_id = pp.program_id
+        FROM project_proposal pp
+        INNER JOIN program p ON p.program_id = pp.program_id
         WHERE pp.pp_date_released IS NOT NULL
     ) AS recent_activity
     WHERE activity_time IS NOT NULL

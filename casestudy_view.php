@@ -73,15 +73,15 @@ $stmt = $pdo->prepare("
         u.user_lastname,
         u.user_role
 
-    FROM CASE_STUDY cs
+    FROM case_study cs
 
-    LEFT JOIN CLIENT c
+    LEFT JOIN client c
         ON c.client_id = cs.client_id
 
-    LEFT JOIN BARANGAY b
+    LEFT JOIN barangay b
         ON b.barangay_id = c.brgy_id
 
-    LEFT JOIN MSWDO_USER u
+    LEFT JOIN mswdo_user u
         ON u.user_id = cs.user_id
 
     WHERE cs.case_study_id = :case_study_id

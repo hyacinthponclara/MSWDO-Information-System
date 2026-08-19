@@ -617,10 +617,6 @@ $progColors = [
             <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
               <div class="px-5 py-3.5 border-b border-slate-100 flex flex-wrap items-center gap-3">
                 <span class="text-[12px] font-semibold text-slate-500">All records for this client</span>
-                <button
-                  class="ml-auto flex items-center gap-1.5 text-[12px] font-medium text-navy-600 border border-navy-200 bg-navy-50 rounded-lg px-3 py-1.5 hover:bg-navy-100 transition-all">
-                  ⬇ Export
-                </button>
               </div>
 
               <div class="overflow-x-auto">
@@ -684,10 +680,6 @@ $progColors = [
                             <?php endif; ?>
                           </td>
                           <td class="px-5 py-3 text-slate-400"><?= htmlspecialchars($av['encoded_by'] ?? '—') ?></td>
-                          <td class="px-5 py-3 text-right">
-                            <a href="availmentdetail.php?id=<?= $av['availment_id'] ?>"
-                              class="text-[11px] text-navy-500 hover:underline font-medium">View</a>
-                          </td>
                         </tr>
                       <?php endforeach; ?>
                     <?php endif; ?>

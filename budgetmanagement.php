@@ -3,7 +3,7 @@ require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
 
-// ── Flash message (set by budgetmanagementaction.php after a redirect) ──────────────
+//  Flash message (set by budgetmanagementaction.php after a redirect) 
 $flashMsg = $_GET['msg'] ?? '';
 $flashType = $_GET['type'] ?? 'success';
 

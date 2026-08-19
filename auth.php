@@ -11,11 +11,11 @@ function requireLogin() {
         exit;
     }
 
-    // Re-check the account is still active on every protected page load —
+    // Re-check the account kung still active on every protected page load —
     // catches the case where an admin disables this user while they're
     // already logged in.
     require_once 'db_connect.php';
-    $stmt = $pdo->prepare("SELECT user_isactive FROM MSWDO_USER WHERE user_id = ?");
+    $stmt = $pdo->prepare("SELECT user_isactive FROM mswdo_user WHERE user_id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $isActive = $stmt->fetchColumn();
 

@@ -29,7 +29,7 @@ function periodLabel(string $period, int $currentPeriod): string
 /*
  * The percentage comes directly from the Forecast modal.
  * 0% = no increase.
- * There is no automatic 15% increase.
+ * There is no automatic 15% increase. - suggest ka panel nga customizable and not fixed.
  */
 $increasePct = isset($_GET['increase_pct'])
     ? (float) $_GET['increase_pct']
@@ -100,10 +100,7 @@ $totalBeneficiaries = 0;
 $totalPeriodBudget = 0.0;
 $totalSpent = 0.0;
 
-/*
- * IMPORTANT:
- * This must match the Forecast modal.
- *
+/* *
  * Only programs with:
  *   utilization >= 70%
  *   AND beneficiaries > 0

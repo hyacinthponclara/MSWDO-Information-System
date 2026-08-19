@@ -15,8 +15,8 @@ if (!$client_id || $client_id <= 0) {
 /* Fetch the registered client. */
 $stmt = $pdo->prepare("
     SELECT c.*, b.barangay_name
-    FROM CLIENT c
-    LEFT JOIN BARANGAY b ON b.barangay_id = c.brgy_id
+    FROM client c
+    LEFT JOIN barangay b ON b.barangay_id = c.brgy_id
     WHERE c.client_id = :client_id
     LIMIT 1
 ");
@@ -31,7 +31,7 @@ if (!$client) {
 /* Fetch the original family composition saved during client registration. */
 $famStmt = $pdo->prepare("
     SELECT family_composition_json
-    FROM CASE_STUDY
+    FROM case_study
     WHERE client_id = :client_id
       AND problem_presented = 'Initial registration'
     ORDER BY created_at ASC
@@ -56,8 +56,8 @@ $prevStmt = $pdo->prepare("
         a.av_date_applied,
         a.av_status,
         p.program_name
-    FROM AVAILMENT a
-    LEFT JOIN PROGRAM p ON p.program_id = a.program_id
+    FROM availment a
+    LEFT JOIN program p ON p.program_id = a.program_id
     WHERE a.client_id = :client_id
       AND a.av_status IN ('Approved', 'Released')
     ORDER BY a.av_date_applied DESC
@@ -179,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
 
         $insert = $pdo->prepare("
-            INSERT INTO CASE_STUDY (
+            INSERT INTO case_study (
                 client_id,
                 user_id,
                 interview_date,

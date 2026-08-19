@@ -1,10 +1,6 @@
 <?php
 
 /*
-|--------------------------------------------------------------------------
-| GET ALL PROGRAM BUDGETS
-|--------------------------------------------------------------------------
-|
 | Budget rule:
 |
 | Approved  = awaiting release = NOT deducted
@@ -38,7 +34,7 @@ function getAllProgramBudgets(PDO $pdo): array
                 - COALESCE(pp.spent_proposals, 0)
                 AS remaining
 
-        FROM PROGRAM p
+        FROM program p
 
 
         /*
@@ -58,7 +54,7 @@ function getAllProgramBudgets(PDO $pdo): array
                 SUM(av_amount)
                     AS spent_availment
 
-            FROM AVAILMENT
+            FROM availment
 
             WHERE av_status = 'Released'
 
@@ -86,7 +82,7 @@ function getAllProgramBudgets(PDO $pdo): array
                 SUM(pp_budget)
                     AS spent_proposals
 
-            FROM PROJECT_PROPOSAL
+            FROM project_proposal
 
             WHERE pp_status = 'Released'
 
@@ -230,7 +226,7 @@ function getProgramBudget(
             ) AS spent_proposals
 
 
-        FROM PROGRAM p
+        FROM program p
 
 
         /*
@@ -249,10 +245,10 @@ function getProgramBudget(
                     AS spent_availment
 
 
-            FROM AVAILMENT a
+            FROM availment a
 
 
-            JOIN PROGRAM p2
+            JOIN program p2
 
                 ON p2.program_id =
                    a.program_id
@@ -288,10 +284,10 @@ function getProgramBudget(
                     AS spent_proposals
 
 
-            FROM PROJECT_PROPOSAL pp
+            FROM project_proposal pp
 
 
-            JOIN PROGRAM p3
+            JOIN program p3
 
                 ON p3.program_id =
                    pp.program_id
@@ -446,7 +442,7 @@ function getProgramId(
 
         SELECT program_id
 
-        FROM PROGRAM
+        FROM program
 
         WHERE program_name = ?
 
@@ -522,9 +518,9 @@ function getFundRequests(
 
             pp.pp_date_released
 
-        FROM PROJECT_PROPOSAL pp
+        FROM project_proposal pp
 
-        JOIN PROGRAM p
+        JOIN program p
 
             ON p.program_id =
                pp.program_id
