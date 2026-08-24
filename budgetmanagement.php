@@ -20,23 +20,13 @@ SELECT
     COALESCE(p.prog_current_period, 1) AS current_period,
     COALESCE(p.prog_early_end_count, 0) AS early_end_count,
 
-    /*
-     * ACTUAL SPENDING
-     *
-     * Count all legitimate RELEASED transactions already stored
-     * in the database.
-     *
-     * We intentionally DO NOT filter by prog_period_started_at here
-     * because these transactions existed before the new Budget
-     * Management period tracking was implemented.
-     */
-
     COALESCE((
         SELECT SUM(a.av_amount)
         FROM availment a
         WHERE a.program_id = p.program_id
           AND a.av_status = 'Released'
           AND a.av_date_released IS NOT NULL
+          AND a.av_date_released >= COALESCE(p.prog_period_started_at, '1970-01-01')
     ), 0) AS spent_availment,
 
     COALESCE((
@@ -45,17 +35,16 @@ SELECT
         WHERE pp.program_id = p.program_id
           AND pp.pp_status = 'Released'
           AND pp.pp_date_released IS NOT NULL
+          AND pp.pp_date_released >= COALESCE(p.prog_period_started_at, '1970-01-01')
     ), 0) AS spent_proposals,
 
-    /*
-     * TOTAL ACTUAL SPENDING
-     */
     COALESCE((
         SELECT SUM(a2.av_amount)
         FROM availment a2
         WHERE a2.program_id = p.program_id
           AND a2.av_status = 'Released'
           AND a2.av_date_released IS NOT NULL
+          AND a2.av_date_released >= COALESCE(p.prog_period_started_at, '1970-01-01')
     ), 0)
     +
     COALESCE((
@@ -64,20 +53,9 @@ SELECT
         WHERE pp2.program_id = p.program_id
           AND pp2.pp_status = 'Released'
           AND pp2.pp_date_released IS NOT NULL
+          AND pp2.pp_date_released >= COALESCE(p.prog_period_started_at, '1970-01-01')
     ), 0) AS spent,
 
-    /*
-     * ACTUAL BENEFICIARY VOLUME
-     *
-     * Existing Approved/Released availments:
-     * count each client once per program.
-     *
-     * Existing Approved/Released project proposals:
-     * use the recorded participant count.
-     *
-     * No period-start filter is applied because these are
-     * existing historical transactions that must remain visible.
-     */
     COALESCE((
         SELECT COUNT(DISTINCT a3.client_id)
         FROM availment a3
