@@ -1657,7 +1657,7 @@ $familyJsonForJs = json_encode(
                         <span id="caseSummaryStatus" class="summary-status">Reviewing current form values</span>
                         <button type="button" onclick="saveCaseStudyFromSummary()"
                             class="text-[12px] font-semibold text-white bg-green-700 rounded-lg px-4 py-2.5 hover:bg-mswdo-800 transition-all">
-                            <i class="fas fa-save mr-2"></i>Save Case Study
+                            <i class="fas fa-save mr-2"></i>Submit
                         </button>
                         <button type="button" onclick="previewCaseSummaryPDF()"
                             class="text-[12px] font-semibold text-white bg-green-700 rounded-lg px-4 py-2.5 hover:bg-mswdo-800 transition-all">

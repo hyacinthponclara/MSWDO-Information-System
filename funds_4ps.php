@@ -3,6 +3,7 @@ require 'auth.php';
 requireRole(['Admin', 'Staff']);
 require 'db_connect.php';
 require 'budget_helpers.php';
+require 'export_prepared_by.php';
 
 // -- BUDGET SUMMARY CARD (same formula as every other budget page) --
 $fundBudget = getProgramBudget($pdo, ['4Ps']);
@@ -249,7 +250,7 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                         </a>
                     </div>
                 </div>
-                
+
             </div>
 
             <!-- Budget Summary Card -->
@@ -297,9 +298,9 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                     <div>
                         <label class="text-[10px] uppercase tracking-wider text-slate-400 block">Search</label>
                         <div class="relative">
-                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]"></i>
-                            <input type="search" id="filterSearch"
-                                placeholder="Search fund requests..."
+                            <i
+                                class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]"></i>
+                            <input type="search" id="filterSearch" placeholder="Search fund requests..."
                                 autocomplete="off"
                                 class="w-56 text-[12px] border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 bg-white focus:border-green-400 focus:ring-1 focus:ring-green-400 outline-none"
                                 oninput="applyFilters()" />
@@ -411,7 +412,7 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
             JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP
         ) ?>;
 
-        let currentSort = { key: 'date', dir: 'asc' };
+        let currentSort = { key: 'date', dir: 'desc' };
         let filteredData = [...fundRequests];
         let currentPage = 1;
 
@@ -747,8 +748,11 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
 
 
         // ── CSV Export ──
-        const PREPARED_BY_NAME = 'MA. TERESA C. PONCLARA, RSW';
-        const PREPARED_BY_TITLE = 'MSWDO';
+        const PREPARED_BY_NAME =
+            <?= json_encode($preparedByName, JSON_UNESCAPED_UNICODE) ?>;
+
+        const PREPARED_BY_TITLE =
+            <?= json_encode($preparedByPosition, JSON_UNESCAPED_UNICODE) ?>;
 
         function getDateOnly() {
             return new Date().toLocaleDateString('en-US', {

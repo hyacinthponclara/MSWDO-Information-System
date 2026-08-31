@@ -492,7 +492,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     av_status,
                     av_date_released,
                     av_remarks
-                ) VALUES (?, ?, ?, ?, CURDATE(), ?, 'Approved', NULL, ?)
+                ) VALUES (?, ?, ?, ?, Now(), ?, 'Approved', NULL, ?)
             ");
             $stmt->execute([
                 $client_id,

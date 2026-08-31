@@ -2,6 +2,7 @@
 require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
+require 'export_prepared_by.php';
 
 function fiscalYearJsonResponse(bool $success, string $message = '', array $extra = []): void
 {
@@ -1299,6 +1300,12 @@ foreach ($fiscalYearsPhp as $i => $fy) {
 
         // ── Database data supplied by PHP ──
         const fiscalYears = <?= json_encode($fiscalYearsPhp, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
+        const PREPARED_BY_NAME =
+            <?= json_encode($preparedByName, JSON_UNESCAPED_UNICODE) ?>;
+
+        const PREPARED_BY_TITLE =
+            <?= json_encode($preparedByPosition, JSON_UNESCAPED_UNICODE) ?>;
 
         let selectedFY = <?= (int) $activeFyIndex ?>;
         let currentYear = fiscalYears[selectedFY] ? fiscalYears[selectedFY].year : new Date().getFullYear();
@@ -2624,13 +2631,12 @@ ${fy.totalBudget > 0
 <div class="sign-line"></div>
 
 <strong>Prepared by</strong>
-
+<br><br>
+<strong>${PREPARED_BY_NAME}</strong>
 <br>
-
 <span style="font-size:9pt;">
-MSWDO Personnel
+${PREPARED_BY_TITLE}
 </span>
-
 </td>
 
 <td>
@@ -2764,6 +2770,11 @@ This is a computer-generated report. No signature is required unless otherwise s
                         fy.totalBudget - fy.totalSpent,
                         fy.totalBudget > 0 ? Math.round((fy.totalSpent / fy.totalBudget) * 100) + '%' : '0%'
                     ]);
+
+                    data.push([]);
+                    data.push(['Prepared by:']);
+                    data.push([PREPARED_BY_NAME]);
+                    data.push([PREPARED_BY_TITLE]);
 
                     const ws = XLSX.utils.aoa_to_sheet(data);
                     ws['!cols'] = [

@@ -3,6 +3,7 @@ require 'auth.php';
 requireRole(['Admin', 'Staff']);
 require 'db_connect.php';
 require 'budget_helpers.php';
+require 'export_prepared_by.php';
 
 // -- BUDGET SUMMARY CARD (same formula as every other budget page) --
 $fundBudget = getProgramBudget($pdo, ['Solo Parent Program']);
@@ -398,7 +399,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'Solo Parent Program');
         // ── Sample Data (Solo Parents fund requests) ──
         const fundRequests = <?= json_encode($fundRequestsPhp) ?>;
 
-        let currentSort = { key: 'date', dir: 'asc' };
+        let currentSort = { key: 'date', dir: 'desc' };
         let filteredData = [...fundRequests];
         let currentPage = 1;
         const rowsPerPage = 10;
@@ -698,9 +699,12 @@ $fundRequestsPhp = getFundRequests($pdo, 'Solo Parent Program');
 
 
         // ── CSV Export ──
-        const PREPARED_BY_NAME = 'MA. TERESA C. PONCLARA, RSW';
-        const PREPARED_BY_TITLE = 'MSWDO';
+        const PREPARED_BY_NAME =
+    <?= json_encode($preparedByName, JSON_UNESCAPED_UNICODE) ?>;
 
+        const PREPARED_BY_TITLE =
+    <?= json_encode($preparedByPosition, JSON_UNESCAPED_UNICODE) ?>;
+    
         function getDateOnly() {
             return new Date().toLocaleDateString('en-US', {
                 year: 'numeric',

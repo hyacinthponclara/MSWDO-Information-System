@@ -2,6 +2,7 @@
 require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
+require 'export_prepared_by.php';
 
 //  Flash message (set by budgetmanagementaction.php after a redirect) 
 $flashMsg = $_GET['msg'] ?? '';

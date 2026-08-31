@@ -3,6 +3,7 @@ require 'auth.php';
 requireRole(['Admin', 'Staff']);
 require 'db_connect.php';
 require 'budget_helpers.php';
+require 'export_prepared_by.php';
 
 // -- BUDGET SUMMARY CARD (same formula as every other budget page) --
 $fundBudget = getProgramBudget($pdo, ['Day Care Center Program']);
@@ -226,7 +227,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
                     <p class="text-[13px] text-slate-500 mt-0.5">View, filter, and export all day care fund requests.
                     </p>
                 </div>
-                
+
                 <div class="export-dropdown relative z-[9999]" id="exportDropdownContainer">
                     <button type="button"
                         class="btn-action text-[12px] font-semibold text-white bg-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700"
@@ -412,7 +413,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
             JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP
         ) ?>;
 
-        let currentSort = { key: 'date', dir: 'asc' };
+        let currentSort = { key: 'date', dir: 'desc' };
         let filteredData = [...fundRequests];
         let currentPage = 1;
 
@@ -752,8 +753,11 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
 
 
         // ── CSV Export ──
-        const PREPARED_BY_NAME = 'MA. TERESA C. PONCLARA, RSW';
-        const PREPARED_BY_TITLE = 'MSWDO';
+        const PREPARED_BY_NAME =
+            <?= json_encode($preparedByName, JSON_UNESCAPED_UNICODE) ?>;
+
+        const PREPARED_BY_TITLE =
+            <?= json_encode($preparedByPosition, JSON_UNESCAPED_UNICODE) ?>;
 
         function getDateOnly() {
             return new Date().toLocaleDateString('en-US', {

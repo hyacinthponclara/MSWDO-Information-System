@@ -3,16 +3,13 @@ require 'auth.php';
 requireRole(['Admin', 'Staff']); 
 require 'db_connect.php';
 require 'budget_helpers.php';
+require 'export_prepared_by.php';
 
-// ── BUDGET SUMMARY CARDS (same formula as every other budget page) ──
+
+// ── BUDGET SUMMARY CARDS
 $aicsFbmlBudget = getProgramBudget($pdo, ['AICS FBML']);
 $aicsEduBudget  = getProgramBudget($pdo, ['AICS Educational']);
 
-// ── TRANSACTIONS TABLE ──────────────────────────────────────────────
-// AICS FBML availments are split across 4 subtype tables (financial, burial,
-// medical, livelihood); AICS Educational has its own subtype table. Union
-// them all together, tagging each with its type and budget source, so the
-// table shows every real availment instead of hardcoded rows.
 $aicsSubtypes = [
     ['table' => 'aics_financial',   'type' => 'Financial',   'source' => 'FBML'],
     ['table' => 'aics_burial',      'type' => 'Burial',      'source' => 'FBML'],
@@ -450,7 +447,7 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
         // ── Live data from the database ──
         const transactions = <?= json_encode($aicsTransactions) ?>;
 
-        let currentSort = { key: 'date', dir: 'asc' };
+        let currentSort = { key: 'date', dir: 'desc' };
         let filteredData = [...transactions];
 
         // ── Type options based on budget source ──
@@ -710,8 +707,11 @@ function applyFilters(resetPage = true) {
 // EXPORT HELPERS
 // ============================================================
 
-const PREPARED_BY_NAME = 'MA. TERESA C. PONCLARA, RSW';
-const PREPARED_BY_TITLE = 'MSWDO';
+const PREPARED_BY_NAME =
+    <?= json_encode($preparedByName, JSON_UNESCAPED_UNICODE) ?>;
+
+const PREPARED_BY_TITLE =
+    <?= json_encode($preparedByPosition, JSON_UNESCAPED_UNICODE) ?>;
 
 
 function getDateOnly() {

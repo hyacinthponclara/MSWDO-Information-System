@@ -4,38 +4,6 @@ require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
 
-/*
-|--------------------------------------------------------------------------
-| RELEASE QUEUE
-|--------------------------------------------------------------------------
-|
-| This page handles:
-|
-| 1. AICS Availments
-| 2. Project Proposals
-|
-| FINAL WORKFLOW:
-|
-| Submitted
-|     ↓
-| Approved automatically
-|     ↓
-| Awaiting Release
-|     ↓
-| Released
-|     ↓
-| Only Released counts as spent
-|
-|--------------------------------------------------------------------------
-*/
-
-
-/*
-|--------------------------------------------------------------------------
-| RELEASE ACTION
-|--------------------------------------------------------------------------
-*/
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     header('Content-Type: application/json');
@@ -56,11 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $releaseType = $_POST['release_type'] ?? '';
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | RELEASE AICS AVAILMENT
-    |--------------------------------------------------------------------------
-    */
 
     if ($releaseType === 'availment') {
 
@@ -82,11 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $pdo->beginTransaction();
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Get and lock the availment
-            |--------------------------------------------------------------------------
-            */
 
             $stmt = $pdo->prepare("
                 SELECT
@@ -124,11 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $amount = (float) $availment['av_amount'];
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Lock program
-            |--------------------------------------------------------------------------
-            */
 
             $programStmt = $pdo->prepare("
                 SELECT
@@ -157,11 +110,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 (float) $program['prog_annual_budget'];
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Released AICS spending
-            |--------------------------------------------------------------------------
-            */
 
             $aicsSpentStmt = $pdo->prepare("
                 SELECT
@@ -179,11 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 (float) $aicsSpentStmt->fetchColumn();
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Released Project Proposal spending
-            |--------------------------------------------------------------------------
-            */
 
             $proposalSpentStmt = $pdo->prepare("
                 SELECT
@@ -201,12 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 (float) $proposalSpentStmt->fetchColumn();
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Current available budget
-            |--------------------------------------------------------------------------
-            */
-
             $available =
                 $annualBudget
                 - $releasedAics
@@ -221,17 +158,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Release AICS
-            |--------------------------------------------------------------------------
-            */
 
             $update = $pdo->prepare("
                 UPDATE availment
                 SET
                     av_status = 'Released',
-                    av_date_released = CURDATE()
+                    av_date_released = NOW()
                 WHERE availment_id = ?
                   AND av_status = 'Approved'
             ");
@@ -352,11 +284,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 (float) $proposal['pp_budget'];
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Lock program
-            |--------------------------------------------------------------------------
-            */
 
             $programStmt = $pdo->prepare("
                 SELECT
@@ -386,11 +313,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 (float) $program['prog_annual_budget'];
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Released AICS
-            |--------------------------------------------------------------------------
-            */
 
             $aicsSpentStmt = $pdo->prepare("
                 SELECT
@@ -408,11 +330,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 (float) $aicsSpentStmt->fetchColumn();
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Released Project Proposals
-            |--------------------------------------------------------------------------
-            */
 
             $proposalSpentStmt = $pdo->prepare("
                 SELECT
@@ -430,11 +347,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 (float) $proposalSpentStmt->fetchColumn();
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Available budget
-            |--------------------------------------------------------------------------
-            */
 
             $available =
                 $annualBudget
@@ -450,11 +362,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Release proposal
-            |--------------------------------------------------------------------------
-            */
 
             $updateProposal = $pdo->prepare("
                 UPDATE project_proposal
@@ -702,11 +609,6 @@ while ($row = $budgetStmt->fetch(PDO::FETCH_ASSOC)) {
 }
 
 
-/*
-|--------------------------------------------------------------------------
-| ICONS
-|--------------------------------------------------------------------------
-*/
 
 $programIcons = [
 
@@ -742,11 +644,6 @@ $programIcons = [
 ];
 
 
-/*
-|--------------------------------------------------------------------------
-| AICS APPLICATIONS AWAITING RELEASE
-|--------------------------------------------------------------------------
-*/
 
 $pendingStmt = $pdo->prepare("
     SELECT
@@ -828,12 +725,6 @@ $pendingStmt->execute();
 $pendingApplications =
     $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
 
-
-/*
-|--------------------------------------------------------------------------
-| PROJECT PROPOSALS AWAITING RELEASE
-|--------------------------------------------------------------------------
-*/
 
 $proposalStmt = $pdo->prepare("
     SELECT

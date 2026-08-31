@@ -1,8 +1,9 @@
 <?php
 require 'auth.php';
-requireRole(['Admin', 'Staff']); 
+requireRole(['Admin', 'Staff']);
 require 'db_connect.php';
 require 'budget_helpers.php';
+require 'export_prepared_by.php';
 
 // -- BUDGET SUMMARY CARD (same formula as every other budget page) --
 $fundBudget = getProgramBudget($pdo, ['SFP']);
@@ -261,15 +262,18 @@ $fundRequestsPhp = getFundRequests($pdo, 'SFP');
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Total</p>
-                            <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?></p>
+                            <p class="text-xl font-bold text-green-600">₱<?= number_format($fundBudget['total'], 0) ?>
+                            </p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Released</p>
-                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?></p>
+                            <p class="text-xl font-bold text-amber-600">₱<?= number_format($fundBudget['spent'], 0) ?>
+                            </p>
                         </div>
                         <div>
                             <p class="text-[10px] text-slate-400 uppercase tracking-wider">Remaining</p>
-                            <p class="text-xl font-bold text-blue-600">₱<?= number_format($fundBudget['remaining'], 0) ?></p>
+                            <p class="text-xl font-bold text-blue-600">
+                                ₱<?= number_format($fundBudget['remaining'], 0) ?></p>
                         </div>
                     </div>
                     <div class="mt-3 pt-3 border-t border-slate-100">
@@ -278,7 +282,8 @@ $fundRequestsPhp = getFundRequests($pdo, 'SFP');
                             <span>Remaining: <?= 100 - $fundBudget['pct_used'] ?>%</span>
                         </div>
                         <div class="bg-slate-100 rounded-full h-1.5 mt-1 overflow-hidden">
-                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $fundBudget['pct_used'] ?>%"></div>
+                            <div class="h-1.5 rounded-full bg-green-500" style="width:<?= $fundBudget['pct_used'] ?>%">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -347,9 +352,11 @@ $fundRequestsPhp = getFundRequests($pdo, 'SFP');
                                     data-sort="date" onclick="sortTable('date')">
                                     Date Submitted <span class="sort-icon"><i class="fas fa-sort"></i></span>
                                 </th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
                                     Status</th>
-                                <th class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                                <th
+                                    class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
                                     Date Released</th>
                                 <th
                                     class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
@@ -365,20 +372,14 @@ $fundRequestsPhp = getFundRequests($pdo, 'SFP');
                 <div class="flex items-center justify-between px-5 py-3 border-t border-slate-100">
                     <span class="text-[11px] text-slate-400" id="paginationInfo">Showing 0 of 0</span>
                     <div class="flex items-center gap-1" id="paginationControls">
-                        <button
-                            id="prevPage"
-                            type="button"
-                            onclick="changePage(-1)"
+                        <button id="prevPage" type="button" onclick="changePage(-1)"
                             class="text-[11px] text-slate-500 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                             Previous
                         </button>
 
                         <span id="pageNumbers" class="flex items-center gap-1"></span>
 
-                        <button
-                            id="nextPage"
-                            type="button"
-                            onclick="changePage(1)"
+                        <button id="nextPage" type="button" onclick="changePage(1)"
                             class="text-[11px] text-slate-500 border border-slate-200 rounded-lg px-3 py-1 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                             Next
                         </button>
@@ -409,7 +410,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'SFP');
             JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP
         ) ?>;
 
-        let currentSort = { key: 'date', dir: 'asc' };
+        let currentSort = { key: 'date', dir: 'desc' };
         let filteredData = [...fundRequests];
         let currentPage = 1;
 
@@ -489,9 +490,9 @@ $fundRequestsPhp = getFundRequests($pdo, 'SFP');
                         <td class="px-5 py-3 text-slate-600">${venue}</td>
                         <td class="px-5 py-3 text-slate-600">${participants}</td>
                         <td class="px-5 py-3 font-semibold text-slate-700">₱${budget.toLocaleString('en-PH', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        })}</td>
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    })}</td>
                         <td class="px-5 py-3">
                             <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-semibold">
                                 ${fundSource}
@@ -749,9 +750,11 @@ $fundRequestsPhp = getFundRequests($pdo, 'SFP');
 
 
         // ── CSV Export ──
-        const PREPARED_BY_NAME = 'MA. TERESA C. PONCLARA, RSW';
-        const PREPARED_BY_TITLE = 'MSWDO';
+        const PREPARED_BY_NAME =
+    <?= json_encode($preparedByName, JSON_UNESCAPED_UNICODE) ?>;
 
+        const PREPARED_BY_TITLE =
+    <?= json_encode($preparedByPosition, JSON_UNESCAPED_UNICODE) ?>;
         function getDateOnly() {
             return new Date().toLocaleDateString('en-US', {
                 year: 'numeric',

@@ -2,21 +2,8 @@
 require 'auth.php';
 requireRole(['Admin', 'Staff']);
 require 'db_connect.php';
+require 'export_prepared_by.php';
 
-/*
-|--------------------------------------------------------------------------
-| PROGRAM REPORT GROUPING
-|--------------------------------------------------------------------------
-| There are 10 PROGRAM rows in the database because AICS FBML and
-| AICS Educational are stored as separate program/fund-source entries.
-| For reporting purposes, they are ONE program: AICS.
-|
-| Therefore:
-| - Project-proposal programs = 8
-| - AICS = 1 combined program
-| - Total Programs Covered = 9
-|--------------------------------------------------------------------------
-*/
 
 $programNameMap = [
     '4Ps' => '4Ps',
@@ -31,11 +18,6 @@ $programNameMap = [
 
 $allRequests = [];
 
-/*
-|--------------------------------------------------------------------------
-| PROJECT PROPOSALS
-|--------------------------------------------------------------------------
-*/
 $proposalStmt = $pdo->prepare("
     SELECT
         pp.proposal_id,
@@ -1193,8 +1175,11 @@ $totalPrograms = count($programNameMap) + 1; // 8 project programs + 1 AICS
         }
 
         // ── CSV Export ──
-        const PREPARED_BY_NAME = 'MA. TERESA C. PONCLARA, RSW';
-        const PREPARED_BY_TITLE = 'MSWDO';
+        const PREPARED_BY_NAME =
+            <?= json_encode($preparedByName, JSON_UNESCAPED_UNICODE) ?>;
+
+        const PREPARED_BY_TITLE =
+            <?= json_encode($preparedByPosition, JSON_UNESCAPED_UNICODE) ?>;
 
         function getDateOnly() {
             return new Date().toLocaleDateString('en-US', {
