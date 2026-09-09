@@ -79,14 +79,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <i class="fas fa-users text-sm"></i> Clients
         </a>
         <a href="requestfund.php"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'barangaylist.php' ? 'active' : '' ?>">
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'requestfund.php' ? 'active' : '' ?>">
             <i class="fas fa-list text-sm"></i> Fund Request
         </a>
-        <!-- <a href="casestudy.php"
-            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'casestudy.php' ? 'active' : '' ?>">
-            <i class="fas fa-book text-sm"></i> Case Study
+        <a href="casestudyforavailments.php"
+            class="sidebar-item flex items-center gap-2.5 px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent <?= $current_page == 'casestudyforavailments.php' ? 'active' : '' ?>">
+            <i class="fas fa-book text-sm"></i> Case Study for Availments
         </a>
- -->
         <p class="px-3 pt-3 pb-1 text-[10px] uppercase tracking-widest text-white/30 font-medium">Confidential</p>
         <a href="confidential.php"
             class="sidebar-item flex items-center justify-between px-3 py-2 rounded text-[13px] text-white/60 border-l-[3px] border-transparent">

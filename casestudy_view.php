@@ -363,11 +363,6 @@ $caseStudyData = [
 
     'submitted' => [
 
-        /*
-         * CASE_STUDY does not have a status column.
-         * Therefore "Submitted" is the correct derived status.
-         */
-
         'status' =>
             'Submitted',
 
@@ -377,10 +372,11 @@ $caseStudyData = [
         'submittedBy' =>
             $submittedBy,
 
-        'designation' =>
-            !empty($caseRow['user_role'])
-            ? $caseRow['user_role']
-            : 'MSWDO'
+        
+        'preparedBy' => 'MA. TERESA C. PONCLARA, RSW',
+        'designation' => 'MSWDO',
+        'prcLicense' => '0011198',
+        'licenseValidity' => 'August 2028'
 
     ]
 
@@ -1526,12 +1522,9 @@ $caseStudyData = [
                 <div class="flex flex-col sm:flex-row items-center justify-end gap-3 mt-2 mb-8">
 
                     <button onclick="previewCaseSummaryPDF()"
-                        class="w-full sm:w-auto text-[13px] font-semibold text-white bg-mswdo-700 rounded-xl px-6 py-2.5 hover:bg-mswdo-800 transition-all shadow-sm">
-
+                        class="w-full sm:w-auto text-[13px] font-semibold text-white bg-green-700 rounded-lg px-6 py-2.5 hover:bg-mswdo-800 transition-all shadow-sm">
                         <i class="fas fa-file-pdf mr-2"></i>
-
                         View Case Summary
-
                     </button>
 
                 </div>
@@ -2622,11 +2615,6 @@ $caseStudyData = [
     c.address ||
     c.barangay
     )
-    ],
-
-    [
-    'Nearest Kin',
-    safePdf(c.nearestKin)
     ]
 
     ];
@@ -3095,6 +3083,38 @@ $caseStudyData = [
 
         }
 
+        }
+
+
+        /* ============================================================
+           IMAGE CONVERTER (for logos)
+        ============================================================ */
+
+        function imageToSquareDataURL(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = function () {
+                    try {
+                        const squareSize = Math.min(img.naturalWidth, img.naturalHeight);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = squareSize;
+                        canvas.height = squareSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img,
+                            (img.naturalWidth - squareSize) / 2,
+                            (img.naturalHeight - squareSize) / 2,
+                            squareSize, squareSize,
+                            0, 0, squareSize, squareSize
+                        );
+                        resolve(canvas.toDataURL('image/jpeg', 0.92));
+                    } catch (e) {
+                        reject(e);
+                    }
+                };
+                img.onerror = reject;
+                img.src = url;
+            });
         }
 
 
