@@ -3,8 +3,98 @@ require 'auth.php';
 requireRole(['Admin', 'Staff']);
 require 'db_connect.php';
 
+$caseStudiesJs = [];
+
+try {
+    $stmt = $pdo->prepare("
+        SELECT
+            cs.case_study_id,
+            cs.client_id,
+            cs.interview_date,
+            cs.type_of_case_study,
+            cs.problem_presented,
+            c.cl_firstname,
+            c.cl_middlename,
+            c.cl_lastname,
+            c.cl_suffix,
+            b.barangay_name,
+            a.availment_id AS linked_availment_id
+        FROM case_study cs
+        INNER JOIN client c
+            ON c.client_id = cs.client_id
+        LEFT JOIN barangay b
+            ON b.barangay_id = c.brgy_id
+        LEFT JOIN availment a
+            ON a.case_study_id = cs.case_study_id
+        WHERE
+            cs.problem_presented <> 'Initial registration'
+            AND cs.type_of_case_study IS NOT NULL
+            AND cs.type_of_case_study <> ''
+        ORDER BY
+            cs.interview_date DESC,
+            cs.case_study_id DESC
+    ");
+
+    $stmt->execute();
+    $caseStudies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($caseStudies as $row) {
+        $caseStudyId = (int) $row['case_study_id'];
+        $clientId = (int) $row['client_id'];
+
+        $firstName = trim((string) ($row['cl_firstname'] ?? ''));
+        $middleName = trim((string) ($row['cl_middlename'] ?? ''));
+        $lastName = trim((string) ($row['cl_lastname'] ?? ''));
+        $suffix = trim((string) ($row['cl_suffix'] ?? ''));
+
+        $nameParts = array_filter(
+            [$firstName, $middleName, $lastName, $suffix],
+            static fn($value) => $value !== ''
+        );
+
+        $fullName = implode(' ', $nameParts);
+
+        $caseYear = !empty($row['interview_date'])
+            ? date('Y', strtotime($row['interview_date']))
+            : date('Y');
+
+        $caseNo = 'CS-' . $caseYear . '-' . str_pad(
+            (string) $caseStudyId,
+            4,
+            '0',
+            STR_PAD_LEFT
+        );
+
+        $caseType = trim((string) ($row['type_of_case_study'] ?? ''));
+        $hasAvailment = !empty($row['linked_availment_id']);
+
+        $caseStudiesJs[] = [
+            'id' => $caseStudyId,
+            'clientId' => $clientId,
+            'caseNo' => $caseNo,
+            'firstName' => $firstName,
+            'middleName' => $middleName,
+            'lastName' => $lastName,
+            'suffix' => $suffix,
+            'fullName' => $fullName,
+            'barangay' => trim((string) ($row['barangay_name'] ?? 'Unknown Barangay')),
+            'date' => $row['interview_date'],
+            'program' => $caseType,
+            'caseType' => $caseType,
+            'hasAvailment' => $hasAvailment,
+            'availmentId' => $hasAvailment
+                ? (int) $row['linked_availment_id']
+                : null
+        ];
+    }
+} catch (PDOException $e) {
+    error_log('Case Studies for Availment database error: ' . $e->getMessage());
+    $caseStudiesJs = [];
+}
 ?>
 <!DOCTYPE html>
+<html lang="en">
+
 <html lang="en">
 
 <head>
@@ -1156,137 +1246,18 @@ require 'db_connect.php';
 
 
         /* ========================================================
-           SAMPLE DATA
+           DATABASE DATA
         ========================================================= */
 
-        const caseStudies = [
-
-            {
-                id: 1,
-
-                caseNo: 'CS-2026-0001',
-
-                firstName: 'Juan',
-
-                middleName: 'Dela',
-
-                lastName: 'Cruz',
-
-                barangay: 'Poblacion',
-
-                date: '2026-08-20',
-
-                program: 'Medical',
-
-                hasAvailment: false
-            },
-
-
-            {
-                id: 2,
-
-                caseNo: 'CS-2026-0002',
-
-                firstName: 'Maria',
-
-                middleName: 'Santos',
-
-                lastName: 'Garcia',
-
-                barangay: 'Bata',
-
-                date: '2026-08-19',
-
-                program: 'Educational',
-
-                hasAvailment: false
-            },
-
-
-            {
-                id: 3,
-
-                caseNo: 'CS-2026-0003',
-
-                firstName: 'Pedro',
-
-                middleName: 'M.',
-
-                lastName: 'Reyes',
-
-                barangay: 'Balandra',
-
-                date: '2026-08-17',
-
-                program: 'Burial',
-
-                hasAvailment: false
-            },
-
-
-            {
-                id: 4,
-
-                caseNo: 'CS-2026-0004',
-
-                firstName: 'Ana',
-
-                middleName: 'R.',
-
-                lastName: 'Villanueva',
-
-                barangay: 'Nabago',
-
-                date: '2026-08-14',
-
-                program: 'Livelihood',
-
-                hasAvailment: false
-            },
-
-
-            {
-                id: 5,
-
-                caseNo: 'CS-2026-0005',
-
-                firstName: 'Rosa',
-
-                middleName: 'L.',
-
-                lastName: 'Mendoza',
-
-                barangay: 'Bago',
-
-                date: '2026-08-10',
-
-                program: 'Financial',
-
-                hasAvailment: false
-            },
-
-
-            {
-                id: 6,
-
-                caseNo: 'CS-2026-0006',
-
-                firstName: 'Jose',
-
-                middleName: 'A.',
-
-                lastName: 'Fernandez',
-
-                barangay: 'Poblacion',
-
-                date: '2026-08-05',
-
-                program: 'Medical',
-
-                hasAvailment: false
-            }
-
-        ];
+        const caseStudies =
+            <?= json_encode(
+                $caseStudiesJs,
+                JSON_HEX_TAG |
+                JSON_HEX_APOS |
+                JSON_HEX_QUOT |
+                JSON_HEX_AMP |
+                JSON_UNESCAPED_UNICODE
+            ) ?>;
 
 
         /* ========================================================
@@ -1499,7 +1470,7 @@ require 'db_connect.php';
                             <!-- VIEW -->
 
                             <a
-                                href="casestudy_view.php"
+                                href="casestudy_view.php?id=${encodeURIComponent(row.id)}"
                                 class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5"
                             >
 
@@ -1513,8 +1484,8 @@ require 'db_connect.php';
                             <!-- ADD AICS AVAILMENT -->
 
                             <a
-                                href="#"
-                                class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5"
+                                href="aics.php?client_id=${encodeURIComponent(row.clientId)}&case_study_id=${encodeURIComponent(row.id)}"
+                                class="text-[12px] font-medium text-white bg-green-600 border border-green-600 rounded-lg px-3 py-1.5 hover:bg-green-700 transition-colors inline-flex items-center gap-1.5"
                             >
 
                                 <i class="fas fa-plus"></i>
@@ -1730,6 +1701,12 @@ require 'db_connect.php';
 
 
             document
+                .getElementById('modalAvailmentButton')
+                .href =
+                    `aics.php?client_id=${encodeURIComponent(row.clientId)}&case_study_id=${encodeURIComponent(row.id)}`;
+
+
+            document
                 .getElementById('caseModal')
                 .classList
                 .remove('modal-hidden');
@@ -1742,10 +1719,6 @@ require 'db_connect.php';
 
         }
 
-
-        /* ========================================================
-           CLOSE MODAL
-        ========================================================= */
 
         function closeModal() {
 
@@ -1763,9 +1736,6 @@ require 'db_connect.php';
         }
 
 
-        /* ========================================================
-           RESET
-        ========================================================= */
 
         function resetFilters() {
 
@@ -1794,9 +1764,6 @@ require 'db_connect.php';
         }
 
 
-        /* ========================================================
-           DATE FORMAT
-        ========================================================= */
 
         function formatDate(dateString) {
 
@@ -1818,9 +1785,6 @@ require 'db_connect.php';
         }
 
 
-        /* ========================================================
-           HTML ESCAPE
-        ========================================================= */
 
         function escapeHtml(value) {
 
@@ -1849,9 +1813,6 @@ require 'db_connect.php';
         }
 
 
-        /* ========================================================
-           MOBILE SIDEBAR
-        ========================================================= */
 
         function toggleMobileSidebar() {
 
@@ -1872,9 +1833,6 @@ require 'db_connect.php';
         }
 
 
-        /* ========================================================
-           CLOSE MODAL OUTSIDE
-        ========================================================= */
 
         document
             .getElementById('caseModal')
@@ -1894,9 +1852,6 @@ require 'db_connect.php';
             );
 
 
-        /* ========================================================
-           FILTER EVENTS
-        ========================================================= */
 
         document
             .getElementById('searchInput')
@@ -1930,9 +1885,6 @@ require 'db_connect.php';
             );
 
 
-        /* ========================================================
-           INITIALIZE
-        ========================================================= */
 
         applyFilters();
 
