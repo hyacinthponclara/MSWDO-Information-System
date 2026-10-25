@@ -3,6 +3,44 @@ require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
 
+// Get the logged-in user's actual name and position from the database.
+$preparedByName = 'Authorized MSWDO Personnel';
+$preparedByPosition = '';
+$currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+
+if ($currentUserId > 0) {
+    $preparedByStmt = $pdo->prepare("
+        SELECT user_firstname, user_middlename, user_lastname, user_position
+        FROM mswdo_user
+        WHERE user_id = ?
+        LIMIT 1
+    ");
+    $preparedByStmt->execute([$currentUserId]);
+    $preparedByUser = $preparedByStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($preparedByUser) {
+        $nameParts = [
+            trim((string) ($preparedByUser['user_firstname'] ?? '')),
+            trim((string) ($preparedByUser['user_middlename'] ?? '')),
+            trim((string) ($preparedByUser['user_lastname'] ?? ''))
+        ];
+        $preparedByName = trim(implode(' ', array_filter(
+            $nameParts,
+            static function ($part) { return $part !== ''; }
+        )));
+        $preparedByPosition = trim((string) ($preparedByUser['user_position'] ?? ''));
+
+        if ($preparedByName === '') {
+            $preparedByName = 'Authorized MSWDO Personnel';
+        }
+    }
+}
+
+$preparedByPositionDisplay = $preparedByPosition !== ''
+    ? $preparedByPosition
+    : 'Position not specified';
+
+
 function peso(float $n): string
 {
     return '₱' . number_format($n, 2);
@@ -162,14 +200,7 @@ unset($r);
 
 $generatedAt = date('F d, Y h:i:s A');
 
-$generatedBy = trim(
-    ($_SESSION['user_firstname'] ?? '') . ' ' .
-    ($_SESSION['user_lastname'] ?? '')
-);
-
-if ($generatedBy === '') {
-    $generatedBy = 'Authorized Admin';
-}
+$generatedBy = $preparedByName;
 ?>
 <!doctype html>
 <html lang="en">
@@ -690,7 +721,8 @@ body {
             <td>
                 <div class="sign-line"></div>
                 <strong>Prepared by</strong><br>
-                <span style="font-size:8.5pt;">MSWDO Personnel</span>
+                <strong><?= htmlspecialchars($preparedByName, ENT_QUOTES, 'UTF-8') ?></strong><br>
+                <span style="font-size:8.5pt;"><?= htmlspecialchars($preparedByPositionDisplay, ENT_QUOTES, 'UTF-8') ?></span>
             </td>
 
             <td>

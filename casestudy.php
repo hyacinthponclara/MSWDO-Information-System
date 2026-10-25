@@ -6,6 +6,37 @@ require 'auth.php';
 requireRole(['Admin', 'Social Worker', 'Staff']);
 require 'db_connect.php';
 
+/*
+ * Get the currently logged-in user's name for the case-study PDF.
+ * The signatory designation is "Social Worker" as requested.
+ */
+$preparedByName = '';
+$currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+
+if ($currentUserId > 0) {
+    $preparedByStmt = $pdo->prepare("
+        SELECT user_firstname, user_middlename, user_lastname
+        FROM mswdo_user
+        WHERE user_id = :user_id
+        LIMIT 1
+    ");
+    $preparedByStmt->execute([':user_id' => $currentUserId]);
+    $preparedByUser = $preparedByStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($preparedByUser) {
+        $preparedByName = trim(implode(' ', array_filter([
+            trim((string) ($preparedByUser['user_firstname'] ?? '')),
+            trim((string) ($preparedByUser['user_middlename'] ?? '')),
+            trim((string) ($preparedByUser['user_lastname'] ?? ''))
+        ], static fn($part) => $part !== '')));
+    }
+}
+
+if ($preparedByName === '') {
+    $preparedByName = 'Authorized MSWDO Personnel';
+}
+$preparedByDesignation = 'Social Worker';
+
 $client_id = filter_input(INPUT_GET, 'client_id', FILTER_VALIDATE_INT);
 if (!$client_id || $client_id <= 0) {
     header('Location: clientslist.php');
@@ -1983,10 +2014,8 @@ $familyJsonForJs = json_encode(
 
                         <div class="formal-signatory">
                             <div class="prepared">Prepared by:</div>
-                            <div id="formalPreparedBy" class="name">MA. TERESA C. PONCLARA, RSW</div>
-                            <div id="formalDesignation" class="role">MSWDO</div>
-                            <div id="formalPRC" class="role">PRC License # 0011198</div>
-                            <div id="formalLicenseValidity" class="role">Valid until August 2028</div>
+                            <div id="formalPreparedBy" class="name"><?= htmlspecialchars($preparedByName, ENT_QUOTES, 'UTF-8') ?></div>
+                            <div id="formalDesignation" class="role"><?= htmlspecialchars($preparedByDesignation, ENT_QUOTES, 'UTF-8') ?></div>
                         </div>
                     </article>
 
@@ -2387,10 +2416,8 @@ $familyJsonForJs = json_encode(
             setFormalText('formalHomeCondition', document.querySelector('[name="home_condition"]')?.value);
             setFormalText('formalRecommendation', document.querySelector('[name="recommendation"]')?.value);
 
-            setFormalText('formalPreparedBy', 'MA. TERESA C. PONCLARA, RSW');
-            setFormalText('formalDesignation', 'MSWDO');
-            setFormalText('formalPRC', 'PRC License # 0011198');
-            setFormalText('formalLicenseValidity', 'Valid until August 2028');
+            setFormalText('formalPreparedBy', <?= json_encode($preparedByName, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>);
+            setFormalText('formalDesignation', <?= json_encode($preparedByDesignation, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>);
 
             document.getElementById('caseSummaryStatus').textContent =
                 'Reviewing the current case-study values. Click Submit to store them in the database.';
@@ -2503,7 +2530,7 @@ $familyJsonForJs = json_encode(
                     indigency: document.querySelector('[name="indigency_assessment"]')?.value || ''
                 },
                 recommendation: document.querySelector('[name="recommendation"]')?.value || '',
-                submitted: { preparedBy: 'MA. TERESA C. PONCLARA, RSW', designation: 'MSWDO', prcLicense: '0011198', licenseValidity: 'August 2028' }
+                submitted: { preparedBy: <?= json_encode($preparedByName, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>, designation: <?= json_encode($preparedByDesignation, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?> }
             };
         }
 

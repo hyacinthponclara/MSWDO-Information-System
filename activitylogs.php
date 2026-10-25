@@ -228,7 +228,36 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     ];
 }
 
-// 6. New user accounts
+// 6. Case studies created by staff
+// The case_study form saves the creator in case_study.user_id and the timestamp in created_at.
+// Exclude the initial-registration snapshot because it is created during client registration,
+// not when a staff member completes an actual case study.
+$stmt = $pdo->query("\n    SELECT\n        cs.client_id,\n        cs.created_at,\n        cs.type_of_case_study,\n        cs.problem_presented,\n        CONCAT_WS(' ', cl.cl_firstname, cl.cl_lastname) AS client_name,\n        u.user_firstname,\n        u.user_lastname,\n        u.user_role\n    FROM case_study cs\n    LEFT JOIN client cl ON cl.client_id = cs.client_id\n    LEFT JOIN mswdo_user u ON u.user_id = cs.user_id\n    WHERE cs.created_at IS NOT NULL\n      AND (cs.problem_presented IS NULL OR cs.problem_presented <> 'Initial registration')\n");
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $creator = trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: 'Unknown';
+    $clientName = trim((string) ($row['client_name'] ?? '')) ?: 'Unnamed client';
+    $caseType = trim((string) ($row['type_of_case_study'] ?? ''));
+    $activityLabel = 'Case study created · ' . $clientName;
+    if ($caseType !== '') {
+        $activityLabel .= ' · ' . $caseType;
+    }
+
+    $activityLog[] = [
+        'date' => $row['created_at'],
+        'user' => $creator,
+        'role' => $row['user_role'] ?? 'Staff',
+        'activity' => $activityLabel,
+        'module' => 'Case Study',
+        'action' => 'Create',
+        'description' => 'A case study was created for ' . $clientName . ' by ' . $creator . '.',
+        'reference' => 'Client ID #' . $row['client_id'],
+        'icon' => 'fa-file-medical',
+        'iconBg' => 'bg-indigo-100',
+        'iconColor' => 'text-indigo-600',
+    ];
+}
+
+// 7. New user accounts
 $stmt = $pdo->query("
     SELECT user_id, username, user_firstname, user_lastname, user_role, user_date_joined
     FROM mswdo_user
@@ -249,7 +278,7 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     ];
 }
 
-// 7. Most recent login per user (only the latest is tracked — no login history table)
+// 8. Most recent login per user (only the latest is tracked — no login history table)
 $stmt = $pdo->query("
     SELECT user_id, user_firstname, user_lastname, user_role, user_last_login
     FROM mswdo_user
@@ -717,6 +746,10 @@ unset($entry);
 
                         <option value="Client Records">
                             Client Records
+                        </option>
+
+                        <option value="Case Study">
+                            Case Study
                         </option>
 
                         <option value="AICS">

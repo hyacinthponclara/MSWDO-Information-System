@@ -3,6 +3,44 @@ require 'auth.php';
 requireRole(['Admin']);
 require 'db_connect.php';
 
+// Get the logged-in user's actual name and position from the database.
+$preparedByName = 'Authorized MSWDO Personnel';
+$preparedByPosition = '';
+$currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+
+if ($currentUserId > 0) {
+    $preparedByStmt = $pdo->prepare("
+        SELECT user_firstname, user_middlename, user_lastname, user_position
+        FROM mswdo_user
+        WHERE user_id = ?
+        LIMIT 1
+    ");
+    $preparedByStmt->execute([$currentUserId]);
+    $preparedByUser = $preparedByStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($preparedByUser) {
+        $nameParts = [
+            trim((string) ($preparedByUser['user_firstname'] ?? '')),
+            trim((string) ($preparedByUser['user_middlename'] ?? '')),
+            trim((string) ($preparedByUser['user_lastname'] ?? ''))
+        ];
+        $preparedByName = trim(implode(' ', array_filter(
+            $nameParts,
+            static function ($part) { return $part !== ''; }
+        )));
+        $preparedByPosition = trim((string) ($preparedByUser['user_position'] ?? ''));
+
+        if ($preparedByName === '') {
+            $preparedByName = 'Authorized MSWDO Personnel';
+        }
+    }
+}
+
+$preparedByPositionDisplay = $preparedByPosition !== ''
+    ? $preparedByPosition
+    : 'Position not specified';
+
+
 function peso(float $n): string { return '₱' . number_format($n, 2); }
 
 $stmt = $pdo->query("
@@ -124,7 +162,7 @@ Programs with low utilization should not automatically receive additional funds.
 </p>
 
 <div class="signatures">
-<div class="sig"><div class="line"><strong>Prepared by</strong><br>MSWDO Staff</div></div>
+<div class="sig"><div class="line"><strong>Prepared by</strong><br><strong><?= htmlspecialchars($preparedByName, ENT_QUOTES, 'UTF-8') ?></strong><br><?= htmlspecialchars($preparedByPositionDisplay, ENT_QUOTES, 'UTF-8') ?></div></div>
 <div class="sig"><div class="line"><strong>Reviewed by</strong><br>Municipal Social Welfare and Development Officer</div></div>
 </div>
 
