@@ -1617,6 +1617,37 @@ $caseStudyData = [
                 .replace(/'/g, '&#039;');
         }
 
+        /* ============================================================
+           PDF TEXT CLEANER
+           jsPDF's built-in Helvetica only supports WinAnsi (Latin-1)
+           characters. Anything outside it (e.g. the peso sign ₱,
+           curly quotes) corrupts the whole string: letters get spaced
+           out and line widths are miscalculated. This converts such
+           characters to safe equivalents. Do NOT HTML-escape here —
+           the PDF is not HTML, so &amp; / &#039; would print literally.
+        ============================================================ */
+        function pdfText(value) {
+
+            if (
+                value === null ||
+                value === undefined ||
+                value === ''
+            ) {
+                return '—';
+            }
+
+            return String(value)
+                .replace(/\u20B1\s*/g, 'PHP ')          /* ₱ -> PHP  */
+                .replace(/[\u2018\u2019\u201A\u2032]/g, "'")
+                .replace(/[\u201C\u201D\u201E\u2033]/g, '"')
+                .replace(/\u2248/g, '~')                /* ≈ */
+                .replace(/[\u00A0\u2007\u202F]/g, ' ')  /* non-breaking spaces */
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')  /* zero-width chars */
+                /* anything still outside Latin-1 / common WinAnsi extras -> ? */
+                .replace(/[^\u0000-\u00FF\u2013\u2014\u2022\u2026\u20AC]/g, '?');
+        }
+
+
 
         function escapeHtml(value) {
 
@@ -2303,7 +2334,7 @@ $caseStudyData = [
 
     const lines =
     doc.splitTextToSize(
-    safePdf(text),
+    pdfText(text),
     width
     );
 
@@ -2557,7 +2588,7 @@ $caseStudyData = [
 
 
     doc.text(
-    safePdf(
+    pdfText(
     caseStudyData.interview?.date
     ),
     pageW / 2,
@@ -2587,12 +2618,12 @@ $caseStudyData = [
 
     [
     'Name',
-    safePdf(c.fullName)
+    pdfText(c.fullName)
     ],
 
     [
     'Age',
-    safePdf(
+    pdfText(
     c.age
     ? c.age + ' YEARS OLD'
     : ''
@@ -2601,17 +2632,17 @@ $caseStudyData = [
 
     [
     'Sex',
-    safePdf(c.sex)
+    pdfText(c.sex)
     ],
 
     [
     'Date of Birth',
-    safePdf(c.dateOfBirth)
+    pdfText(c.dateOfBirth)
     ],
 
     [
     'Address',
-    safePdf(
+    pdfText(
     c.address ||
     c.barangay
     )
@@ -2701,19 +2732,19 @@ $caseStudyData = [
 
     String(i + 1),
 
-    safePdf(m.name),
+    pdfText(m.name),
 
-    safePdf(m.age),
+    pdfText(m.age),
 
-    safePdf(
+    pdfText(
     m.relationship
     ),
 
-    safePdf(
+    pdfText(
     m.education
     ),
 
-    safePdf(
+    pdfText(
     m.occupation
     )
 
@@ -2946,7 +2977,7 @@ $caseStudyData = [
 
     doc.text(
 
-    safePdf(
+    pdfText(
     caseStudyData.submitted
     ?.preparedBy ||
     caseStudyData.submitted
@@ -2970,7 +3001,7 @@ $caseStudyData = [
 
     doc.text(
 
-    safePdf(
+    pdfText(
     caseStudyData.submitted
     ?.designation ||
     'MSWDO'
