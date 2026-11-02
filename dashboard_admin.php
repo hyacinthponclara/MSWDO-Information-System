@@ -795,7 +795,7 @@ function timeAgo(string $datetime): string
         <div class="animate-fade-up bg-white rounded-2xl border border-slate-200 flex flex-col overflow-hidden">
           <div class="flex justify-between items-center px-4 py-3 border-b border-slate-200">
             <h2 class="text-[13px] font-semibold text-forest-600">Recent Activity</h2>
-            <a href="#" class="text-[11px] text-forest-500 font-medium">All →</a>
+            <a href="activitylogs.php" class="text-[11px] text-forest-500 font-medium">All →</a>
           </div>
           <div class="divide-y divide-slate-100 flex-1 overflow-y-auto scroll-thin">
 
