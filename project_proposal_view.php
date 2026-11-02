@@ -388,6 +388,12 @@ $request = [
 
         <main class="p-6 overflow-y-auto">
             <div class="max-w-3xl mx-auto space-y-5">
+                <?php if (($_GET['updated'] ?? '') === '1'): ?>
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] text-emerald-700"
+                        role="status">
+                        <i class="fas fa-check-circle mr-1"></i> Fund request updated successfully.
+                    </div>
+                <?php endif; ?>
 
                 <!-- Page Title -->
                 <div class="animate-fade-up flex flex-wrap items-center justify-between gap-3">

@@ -449,7 +449,6 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
 
         let currentSort = { key: 'date', dir: 'desc' };
         let filteredData = [...transactions];
-        let currentPage = 1;
 
         // ── Type options based on budget source ──
         function getTypeOptions(budgetSource) {
@@ -502,15 +501,6 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
             return status || 'Approved';
         }
 
-        function escHtml(v) {
-            return String(v ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
         function renderTable(data) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
@@ -518,18 +508,18 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
                 const tr = document.createElement('tr');
                 tr.className = 'table-row';
                 tr.innerHTML = `
-                    <td class="px-5 py-3 font-medium text-green-700">${escHtml(row.beneficiary)}</td>
+                    <td class="px-5 py-3 font-medium text-green-700">${row.beneficiary}</td>
                     <td class="px-5 py-3"><span class="${row.budgetSource === 'FBML' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'} px-2 py-0.5 rounded text-[10px] font-semibold">AICS ${row.budgetSource}</span></td>
-                    <td class="px-5 py-3 text-slate-600">${escHtml(row.type)}</td>
+                    <td class="px-5 py-3 text-slate-600">${row.type}</td>
                     <td class="px-5 py-3 font-semibold text-slate-700">₱${row.amount.toLocaleString()}</td>
-                    <td class="px-5 py-3 text-slate-400">${escHtml(row.date)}</td>
+                    <td class="px-5 py-3 text-slate-400">${row.date}</td>
                     <td class="px-5 py-3">
                         <span class="px-2 py-1 rounded-full text-[10px] font-semibold ${statusClass(row.status)}">
-                            ${escHtml(statusLabel(row.status))}
+                            ${statusLabel(row.status)}
                         </span>
                     </td>
                     <td class="px-5 py-3 text-slate-400">
-                        ${row.dateReleased ? escHtml(row.dateReleased) : '—'}
+                        ${row.dateReleased ? row.dateReleased : '—'}
                     </td>
                     <td class="px-5 py-3">
                         <a href="aics_view.php?availment_id=${row.availmentId}" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
@@ -793,15 +783,6 @@ function formatPeso(value) {
 }
 
 
-// jsPDF's built-in Helvetica has no peso glyph, so use "PHP" in PDFs
-function formatPesoPdf(value) {
-    return `PHP ${Number(value || 0).toLocaleString('en-PH', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    })}`;
-}
-
-
 // ============================================================
 // GET FILTERED EXPORT DATA
 // IMPORTANT: exports ALL filtered records,
@@ -867,7 +848,7 @@ async function exportToXlsx() {
 
         // LANDSCAPE
         ws.pageSetup = {
-            paperSize: ws.PAPERSIZE_LEGAL,
+            paperSize: 5,
             orientation: 'landscape',
             fitToPage: true,
             fitToWidth: 1,
@@ -963,7 +944,8 @@ async function exportToXlsx() {
             cell.font = {
                 name: 'Arial',
                 size: rowNumber === 5 ? 13 : 11,
-                bold: rowNumber !== 1 && rowNumber !== 6
+                bold: rowNumber !== 1 && rowNumber !== 6,
+                color: { argb: 'FF000000' }
             };
 
             cell.alignment = {
@@ -1001,7 +983,8 @@ async function exportToXlsx() {
 
         ws.getCell(7, 1).font = {
             name: 'Arial',
-            size: 10
+            size: 11,
+            color: { argb: 'FF000000' }
         };
 
         ws.getCell(7, 1).alignment = {
@@ -1024,8 +1007,9 @@ async function exportToXlsx() {
 
             cell.font = {
                 name: 'Arial',
-                size: 10,
-                bold: true
+                size: 11,
+                bold: true,
+                color: { argb: 'FF000000' }
             };
 
             cell.alignment = {
@@ -1043,10 +1027,10 @@ async function exportToXlsx() {
             };
 
             cell.border = {
-                top: { style: 'thin' },
-                left: { style: 'thin' },
-                bottom: { style: 'thin' },
-                right: { style: 'thin' }
+                top: { style: 'thin', color: { argb: 'FF000000' } },
+                left: { style: 'thin', color: { argb: 'FF000000' } },
+                bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                right: { style: 'thin', color: { argb: 'FF000000' } }
             };
 
             ws.getColumn(index + 1).width =
@@ -1102,7 +1086,8 @@ async function exportToXlsx() {
 
                 cell.font = {
                     name: 'Arial',
-                    size: 10
+                    size: 11,
+                    color: { argb: 'FF000000' }
                 };
 
                 cell.alignment = {
@@ -1117,10 +1102,10 @@ async function exportToXlsx() {
                 };
 
                 cell.border = {
-                    top: { style: 'thin' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'thin' },
-                    right: { style: 'thin' }
+                    top: { style: 'thin', color: { argb: 'FF000000' } },
+                    left: { style: 'thin', color: { argb: 'FF000000' } },
+                    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                    right: { style: 'thin', color: { argb: 'FF000000' } }
                 };
 
 
@@ -1149,8 +1134,9 @@ async function exportToXlsx() {
 
         totalRow.getCell(1).font = {
             name: 'Arial',
-            size: 10,
-            bold: true
+            size: 11,
+            bold: true,
+            color: { argb: 'FF000000' }
         };
 
 
@@ -1162,8 +1148,9 @@ async function exportToXlsx() {
 
         totalRow.getCell(4).font = {
             name: 'Arial',
-            size: 10,
-            bold: true
+            size: 11,
+            bold: true,
+            color: { argb: 'FF000000' }
         };
 
 
@@ -1185,10 +1172,10 @@ async function exportToXlsx() {
             };
 
             cell.border = {
-                top: { style: 'thin' },
-                left: { style: 'thin' },
-                bottom: { style: 'thin' },
-                right: { style: 'thin' }
+                top: { style: 'thin', color: { argb: 'FF000000' } },
+                left: { style: 'thin', color: { argb: 'FF000000' } },
+                bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                right: { style: 'thin', color: { argb: 'FF000000' } }
             };
 
         }
@@ -1339,6 +1326,7 @@ async function exportToPdf() {
             doc.internal.pageSize.getWidth();
 
         const margin = 30;
+        const pageHeight = doc.internal.pageSize.getHeight();
 
 
         // --------------------------------------------------------
@@ -1464,7 +1452,7 @@ async function exportToPdf() {
 
                     row.Type,
 
-                    formatPesoPdf(row.Amount),
+                    formatPeso(row.Amount),
 
                     formatDate(row['Date Applied']),
 
@@ -1481,7 +1469,7 @@ async function exportToPdf() {
             '',
             '',
             'TOTAL',
-            formatPesoPdf(totalAmount),
+            formatPeso(totalAmount),
             '',
             '',
             ''
@@ -1508,7 +1496,10 @@ async function exportToPdf() {
 
             styles: {
                 font: 'helvetica',
-                fontSize: 9,
+                fontSize: 11,
+                textColor: [0, 0, 0],
+                lineColor: [0, 0, 0],
+                lineWidth: 0.5,
                 cellPadding: 4,
                 valign: 'middle'
             },
@@ -1517,44 +1508,46 @@ async function exportToPdf() {
                 fillColor: [240, 240, 240],
                 textColor: [0, 0, 0],
                 fontStyle: 'bold',
-                fontSize: 9,
+                fontSize: 11,
+                lineColor: [0, 0, 0],
+                lineWidth: 0.5,
                 halign: 'center'
             },
 
             columnStyles: {
 
                 0: {
-                    cellWidth: 150,
+                    cellWidth: 200,
                     halign: 'left'
                 },
 
                 1: {
-                    cellWidth: 100,
+                    cellWidth: 140,
                     halign: 'center'
                 },
 
                 2: {
-                    cellWidth: 85,
+                    cellWidth: 100,
                     halign: 'center'
                 },
 
                 3: {
-                    cellWidth: 100,
+                    cellWidth: 110,
                     halign: 'right'
                 },
 
                 4: {
-                    cellWidth: 95,
+                    cellWidth: 140,
                     halign: 'center'
                 },
 
                 5: {
-                    cellWidth: 85,
+                    cellWidth: 120,
                     halign: 'center'
                 },
 
                 6: {
-                    cellWidth: 95,
+                    cellWidth: 138,
                     halign: 'center'
                 }
 
@@ -1591,11 +1584,15 @@ async function exportToPdf() {
         // FOOTER
         // --------------------------------------------------------
 
-        const finalY =
+        let finalY =
             doc.lastAutoTable.finalY + 30;
 
+        if (finalY + 44 > pageHeight - 20) {
+            doc.addPage();
+            finalY = 60;
+        }
 
-        doc.setFontSize(10);
+        doc.setFontSize(11);
 
         doc.setFont(
             'helvetica',
@@ -1641,7 +1638,7 @@ async function exportToPdf() {
         );
 
 
-        doc.setFontSize(8);
+        doc.setFontSize(9);
 
         doc.setFont(
             'helvetica',
@@ -1737,6 +1734,15 @@ async function exportToDocx() {
             'Date Released'
         ];
 
+        const columnWidths = [
+            3500,
+            2300,
+            1600,
+            1800,
+            2300,
+            1800,
+            2500
+        ];
 
         let totalAmount = 0;
 
@@ -1748,11 +1754,11 @@ async function exportToDocx() {
 
         tableRows += `
             <w:tr>
-                ${columns.map(col => `
+                ${columns.map((col, index) => `
                     <w:tc>
                         <w:tcPr>
-                            <w:tcW w:w="2000" w:type="dxa"/>
-                            <w:shd w:val="clear" w:color="auto" w:fill="EFEFEF"/>
+                            <w:shd w:fill="EFEFEF"/>
+                            <w:tcW w:w="${columnWidths[index]}" w:type="dxa"/>
                         </w:tcPr>
 
                         <w:p>
@@ -1762,11 +1768,11 @@ async function exportToDocx() {
 
                             <w:r>
                                 <w:rPr>
+                                    <w:b/>
                                     <w:rFonts
                                         w:ascii="Arial"
                                         w:hAnsi="Arial"/>
-                                    <w:b/>
-                                    <w:sz w:val="18"/>
+                                    <w:sz w:val="22"/>
                                 </w:rPr>
 
                                 <w:t>
@@ -1815,7 +1821,7 @@ async function exportToDocx() {
 
                             <w:tcPr>
                                 <w:tcW
-                                    w:w="2000"
+                                    w:w="${columnWidths[index]}"
                                     w:type="dxa"/>
 
                                 <w:tcBorders>
@@ -1855,7 +1861,7 @@ async function exportToDocx() {
                                             w:ascii="Arial"
                                             w:hAnsi="Arial"/>
 
-                                        <w:sz w:val="18"/>
+                                        <w:sz w:val="22"/>
                                     </w:rPr>
 
                                     <w:t>
@@ -1882,13 +1888,16 @@ async function exportToDocx() {
 
                 <w:tc>
                     <w:tcPr>
-                        <w:shd w:val="clear" w:color="auto" w:fill="EFEFEF"/>
+                        <w:tcW w:w="${columnWidths[0]}" w:type="dxa"/>
+                        <w:shd w:fill="EFEFEF"/>
                     </w:tcPr>
 
                     <w:p>
                         <w:r>
                             <w:rPr>
                                 <w:b/>
+                                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                                <w:sz w:val="22"/>
                             </w:rPr>
 
                             <w:t>TOTAL</w:t>
@@ -1897,16 +1906,19 @@ async function exportToDocx() {
                 </w:tc>
 
                 <w:tc>
+                    <w:tcPr><w:tcW w:w="${columnWidths[1]}" w:type="dxa"/></w:tcPr>
                     <w:p/>
                 </w:tc>
 
                 <w:tc>
+                    <w:tcPr><w:tcW w:w="${columnWidths[2]}" w:type="dxa"/></w:tcPr>
                     <w:p/>
                 </w:tc>
 
                 <w:tc>
                     <w:tcPr>
-                        <w:shd w:val="clear" w:color="auto" w:fill="EFEFEF"/>
+                        <w:tcW w:w="${columnWidths[3]}" w:type="dxa"/>
+                        <w:shd w:fill="EFEFEF"/>
                     </w:tcPr>
 
                     <w:p>
@@ -1917,6 +1929,8 @@ async function exportToDocx() {
                         <w:r>
                             <w:rPr>
                                 <w:b/>
+                                <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+                                <w:sz w:val="22"/>
                             </w:rPr>
 
                             <w:t>
@@ -1926,9 +1940,9 @@ async function exportToDocx() {
                     </w:p>
                 </w:tc>
 
-                <w:tc><w:p/></w:tc>
-                <w:tc><w:p/></w:tc>
-                <w:tc><w:p/></w:tc>
+                <w:tc><w:tcPr><w:tcW w:w="${columnWidths[4]}" w:type="dxa"/></w:tcPr><w:p/></w:tc>
+                <w:tc><w:tcPr><w:tcW w:w="${columnWidths[5]}" w:type="dxa"/></w:tcPr><w:p/></w:tc>
+                <w:tc><w:tcPr><w:tcW w:w="${columnWidths[6]}" w:type="dxa"/></w:tcPr><w:p/></w:tc>
 
             </w:tr>
         `;
@@ -1938,7 +1952,8 @@ async function exportToDocx() {
         // DOCUMENT XML
         // --------------------------------------------------------
 
-        const documentXml = `\x3C?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        const documentXml = `
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <w:document
     xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -1972,10 +1987,10 @@ async function exportToDocx() {
 
             <w:r>
                 <w:rPr>
+                    <w:b/>
                     <w:rFonts
                         w:ascii="Arial"
                         w:hAnsi="Arial"/>
-                    <w:b/>
                     <w:sz w:val="22"/>
                 </w:rPr>
 
@@ -1993,10 +2008,10 @@ async function exportToDocx() {
 
             <w:r>
                 <w:rPr>
+                    <w:b/>
                     <w:rFonts
                         w:ascii="Arial"
                         w:hAnsi="Arial"/>
-                    <w:b/>
                     <w:sz w:val="22"/>
                 </w:rPr>
 
@@ -2014,10 +2029,10 @@ async function exportToDocx() {
 
             <w:r>
                 <w:rPr>
+                    <w:b/>
                     <w:rFonts
                         w:ascii="Arial"
                         w:hAnsi="Arial"/>
-                    <w:b/>
                     <w:sz w:val="22"/>
                 </w:rPr>
 
@@ -2035,10 +2050,10 @@ async function exportToDocx() {
 
             <w:r>
                 <w:rPr>
+                    <w:b/>
                     <w:rFonts
                         w:ascii="Arial"
                         w:hAnsi="Arial"/>
-                    <w:b/>
                     <w:sz w:val="28"/>
                 </w:rPr>
 
@@ -2076,8 +2091,17 @@ async function exportToDocx() {
             <w:tblPr>
 
                 <w:tblW
-                    w:w="14000"
+                    w:w="15800"
                     w:type="dxa"/>
+
+                <w:tblBorders>
+                    <w:top w:val="single" w:sz="4" w:color="000000"/>
+                    <w:left w:val="single" w:sz="4" w:color="000000"/>
+                    <w:bottom w:val="single" w:sz="4" w:color="000000"/>
+                    <w:right w:val="single" w:sz="4" w:color="000000"/>
+                    <w:insideH w:val="single" w:sz="4" w:color="000000"/>
+                    <w:insideV w:val="single" w:sz="4" w:color="000000"/>
+                </w:tblBorders>
 
                 <w:tblLayout
                     w:type="fixed"/>
@@ -2085,9 +2109,8 @@ async function exportToDocx() {
             </w:tblPr>
 
             <w:tblGrid>
-                <w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/>
+                ${columnWidths.map(width => `<w:gridCol w:w="${width}"/>`).join('')}
             </w:tblGrid>
-
 
             ${tableRows}
 
@@ -2165,7 +2188,8 @@ async function exportToDocx() {
         // DOCX FILE STRUCTURE
         // --------------------------------------------------------
 
-        const contentTypes = `\x3C?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        const contentTypes = `
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <Types
     xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -2186,7 +2210,8 @@ async function exportToDocx() {
 `;
 
 
-        const relationships = `\x3C?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        const relationships = `
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <Relationships
     xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -2200,7 +2225,8 @@ async function exportToDocx() {
 `;
 
 
-        const wordRelationships = `\x3C?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        const wordRelationships = `
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <Relationships
     xmlns="http://schemas.openxmlformats.org/package/2006/relationships">

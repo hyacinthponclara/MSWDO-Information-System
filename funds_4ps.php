@@ -363,7 +363,6 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                                 <th
                                     class="text-left px-5 py-3 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
                                     Action</th>
-                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100" id="tableBody">
@@ -796,6 +795,11 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
             });
         }
 
+        function getParticipantCount(value) {
+            const count = String(value ?? '').trim().match(/^\d+/);
+            return count ? Number(count[0]) : 0;
+        }
+
         function getExportData() {
             // Export the complete filtered dataset, not just the current page.
             return filteredData.map(row => ({
@@ -830,8 +834,8 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                     { header: 'REQUEST ID', key: 'Request ID', width: 16 },
                     { header: 'TITLE / BENEFICIARY', key: 'Title / Beneficiary', width: 43 },
                     { header: 'DURATION', key: 'Duration', width: 14 },
-                    { header: 'VENUE', key: 'Venue', width: 36 },
-                    { header: 'PARTICIPANTS', key: 'Participants', width: 17 },
+                    { header: 'VENUE', key: 'Venue', width: 30 },
+                    { header: 'PARTICIPANTS', key: 'Participants', width: 30 },
                     { header: 'BUDGET', key: 'Budget', width: 22 },
                     { header: 'SOURCE OF FUND', key: 'Source of Fund', width: 26 },
                     { header: 'DATE SUBMITTED', key: 'Date Submitted', width: 19 },
@@ -856,7 +860,7 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                 const ws = wb.addWorksheet('Program Report');
 
                 ws.pageSetup = {
-                    paperSize: ws.PAPERSIZE_LEGAL,
+                    paperSize: 5,
                     orientation: 'landscape',
                     fitToPage: true,
                     fitToWidth: 1,
@@ -881,13 +885,6 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                 const boldFont = {
                     name: 'Arial',
                     size: 11,
-                    bold: true,
-                    color: { argb: BLACK }
-                };
-
-                const titleFont = {
-                    name: 'Arial',
-                    size: 13,
                     bold: true,
                     color: { argb: BLACK }
                 };
@@ -992,7 +989,7 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                         }
                     });
 
-                    totalParticipants += Number(rowData.Participants || 0);
+                    totalParticipants += getParticipantCount(rowData.Participants);
                     totalBudget += Number(rowData.Budget || 0);
                 });
 
@@ -1154,65 +1151,6 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
 
                 const margin = 30;
 
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(11);
-
-                doc.text(
-                    'Republic of the Philippines',
-                    pageWidth / 2,
-                    36,
-                    { align: 'center' }
-                );
-
-                doc.setFont('helvetica', 'bold');
-
-                doc.text(
-                    'Province of Negros Occidental',
-                    pageWidth / 2,
-                    54,
-                    { align: 'center' }
-                );
-
-                doc.text(
-                    'Municipality of San Enrique',
-                    pageWidth / 2,
-                    72,
-                    { align: 'center' }
-                );
-
-                doc.text(
-                    'Municipal Social Welfare and Development Office',
-                    pageWidth / 2,
-                    90,
-                    { align: 'center' }
-                );
-
-                doc.setFontSize(13);
-
-                doc.text(
-                    'PROGRAM FUND REQUEST REPORT',
-                    pageWidth / 2,
-                    120,
-                    { align: 'center' }
-                );
-
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'normal');
-
-                doc.text(
-                    `Calendar Year ${new Date().getFullYear()}`,
-                    pageWidth / 2,
-                    138,
-                    { align: 'center' }
-                );
-
-                doc.line(
-                    margin,
-                    148,
-                    pageWidth - margin,
-                    148
-                );
-
                 const rows = getExportData();
 
                 const cols = [
@@ -1255,7 +1193,7 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                 rows.forEach(r => {
 
                     totalParticipants +=
-                        Number(r.Participants || 0);
+                        getParticipantCount(r.Participants);
 
                     totalBudget +=
                         Number(r.Budget || 0);
@@ -1286,27 +1224,7 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
 
                 });
 
-                const ROWS_PER_PAGE = 15;
-                const DATA_ROWS_PER_PAGE = ROWS_PER_PAGE - 1;
-
-                // Split the data into groups of 14 records.
-                // The header is added automatically to every page.
-                for (
-                    let start = 0;
-                    start < data.length;
-                    start += DATA_ROWS_PER_PAGE
-                ) {
-
-                    const pageRows = data.slice(
-                        start,
-                        start + DATA_ROWS_PER_PAGE
-                    );
-
-                    // Add a new page for every page after the first
-                    if (start > 0) {
-                        doc.addPage();
-                    }
-
+                const drawPageHeader = () => {
                     // Header
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(11);
@@ -1366,69 +1284,58 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                         pageWidth - margin,
                         148
                     );
+                };
 
-                    // TABLE
-                    doc.autoTable({
+                doc.autoTable({
+                    startY: 160,
+                    head: [cols.map(c => c.header)],
+                    body: data.map(r => cols.map(c => r[c.dataKey] ?? '')),
+                    theme: 'grid',
+                    headStyles: {
+                        fillColor: [240, 240, 240],
+                        textColor: [0, 0, 0],
+                        lineColor: [0, 0, 0],
+                        lineWidth: 0.5,
+                        fontSize: 11,
+                        fontStyle: 'bold',
+                        valign: 'middle'
+                    },
+                    bodyStyles: {
+                        textColor: [0, 0, 0],
+                        lineColor: [0, 0, 0],
+                        lineWidth: 0.5,
+                        fontSize: 11,
+                        cellPadding: 4,
+                        valign: 'middle'
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 65, halign: 'left' },
+                        1: { cellWidth: 178, halign: 'center' },
+                        2: { cellWidth: 62, halign: 'center' },
+                        3: { cellWidth: 118, halign: 'center' },
+                        4: { cellWidth: 118, halign: 'center' },
+                        5: { cellWidth: 89, halign: 'center' },
+                        6: { cellWidth: 98, halign: 'center' },
+                        7: { cellWidth: 80, halign: 'center' },
+                        8: { cellWidth: 65, halign: 'center' },
+                        9: { cellWidth: 75, halign: 'center' }
+                    },
+                    margin: {
+                        left: margin,
+                        right: margin
+                    },
+                    rowPageBreak: 'avoid',
+                    willDrawPage: drawPageHeader
+                });
 
-                        startY: 160,
-
-                        head: [
-                            cols.map(c => c.header)
-                        ],
-
-                        body:
-                            pageRows.map(r =>
-                                cols.map(c =>
-                                    r[c.dataKey] ?? ''
-                                )
-                            ),
-
-                        theme: 'grid',
-
-                        headStyles: {
-                            fillColor: [240, 240, 240],
-                            textColor: [0, 0, 0],
-                            fontSize: 9,
-                            fontStyle: 'bold',
-                            valign: 'middle'
-                        },
-
-                        bodyStyles: {
-                            fontSize: 9,
-                            cellPadding: 4,
-                            valign: 'middle'
-                        },
-
-                        columnStyles: {
-
-                            0: { cellWidth: 72, halign: 'left' },
-                            1: { cellWidth: 85, halign: 'center' },
-                            2: { cellWidth: 52, halign: 'center' },
-                            3: { cellWidth: 165, halign: 'left' },
-                            4: { cellWidth: 48, halign: 'center' },
-                            5: { cellWidth: 105, halign: 'left' },
-                            6: { cellWidth: 50, halign: 'center' },
-                            7: { cellWidth: 78, halign: 'right' },
-                            8: { cellWidth: 90, halign: 'center' },
-                            9: { cellWidth: 75, halign: 'center' },
-                            10: { cellWidth: 58, halign: 'center' },
-                            11: { cellWidth: 70, halign: 'center' }
-
-                        },
-
-                        margin: {
-                            left: margin,
-                            right: margin
-                        },
-
-                        pageBreak: 'avoid'
-
-                    });
-
-                }
-
-                const finalY =
+                let finalY =
                     doc.lastAutoTable.finalY + 30;
+
+                if (finalY + 48 > pageHeight - 24) {
+                    doc.addPage();
+                    drawPageHeader();
+                    finalY = 180;
+                }
 
                 doc.setFontSize(11);
 
@@ -1549,15 +1456,15 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
 
                 const widths = [
                     1100,
-                    3250,
-                    1100,
-                    2250,
-                    1150,
-                    1550,
-                    1750,
+                    3000,
+                    1050,
+                    2000,
+                    2000,
+                    1500,
+                    1650,
                     1350,
-                    1150,
-                    1350
+                    1100,
+                    1250
                 ];
 
                 let totalParticipants = 0;
@@ -1566,7 +1473,7 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                 rows.forEach(r => {
 
                     totalParticipants +=
-                        Number(r.Participants || 0);
+                        getParticipantCount(r.Participants);
 
                     totalBudget +=
                         Number(r.Budget || 0);
@@ -1678,8 +1585,6 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                     '',
                     '',
                     '',
-                    '',
-                    '',
                     totalParticipants,
 
                     `₱${totalBudget.toLocaleString(
@@ -1689,7 +1594,6 @@ $fundRequestsPhp = getFundRequests($pdo, '4Ps');
                             maximumFractionDigits: 2
                         }
                     )}`,
-
                     '',
                     '',
                     '',

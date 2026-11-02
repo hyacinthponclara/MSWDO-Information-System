@@ -801,6 +801,11 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
             });
         }
 
+        function getParticipantCount(value) {
+            const count = String(value ?? '').trim().match(/^\d+/);
+            return count ? Number(count[0]) : 0;
+        }
+
         function getExportData() {
             // Export the complete filtered dataset, not just the current page.
             return filteredData.map(row => ({
@@ -835,8 +840,8 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
                     { header: 'REQUEST ID', key: 'Request ID', width: 16 },
                     { header: 'TITLE / BENEFICIARY', key: 'Title / Beneficiary', width: 43 },
                     { header: 'DURATION', key: 'Duration', width: 14 },
-                    { header: 'VENUE', key: 'Venue', width: 36 },
-                    { header: 'PARTICIPANTS', key: 'Participants', width: 17 },
+                    { header: 'VENUE', key: 'Venue', width: 30 },
+                    { header: 'PARTICIPANTS', key: 'Participants', width: 30 },
                     { header: 'BUDGET', key: 'Budget', width: 22 },
                     { header: 'SOURCE OF FUND', key: 'Source of Fund', width: 26 },
                     { header: 'DATE SUBMITTED', key: 'Date Submitted', width: 19 },
@@ -861,7 +866,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
                 const ws = wb.addWorksheet('Program Report');
 
                 ws.pageSetup = {
-                    paperSize: ws.PAPERSIZE_LEGAL,
+                    paperSize: 5,
                     orientation: 'landscape',
                     fitToPage: true,
                     fitToWidth: 1,
@@ -997,7 +1002,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
                         }
                     });
 
-                    totalParticipants += Number(rowData.Participants || 0);
+                    totalParticipants += getParticipantCount(rowData.Participants);
                     totalBudget += Number(rowData.Budget || 0);
                 });
 
@@ -1260,7 +1265,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
                 rows.forEach(r => {
 
                     totalParticipants +=
-                        Number(r.Participants || 0);
+                        getParticipantCount(r.Participants);
 
                     totalBudget +=
                         Number(r.Budget || 0);
@@ -1393,31 +1398,34 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
                         headStyles: {
                             fillColor: [240, 240, 240],
                             textColor: [0, 0, 0],
-                            fontSize: 9,
+                            fontSize: 11,
                             fontStyle: 'bold',
+                            lineColor: [0, 0, 0],
+                            lineWidth: 0.5,
                             valign: 'middle'
                         },
 
                         bodyStyles: {
-                            fontSize: 9,
+                            fontSize: 11,
+                            textColor: [0, 0, 0],
+                            lineColor: [0, 0, 0],
+                            lineWidth: 0.5,
                             cellPadding: 4,
                             valign: 'middle'
                         },
 
                         columnStyles: {
 
-                            0: { cellWidth: 72, halign: 'left' },
-                            1: { cellWidth: 85, halign: 'center' },
-                            2: { cellWidth: 52, halign: 'center' },
-                            3: { cellWidth: 165, halign: 'left' },
-                            4: { cellWidth: 48, halign: 'center' },
-                            5: { cellWidth: 105, halign: 'left' },
-                            6: { cellWidth: 50, halign: 'center' },
-                            7: { cellWidth: 78, halign: 'right' },
-                            8: { cellWidth: 90, halign: 'center' },
-                            9: { cellWidth: 75, halign: 'center' },
-                            10: { cellWidth: 58, halign: 'center' },
-                            11: { cellWidth: 70, halign: 'center' }
+                            0: { cellWidth: 65, halign: 'left' },
+                            1: { cellWidth: 178, halign: 'center' },
+                            2: { cellWidth: 62, halign: 'center' },
+                            3: { cellWidth: 118, halign: 'center' },
+                            4: { cellWidth: 118, halign: 'center' },
+                            5: { cellWidth: 89, halign: 'center' },
+                            6: { cellWidth: 98, halign: 'center' },
+                            7: { cellWidth: 80, halign: 'center' },
+                            8: { cellWidth: 65, halign: 'center' },
+                            9: { cellWidth: 75, halign: 'center' }
 
                         },
 
@@ -1554,15 +1562,15 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
 
                 const widths = [
                     1100,
-                    3250,
-                    1100,
-                    2250,
-                    1150,
-                    1550,
-                    1750,
+                    3000,
+                    1050,
+                    2000,
+                    2000,
+                    1500,
+                    1650,
                     1350,
-                    1150,
-                    1350
+                    1100,
+                    1250
                 ];
 
                 let totalParticipants = 0;
@@ -1571,7 +1579,7 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
                 rows.forEach(r => {
 
                     totalParticipants +=
-                        Number(r.Participants || 0);
+                        getParticipantCount(r.Participants);
 
                     totalBudget +=
                         Number(r.Budget || 0);
@@ -1680,8 +1688,6 @@ $fundRequestsPhp = getFundRequests($pdo, 'Day Care Center Program');
                 const totalVals = [
 
                     'TOTAL',
-                    '',
-                    '',
                     '',
                     '',
                     '',
