@@ -449,6 +449,7 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
 
         let currentSort = { key: 'date', dir: 'desc' };
         let filteredData = [...transactions];
+        let currentPage = 1;
 
         // ── Type options based on budget source ──
         function getTypeOptions(budgetSource) {
@@ -501,6 +502,15 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
             return status || 'Approved';
         }
 
+        function escHtml(v) {
+            return String(v ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function renderTable(data) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
@@ -508,18 +518,18 @@ usort($aicsTransactions, fn($a, $b) => strcmp($b['date'], $a['date']));
                 const tr = document.createElement('tr');
                 tr.className = 'table-row';
                 tr.innerHTML = `
-                    <td class="px-5 py-3 font-medium text-green-700">${row.beneficiary}</td>
+                    <td class="px-5 py-3 font-medium text-green-700">${escHtml(row.beneficiary)}</td>
                     <td class="px-5 py-3"><span class="${row.budgetSource === 'FBML' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'} px-2 py-0.5 rounded text-[10px] font-semibold">AICS ${row.budgetSource}</span></td>
-                    <td class="px-5 py-3 text-slate-600">${row.type}</td>
+                    <td class="px-5 py-3 text-slate-600">${escHtml(row.type)}</td>
                     <td class="px-5 py-3 font-semibold text-slate-700">₱${row.amount.toLocaleString()}</td>
-                    <td class="px-5 py-3 text-slate-400">${row.date}</td>
+                    <td class="px-5 py-3 text-slate-400">${escHtml(row.date)}</td>
                     <td class="px-5 py-3">
                         <span class="px-2 py-1 rounded-full text-[10px] font-semibold ${statusClass(row.status)}">
-                            ${statusLabel(row.status)}
+                            ${escHtml(statusLabel(row.status))}
                         </span>
                     </td>
                     <td class="px-5 py-3 text-slate-400">
-                        ${row.dateReleased ? row.dateReleased : '—'}
+                        ${row.dateReleased ? escHtml(row.dateReleased) : '—'}
                     </td>
                     <td class="px-5 py-3">
                         <a href="aics_view.php?availment_id=${row.availmentId}" class="text-[12px] font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors inline-flex items-center gap-1.5">
@@ -777,6 +787,15 @@ function formatDate(value) {
 function formatPeso(value) {
 
     return `₱${Number(value || 0).toLocaleString('en-PH', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    })}`;
+}
+
+
+// jsPDF's built-in Helvetica has no peso glyph, so use "PHP" in PDFs
+function formatPesoPdf(value) {
+    return `PHP ${Number(value || 0).toLocaleString('en-PH', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     })}`;
@@ -1445,7 +1464,7 @@ async function exportToPdf() {
 
                     row.Type,
 
-                    formatPeso(row.Amount),
+                    formatPesoPdf(row.Amount),
 
                     formatDate(row['Date Applied']),
 
@@ -1462,7 +1481,7 @@ async function exportToPdf() {
             '',
             '',
             'TOTAL',
-            formatPeso(totalAmount),
+            formatPesoPdf(totalAmount),
             '',
             '',
             ''
@@ -1732,8 +1751,8 @@ async function exportToDocx() {
                 ${columns.map(col => `
                     <w:tc>
                         <w:tcPr>
-                            <w:shd w:fill="EFEFEF"/>
                             <w:tcW w:w="2000" w:type="dxa"/>
+                            <w:shd w:val="clear" w:color="auto" w:fill="EFEFEF"/>
                         </w:tcPr>
 
                         <w:p>
@@ -1743,10 +1762,10 @@ async function exportToDocx() {
 
                             <w:r>
                                 <w:rPr>
-                                    <w:b/>
                                     <w:rFonts
                                         w:ascii="Arial"
                                         w:hAnsi="Arial"/>
+                                    <w:b/>
                                     <w:sz w:val="18"/>
                                 </w:rPr>
 
@@ -1863,7 +1882,7 @@ async function exportToDocx() {
 
                 <w:tc>
                     <w:tcPr>
-                        <w:shd w:fill="EFEFEF"/>
+                        <w:shd w:val="clear" w:color="auto" w:fill="EFEFEF"/>
                     </w:tcPr>
 
                     <w:p>
@@ -1887,7 +1906,7 @@ async function exportToDocx() {
 
                 <w:tc>
                     <w:tcPr>
-                        <w:shd w:fill="EFEFEF"/>
+                        <w:shd w:val="clear" w:color="auto" w:fill="EFEFEF"/>
                     </w:tcPr>
 
                     <w:p>
@@ -1919,7 +1938,7 @@ async function exportToDocx() {
         // DOCUMENT XML
         // --------------------------------------------------------
 
-        const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        const documentXml = `\x3C?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <w:document
     xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -1953,10 +1972,10 @@ async function exportToDocx() {
 
             <w:r>
                 <w:rPr>
-                    <w:b/>
                     <w:rFonts
                         w:ascii="Arial"
                         w:hAnsi="Arial"/>
+                    <w:b/>
                     <w:sz w:val="22"/>
                 </w:rPr>
 
@@ -1974,10 +1993,10 @@ async function exportToDocx() {
 
             <w:r>
                 <w:rPr>
-                    <w:b/>
                     <w:rFonts
                         w:ascii="Arial"
                         w:hAnsi="Arial"/>
+                    <w:b/>
                     <w:sz w:val="22"/>
                 </w:rPr>
 
@@ -1995,10 +2014,10 @@ async function exportToDocx() {
 
             <w:r>
                 <w:rPr>
-                    <w:b/>
                     <w:rFonts
                         w:ascii="Arial"
                         w:hAnsi="Arial"/>
+                    <w:b/>
                     <w:sz w:val="22"/>
                 </w:rPr>
 
@@ -2016,10 +2035,10 @@ async function exportToDocx() {
 
             <w:r>
                 <w:rPr>
-                    <w:b/>
                     <w:rFonts
                         w:ascii="Arial"
                         w:hAnsi="Arial"/>
+                    <w:b/>
                     <w:sz w:val="28"/>
                 </w:rPr>
 
@@ -2057,13 +2076,17 @@ async function exportToDocx() {
             <w:tblPr>
 
                 <w:tblW
-                    w:w="15800"
+                    w:w="14000"
                     w:type="dxa"/>
 
                 <w:tblLayout
                     w:type="fixed"/>
 
             </w:tblPr>
+
+            <w:tblGrid>
+                <w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/>
+            </w:tblGrid>
 
 
             ${tableRows}
@@ -2142,8 +2165,7 @@ async function exportToDocx() {
         // DOCX FILE STRUCTURE
         // --------------------------------------------------------
 
-        const contentTypes = `
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        const contentTypes = `\x3C?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <Types
     xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -2164,8 +2186,7 @@ async function exportToDocx() {
 `;
 
 
-        const relationships = `
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        const relationships = `\x3C?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <Relationships
     xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -2179,8 +2200,7 @@ async function exportToDocx() {
 `;
 
 
-        const wordRelationships = `
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        const wordRelationships = `\x3C?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <Relationships
     xmlns="http://schemas.openxmlformats.org/package/2006/relationships">

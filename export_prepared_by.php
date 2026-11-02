@@ -17,7 +17,7 @@ if ($userId > 0 && isset($pdo)) {
             user_middlename,
             user_lastname,
             user_position
-        FROM MSWDO_USER
+        FROM mswdo_user
         WHERE user_id = ?
         LIMIT 1
     ");
