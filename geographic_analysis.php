@@ -480,6 +480,24 @@ $programDataJson = json_encode($programData, JSON_UNESCAPED_UNICODE);
             border-bottom: 1px solid #D4E8DC;
         }
 
+        table.summary th:nth-child(3),
+        table.summary td:nth-child(3) {
+            text-align: right;
+        }
+
+        table.summary th:nth-child(2),
+        table.summary td:nth-child(2),
+        table.summary th:nth-child(4),
+        table.summary td:nth-child(4),
+        table.summary th:nth-child(5),
+        table.summary td:nth-child(5),
+        table.summary th:nth-child(6),
+        table.summary td:nth-child(6),
+        table.summary th:nth-child(7),
+        table.summary td:nth-child(7) {
+            text-align: center;
+        }
+
         table.summary th {
             background: #EEF6F0;
             cursor: pointer;
@@ -1930,7 +1948,7 @@ $programDataJson = json_encode($programData, JSON_UNESCAPED_UNICODE);
                         bold: true, color: { argb: BLACK }, size: 11, name: 'Calibri'
                     };
                     cell.alignment = {
-                        horizontal: c.key === 'Barangay' || c.key === 'Total Amount (₱)' ? 'left' : 'center',
+                        horizontal: c.key === 'Total Amount (₱)' ? 'right' : (i === 0 ? 'left' : 'center'),
                         vertical: 'middle',
                         wrapText: true
                     };
@@ -1955,7 +1973,7 @@ $programDataJson = json_encode($programData, JSON_UNESCAPED_UNICODE);
                         cell.value = rowData[c.key];
                         cell.border = THIN_BORDERS;
                         cell.alignment = {
-                            horizontal: c.key === 'Barangay' || c.key === 'Total Amount (₱)' ? 'left' : 'center',
+                            horizontal: c.key === 'Total Amount (₱)' ? 'right' : (i === 0 ? 'left' : 'center'),
                             vertical: 'middle'
                         };
                         cell.font = {
@@ -1987,7 +2005,7 @@ $programDataJson = json_encode($programData, JSON_UNESCAPED_UNICODE);
                     };
                     cell.border = THIN_BORDERS;
                     cell.alignment = {
-                        horizontal: c.key === 'Total Amount (₱)' ? 'left' : 'center',
+                        horizontal: c.key === 'Total Amount (₱)' ? 'right' : 'center',
                         vertical: 'middle'
                     };
                     if (c.key === 'Total Amount (₱)') cell.numFmt = '₱#,##0.00';
@@ -2207,16 +2225,13 @@ $programDataJson = json_encode($programData, JSON_UNESCAPED_UNICODE);
                 columnStyles: {
                     0: { halign: 'left', fontStyle: 'bold', cellWidth: 150 },
                     1: { cellWidth: 82 },
-                    2: { halign: 'left', cellWidth: 135 },
+                    2: { halign: 'right', cellWidth: 135 },
                     3: { cellWidth: 58 },
                     4: { cellWidth: 65 },
                     5: { cellWidth: 88 },
                     6: { cellWidth: 58 }
                 },
                 didParseCell: data => {
-                    if (data.column.index === 2) {
-                        data.cell.styles.halign = 'left';
-                    }
                     if (data.row.raw && data.row.raw[0] === 'TOTAL') {
                         data.cell.styles.font = 'Carlito';
                         data.cell.styles.fontStyle = 'bold';
@@ -2280,7 +2295,7 @@ $programDataJson = json_encode($programData, JSON_UNESCAPED_UNICODE);
                 tableRows += `<tr>
                     <td class="left">${escapeHtml(r.Barangay)}</td>
                     <td>${r.Beneficiaries}</td>
-                    <td align="left" style="text-align:left;mso-para-alignment:left;">₱${formatAmount(Number(r['Total Amount (₱)'] || 0))}</td>
+                    <td style="text-align:right;">₱${formatAmount(Number(r['Total Amount (₱)'] || 0))}</td>
                     <td>${r['PWD Count'] || 0}</td>
                     <td>${r['Senior Count'] || 0}</td>
                     <td>${r['Solo Parent Count'] || 0}</td>
@@ -2297,7 +2312,7 @@ $programDataJson = json_encode($programData, JSON_UNESCAPED_UNICODE);
             tableRows += `<tr class="total-row">
                 <td class="left">TOTAL</td>
                 <td>${totals.b}</td>
-                <td align="left" style="text-align:left;mso-para-alignment:left;">₱${formatAmount(totals.a)}</td>
+                <td style="text-align:right;">₱${formatAmount(totals.a)}</td>
                 <td>${totals.p}</td>
                 <td>${totals.s}</td>
                 <td>${totals.so}</td>
@@ -2462,7 +2477,7 @@ $programDataJson = json_encode($programData, JSON_UNESCAPED_UNICODE);
                         <thead><tr>
                             <th>Barangay</th>
                             <th>Beneficiaries</th>
-                            <th align="left" style="text-align:left;mso-para-alignment:left;">Total Amount (₱)</th>
+                            <th style="text-align:right;">Total Amount (₱)</th>
                             <th>PWD</th>
                             <th>Senior</th>
                             <th>Solo Parent</th>
