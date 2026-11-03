@@ -1953,7 +1953,7 @@ async function exportToDocx() {
         // --------------------------------------------------------
 
         const documentXml = `
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<\?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <w:document
     xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -2189,7 +2189,7 @@ async function exportToDocx() {
         // --------------------------------------------------------
 
         const contentTypes = `
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<\?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <Types
     xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -2211,7 +2211,7 @@ async function exportToDocx() {
 
 
         const relationships = `
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<\?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <Relationships
     xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -2226,7 +2226,7 @@ async function exportToDocx() {
 
 
         const wordRelationships = `
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<\?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 
 <Relationships
     xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
