@@ -300,6 +300,30 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     ];
 }
 
+// 9. Edits to project proposals
+$stmt = $pdo->query("
+    SELECT e.proposal_id, e.edited_at, e.changes, pp.pp_title,
+           u.user_firstname, u.user_lastname, u.user_role
+    FROM proposal_edit_log e
+    INNER JOIN project_proposal pp ON pp.proposal_id = e.proposal_id
+    LEFT JOIN mswdo_user u ON u.user_id = e.user_id
+");
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $activityLog[] = [
+        'date' => $row['edited_at'],
+        'user' => trim(($row['user_firstname'] ?? '') . ' ' . ($row['user_lastname'] ?? '')) ?: 'Unknown',
+        'role' => $row['user_role'] ?? 'Admin',
+        'activity' => 'Project proposal edited · ' . $row['pp_title'],
+        'module' => 'Reports',
+        'action' => 'Update',
+        'description' => 'Changes: ' . $row['changes'],
+        'reference' => 'Proposal #PP-' . $row['proposal_id'],
+        'icon' => 'fa-pen-to-square',
+        'iconBg' => 'bg-orange-100',
+        'iconColor' => 'text-orange-600',
+    ];
+}
+
 // Merge, sort newest first, assign stable ids, normalize to ISO 8601 for JS Date parsing.
 usort($activityLog, fn($a, $b) => strtotime($b['date']) <=> strtotime($a['date']));
 

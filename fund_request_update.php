@@ -119,13 +119,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
 
             $lockStmt = $pdo->prepare("
-                SELECT pp.program_id, pp.pp_status, pp.pp_date_released, pp.pp_document,
-                       p.prog_annual_budget
-                FROM project_proposal pp
-                JOIN program p ON p.program_id = pp.program_id
-                WHERE pp.proposal_id = ?
-                FOR UPDATE
-            ");
+            SELECT pp.program_id, pp.pp_status, pp.pp_date_released, pp.pp_document,
+                pp.pp_title, pp.pp_date_from, pp.pp_date_to, pp.pp_venue,
+                pp.pp_num_participants, pp.pp_participant_desc, pp.pp_budget,
+                pp.pp_fund_source,
+                p.prog_annual_budget
+            FROM project_proposal pp
+            JOIN program p ON p.program_id = pp.program_id
+            WHERE pp.proposal_id = ?
+            FOR UPDATE
+        ");
             $lockStmt->execute([$proposalId]);
             $lockedProposal = $lockStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -230,6 +233,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            // Compare old (locked row) vs new values to see what really changed
+            $labels = [
+                'pp_title' => 'Title',
+                'pp_date_from' => 'Date from',
+                'pp_date_to' => 'Date to',
+                'pp_venue' => 'Venue',
+                'pp_num_participants' => 'Participants',
+                'pp_participant_desc' => 'Participant description',
+                'pp_budget' => 'Budget',
+                'pp_fund_source' => 'Fund source',
+            ];
+            $newValues = $values;
+            $newValues['pp_num_participants'] = (string) $participantCount;
+            $newValues['pp_budget'] = number_format($budget, 2, '.', '');
+
+            $changes = [];
+            foreach ($labels as $col => $label) {
+                $old = (string) $lockedProposal[$col];
+                if ($col === 'pp_budget') {
+                    $old = number_format((float) $old, 2, '.', '');
+                }
+                if ($old !== $newValues[$col]) {
+                    $changes[] = $label . ': ' . $old . ' → ' . $newValues[$col];
+                }
+            }
+            if ($documentName !== $lockedProposal['pp_document']) {
+                $changes[] = 'Document replaced';
+            }
+
             $updateStmt = $pdo->prepare("
                 UPDATE project_proposal
                 SET pp_title = ?,
@@ -255,6 +287,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $documentName,
                 $proposalId,
             ]);
+
+            if ($changes) {
+                $logStmt = $pdo->prepare("
+        INSERT INTO proposal_edit_log (proposal_id, user_id, changes)
+        VALUES (?, ?, ?)
+    ");
+                $logStmt->execute([$proposalId, $_SESSION['user_id'], implode('; ', $changes)]);
+            }
 
             $pdo->commit();
 
@@ -298,8 +338,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Update Fund Request – MSWDO San Enrique</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
 </head>
 
 <body class="min-h-screen bg-slate-50 text-slate-800">
@@ -328,8 +367,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="POST" enctype="multipart/form-data"
                 class="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <input type="hidden" name="proposal_id" value="<?= (int) $proposalId ?>">
-                <input type="hidden" name="csrf_token"
-                    value="<?= $escape($_SESSION['fund_request_update_token']) ?>">
+                <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['fund_request_update_token']) ?>">
 
                 <div>
                     <label for="pp_title" class="mb-1 block text-sm font-medium">Title / Name of Project</label>
@@ -355,20 +393,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div>
                     <label for="pp_venue" class="mb-1 block text-sm font-medium">Venue</label>
-                    <input id="pp_venue" name="pp_venue" required
-                        value="<?= $escape($values['pp_venue']) ?>"
+                    <input id="pp_venue" name="pp_venue" required value="<?= $escape($values['pp_venue']) ?>"
                         class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-green-600 focus:outline-none">
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
-                        <label for="pp_num_participants" class="mb-1 block text-sm font-medium">Number of Participants</label>
+                        <label for="pp_num_participants" class="mb-1 block text-sm font-medium">Number of
+                            Participants</label>
                         <input id="pp_num_participants" name="pp_num_participants" type="number" min="1" required
                             value="<?= $escape($values['pp_num_participants']) ?>"
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-green-600 focus:outline-none">
                     </div>
                     <div>
-                        <label for="pp_participant_desc" class="mb-1 block text-sm font-medium">Participant Description</label>
+                        <label for="pp_participant_desc" class="mb-1 block text-sm font-medium">Participant
+                            Description</label>
                         <input id="pp_participant_desc" name="pp_participant_desc" required
                             value="<?= $escape($values['pp_participant_desc']) ?>"
                             class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-green-600 focus:outline-none">
@@ -391,7 +430,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="border-t border-slate-100 pt-4">
-                    <label for="pp_document" class="mb-1 block text-sm font-medium">Replace Project Proposal Document (optional)</label>
+                    <label for="pp_document" class="mb-1 block text-sm font-medium">Replace Project Proposal Document
+                        (optional)</label>
                     <?php if (!empty($proposal['pp_document'])): ?>
                         <p class="mb-2 text-sm text-slate-500">
                             Current file:
@@ -402,8 +442,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </a>
                         </p>
                     <?php endif; ?>
-                    <input id="pp_document" name="pp_document" type="file"
-                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    <input id="pp_document" name="pp_document" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                         class="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-green-50 file:px-4 file:py-2 file:font-medium file:text-green-700">
                     <p class="mt-1 text-xs text-slate-400">PDF, DOC, DOCX, JPG, JPEG, or PNG · Maximum 10 MB</p>
                 </div>
